@@ -8,9 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stainless-sdks/context.dev-go"
-	"github.com/stainless-sdks/context.dev-go/internal/testutil"
-	"github.com/stainless-sdks/context.dev-go/option"
+	"github.com/context-dot-dev/context-go-sdk"
+	"github.com/context-dot-dev/context-go-sdk/internal/testutil"
+	"github.com/context-dot-dev/context-go-sdk/option"
 )
 
 func TestBrandGetWithOptionalParams(t *testing.T) {

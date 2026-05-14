@@ -2,8 +2,8 @@ package apijson_test
 
 import (
 	"encoding/json"
-	"github.com/stainless-sdks/context.dev-go/internal/apijson"
-	"github.com/stainless-sdks/context.dev-go/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/internal/apijson"
+	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
 	"testing"
 )
 

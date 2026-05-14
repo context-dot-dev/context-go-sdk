@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stainless-sdks/context.dev-go"
-	"github.com/stainless-sdks/context.dev-go/internal"
-	"github.com/stainless-sdks/context.dev-go/option"
+	"github.com/context-dot-dev/context-go-sdk"
+	"github.com/context-dot-dev/context-go-sdk/internal"
+	"github.com/context-dot-dev/context-go-sdk/option"
 )
 
 type closureTransport struct {

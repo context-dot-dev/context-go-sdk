@@ -1,4 +1,4 @@
-module github.com/stainless-sdks/context.dev-go
+module github.com/context-dot-dev/context-go-sdk
 
 go 1.22
 

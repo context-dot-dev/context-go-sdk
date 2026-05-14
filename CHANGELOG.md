@@ -1,0 +1,10 @@
+# Changelog
+
+## 0.0.2 (2026-05-14)
+
+Full Changelog: [v0.0.1...v0.0.2](https://github.com/context-dot-dev/context-go-sdk/compare/v0.0.1...v0.0.2)
+
+### Chores
+
+* configure new SDK language ([7cbb9ed](https://github.com/context-dot-dev/context-go-sdk/commit/7cbb9ed2584c7b513e52f40e69b3bf2bc94e4560))
+* update SDK settings ([b44046e](https://github.com/context-dot-dev/context-go-sdk/commit/b44046e90351b8c1595d8fee813872f3bb7ef465))

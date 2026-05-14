@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stainless-sdks/context.dev-go/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/packages/param"
 )
 
 var encoders sync.Map // map[encoderEntry]encoderFunc

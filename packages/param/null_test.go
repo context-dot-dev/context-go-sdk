@@ -2,7 +2,7 @@ package param_test
 
 import (
 	"encoding/json"
-	"github.com/stainless-sdks/context.dev-go/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/packages/param"
 	"testing"
 )
 

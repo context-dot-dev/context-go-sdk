@@ -1,7 +1,7 @@
 package apijson
 
 import (
-	"github.com/stainless-sdks/context.dev-go/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
 	"reflect"
 )
 

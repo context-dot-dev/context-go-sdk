@@ -1,8 +1,8 @@
 package sentinel_test
 
 import (
-	"github.com/stainless-sdks/context.dev-go/internal/encoding/json/sentinel"
-	"github.com/stainless-sdks/context.dev-go/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/internal/encoding/json/sentinel"
+	"github.com/context-dot-dev/context-go-sdk/packages/param"
 	"reflect"
 	"slices"
 	"testing"

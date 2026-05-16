@@ -61,6 +61,14 @@ func (r *WebService) Screenshot(ctx context.Context, query WebScreenshotParams, 
 	return res, err
 }
 
+// Search the web and optionally scrape each result to Markdown in one round-trip.
+func (r *WebService) Search(ctx context.Context, body WebSearchParams, opts ...option.RequestOption) (res *WebSearchResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "web/search"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	return res, err
+}
+
 // Performs a crawl starting from a given URL, extracts page content as Markdown,
 // and returns results for all crawled pages.
 func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, opts ...option.RequestOption) (res *WebWebCrawlMdResponse, err error) {
@@ -862,6 +870,80 @@ const (
 	WebScreenshotResponseScreenshotTypeFullPage WebScreenshotResponseScreenshotType = "fullPage"
 )
 
+type WebSearchResponse struct {
+	// Echo of the original query (useful when fanout was enabled).
+	Query   string                    `json:"query" api:"required"`
+	Results []WebSearchResponseResult `json:"results" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Query       respjson.Field
+		Results     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebSearchResponse) RawJSON() string { return r.JSON.raw }
+func (r *WebSearchResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebSearchResponseResult struct {
+	// Snippet excerpt from the page.
+	Description string `json:"description" api:"required"`
+	// Markdown scrape status and content for this result.
+	Markdown WebSearchResponseResultMarkdown `json:"markdown" api:"required"`
+	// Model-judged relevance to the original query.
+	//
+	// Any of "high", "medium", "low".
+	Relevance string `json:"relevance" api:"required"`
+	// Page title.
+	Title string `json:"title" api:"required"`
+	// Canonical result URL.
+	URL string `json:"url" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Description respjson.Field
+		Markdown    respjson.Field
+		Relevance   respjson.Field
+		Title       respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebSearchResponseResult) RawJSON() string { return r.JSON.raw }
+func (r *WebSearchResponseResult) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Markdown scrape status and content for this result.
+type WebSearchResponseResultMarkdown struct {
+	// Per-result scrape outcome. Inspect this before reading `markdown`.
+	//
+	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "WEBSITE_ACCESS_ERROR", "ERROR".
+	Code string `json:"code" api:"required"`
+	// GFM Markdown of the page. Null unless markdownOptions.enabled is true and
+	// scraping succeeded.
+	Markdown string `json:"markdown" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Markdown    respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebSearchResponseResultMarkdown) RawJSON() string { return r.JSON.raw }
+func (r *WebSearchResponseResultMarkdown) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type WebWebCrawlMdResponse struct {
 	Metadata WebWebCrawlMdResponseMetadata `json:"metadata" api:"required"`
 	Results  []WebWebCrawlMdResponseResult `json:"results" api:"required"`
@@ -1314,6 +1396,105 @@ func (r WebScreenshotParamsViewport) URLQuery() (v url.Values, err error) {
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
+}
+
+type WebSearchParams struct {
+	// Natural-language search query.
+	Query string `json:"query" api:"required"`
+	// Expand the query into multiple parallel variants for broader recall.
+	QueryFanout param.Opt[bool] `json:"queryFanout,omitzero"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Blocklist — drop results from these domains. Example: ["pinterest.com",
+	// "reddit.com"].
+	ExcludeDomains []string `json:"excludeDomains,omitzero"`
+	// Restrict results to content published within this window.
+	//
+	// Any of "last_24_hours", "last_week", "last_month", "last_year".
+	Freshness WebSearchParamsFreshness `json:"freshness,omitzero"`
+	// Allowlist — only return results from these domains. Example: ["arxiv.org",
+	// "github.com"].
+	IncludeDomains []string `json:"includeDomains,omitzero"`
+	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
+	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
+	paramObj
+}
+
+func (r WebSearchParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebSearchParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebSearchParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Restrict results to content published within this window.
+type WebSearchParamsFreshness string
+
+const (
+	WebSearchParamsFreshnessLast24Hours WebSearchParamsFreshness = "last_24_hours"
+	WebSearchParamsFreshnessLastWeek    WebSearchParamsFreshness = "last_week"
+	WebSearchParamsFreshnessLastMonth   WebSearchParamsFreshness = "last_month"
+	WebSearchParamsFreshnessLastYear    WebSearchParamsFreshness = "last_year"
+)
+
+// Inline Markdown scraping for each result. Set `enabled: true` to activate.
+type WebSearchParamsMarkdownOptions struct {
+	// Scrape each result to Markdown. Off by default to keep search cheap and fast.
+	Enabled param.Opt[bool] `json:"enabled,omitzero"`
+	// Render iframe contents into the Markdown.
+	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
+	// Emit image references in the Markdown.
+	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
+	// Keep hyperlinks in the Markdown.
+	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
+	// Cache TTL in ms for scraped Markdown keyed by URL + options. Default 1 day, max
+	// 30 days. Set to 0 to force a fresh scrape.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Truncate inline base64 image payloads to keep responses small.
+	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Strip nav, header, footer, and sidebar — keep only the primary article content.
+	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// Extra wait after page load before rendering, in ms (0–30000). Useful for
+	// JS-heavy pages.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// PDF handling. Use start/end to bound text extraction and OCR to a page range.
+	Pdf WebSearchParamsMarkdownOptionsPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r WebSearchParamsMarkdownOptions) MarshalJSON() (data []byte, err error) {
+	type shadow WebSearchParamsMarkdownOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebSearchParamsMarkdownOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// PDF handling. Use start/end to bound text extraction and OCR to a page range.
+type WebSearchParamsMarkdownOptionsPdf struct {
+	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
+	// be >= start.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// Parse PDF URLs. When false, PDF results are skipped with WEBSITE_ACCESS_ERROR.
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First PDF page to parse (1-based, inclusive). Defaults to page 1.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	paramObj
+}
+
+func (r WebSearchParamsMarkdownOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow WebSearchParamsMarkdownOptionsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebSearchParamsMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type WebWebCrawlMdParams struct {

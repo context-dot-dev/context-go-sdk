@@ -103,6 +103,52 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 	}
 }
 
+func TestWebSearchWithOptionalParams(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Web.Search(context.TODO(), contextdev.WebSearchParams{
+		Query:          "x",
+		ExcludeDomains: []string{"string"},
+		Freshness:      contextdev.WebSearchParamsFreshnessLast24Hours,
+		IncludeDomains: []string{"string"},
+		MarkdownOptions: contextdev.WebSearchParamsMarkdownOptions{
+			Enabled:       contextdev.Bool(true),
+			IncludeFrames: contextdev.Bool(true),
+			IncludeImages: contextdev.Bool(true),
+			IncludeLinks:  contextdev.Bool(true),
+			MaxAgeMs:      contextdev.Int(0),
+			Pdf: contextdev.WebSearchParamsMarkdownOptionsPdf{
+				End:         contextdev.Int(1),
+				ShouldParse: contextdev.Bool(true),
+				Start:       contextdev.Int(1),
+			},
+			ShortenBase64Images: contextdev.Bool(true),
+			TimeoutMs:           contextdev.Int(1000),
+			UseMainContentOnly:  contextdev.Bool(true),
+			WaitForMs:           contextdev.Int(0),
+		},
+		QueryFanout: contextdev.Bool(true),
+		TimeoutMs:   contextdev.Int(1000),
+	})
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
 func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"

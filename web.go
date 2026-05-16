@@ -894,7 +894,7 @@ type WebSearchResponseResult struct {
 	Description string `json:"description" api:"required"`
 	// Markdown scrape status and content for this result.
 	Markdown WebSearchResponseResultMarkdown `json:"markdown" api:"required"`
-	// Model-judged relevance to the original query.
+	// Relevance to the original query.
 	//
 	// Any of "high", "medium", "low".
 	Relevance string `json:"relevance" api:"required"`

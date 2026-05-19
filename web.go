@@ -88,8 +88,8 @@ func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLPa
 
 // Extract image assets from a web page, including standard URLs, inline SVGs, data
 // URIs, responsive image sources, metadata, CSS backgrounds, video posters, and
-// embeds. The base request costs 1 credit; enrichment costs 1 credit per returned
-// image.
+// embeds. The base request costs 1 credit. When enrichment is enabled, the entire
+// call costs 5 credits.
 func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImagesParams, opts ...option.RequestOption) (res *WebWebScrapeImagesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/images"

@@ -29,6 +29,7 @@ func TestWebExtractFontsWithOptionalParams(t *testing.T) {
 	_, err := client.Web.ExtractFonts(context.TODO(), contextdev.WebExtractFontsParams{
 		DirectURL: contextdev.String("https://example.com"),
 		Domain:    contextdev.String("domain"),
+		MaxAgeMs:  contextdev.Int(86400000),
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {
@@ -56,6 +57,7 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 	_, err := client.Web.ExtractStyleguide(context.TODO(), contextdev.WebExtractStyleguideParams{
 		DirectURL: contextdev.String("https://example.com"),
 		Domain:    contextdev.String("domain"),
+		MaxAgeMs:  contextdev.Int(86400000),
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {

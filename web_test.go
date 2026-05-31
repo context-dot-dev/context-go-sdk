@@ -13,6 +13,50 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/option"
 )
 
+func TestWebExtractWithOptionalParams(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Web.Extract(context.TODO(), contextdev.WebExtractParams{
+		Schema: map[string]any{
+			"type":                 "bar",
+			"properties":           "bar",
+			"required":             "bar",
+			"additionalProperties": "bar",
+		},
+		URL:              "https://example.com",
+		FactCheck:        contextdev.Bool(true),
+		FollowSubdomains: contextdev.Bool(true),
+		IncludeFrames:    contextdev.Bool(true),
+		Instructions:     contextdev.String("instructions"),
+		MaxAgeMs:         contextdev.Int(0),
+		Pdf: contextdev.WebExtractParamsPdf{
+			End:         contextdev.Int(1),
+			ShouldParse: contextdev.Bool(true),
+			Start:       contextdev.Int(1),
+		},
+		StopAfterMs: contextdev.Int(10000),
+		TimeoutMs:   contextdev.Int(1000),
+		WaitForMs:   contextdev.Int(0),
+	})
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
 func TestWebExtractFontsWithOptionalParams(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"

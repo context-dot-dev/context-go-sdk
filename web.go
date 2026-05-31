@@ -35,6 +35,17 @@ func NewWebService(opts ...option.RequestOption) (r WebService) {
 	return
 }
 
+// Crawl a website, convert pages to Markdown using the scrape cache, and extract
+// structured data into the provided JSON Schema. The schema must describe the
+// response data object. This endpoint does not accept targeted page-type
+// selection.
+func (r *WebService) Extract(ctx context.Context, body WebExtractParams, opts ...option.RequestOption) (res *WebExtractResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "web/extract"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	return res, err
+}
+
 // Scrape font information from a website including font families, usage
 // statistics, fallbacks, and element/word counts.
 func (r *WebService) ExtractFonts(ctx context.Context, query WebExtractFontsParams, opts ...option.RequestOption) (res *WebExtractFontsResponse, err error) {
@@ -111,6 +122,58 @@ func (r *WebService) WebScrapeSitemap(ctx context.Context, query WebWebScrapeSit
 	path := "web/scrape/sitemap"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
 	return res, err
+}
+
+type WebExtractResponse struct {
+	// Extracted data matching the request schema
+	Data     map[string]any             `json:"data" api:"required"`
+	Metadata WebExtractResponseMetadata `json:"metadata" api:"required"`
+	// Status of the response, e.g., 'ok'
+	Status string `json:"status" api:"required"`
+	// The starting URL that was analyzed
+	URL string `json:"url" api:"required"`
+	// List of URLs whose Markdown was used for extraction
+	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data         respjson.Field
+		Metadata     respjson.Field
+		Status       respjson.Field
+		URL          respjson.Field
+		URLsAnalyzed respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractResponse) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractResponseMetadata struct {
+	MaxCrawlDepth int64 `json:"maxCrawlDepth" api:"required"`
+	NumFailed     int64 `json:"numFailed" api:"required"`
+	NumSkipped    int64 `json:"numSkipped" api:"required"`
+	NumSucceeded  int64 `json:"numSucceeded" api:"required"`
+	NumURLs       int64 `json:"numUrls" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		MaxCrawlDepth respjson.Field
+		NumFailed     respjson.Field
+		NumSkipped    respjson.Field
+		NumSucceeded  respjson.Field
+		NumURLs       respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractResponseMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractResponseMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type WebExtractFontsResponse struct {
@@ -1234,6 +1297,71 @@ type WebWebScrapeSitemapResponseMeta struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeSitemapResponseMeta) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeSitemapResponseMeta) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractParams struct {
+	// JSON Schema for the returned data object. TypeScript Zod users can pass a JSON
+	// Schema generated from a Zod object; Python users can pass the equivalent JSON
+	// Schema object.
+	Schema map[string]any `json:"schema,omitzero" api:"required"`
+	// The starting website URL to crawl and extract from. Must include http:// or
+	// https://.
+	URL string `json:"url" api:"required" format:"uri"`
+	// When true (default), every returned value must be grounded in facts stated on
+	// the page; fields that cannot be supported by the page are returned as
+	// null/empty. When false, the model may make reasonable inferences and derivations
+	// from the page content (e.g. ideal customer, competitor analysis,
+	// recommendations) while keeping verifiable specifics (names, quotes, URLs, dates,
+	// metrics) faithful to the source.
+	FactCheck param.Opt[bool] `json:"factCheck,omitzero"`
+	// When true, follow links on subdomains of the starting URL's domain.
+	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
+	// When true, iframe contents are included in Markdown before extraction.
+	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
+	// Optional extraction guidance, such as which facts to prioritize or how to
+	// interpret fields in the schema.
+	Instructions param.Opt[string] `json:"instructions,omitzero"`
+	// Return cached scrape results if a prior scrape for the same parameters is
+	// younger than this many milliseconds.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Soft time budget for the crawl in milliseconds.
+	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Optional browser wait time in milliseconds after initial page load for each
+	// crawled page.
+	WaitForMs param.Opt[int64]    `json:"waitForMs,omitzero"`
+	Pdf       WebExtractParamsPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r WebExtractParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractParamsPdf struct {
+	// Last 1-based PDF page to parse. Must be greater than or equal to start when both
+	// are provided.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// When true, PDF pages are fetched and parsed. When false, PDF pages are skipped.
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First 1-based PDF page to parse.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	paramObj
+}
+
+func (r WebExtractParamsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParamsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParamsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

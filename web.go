@@ -1305,12 +1305,12 @@ type WebExtractParams struct {
 	// The starting website URL to crawl and extract from. Must include http:// or
 	// https://.
 	URL string `json:"url" api:"required" format:"uri"`
-	// When true (default), every returned value must be grounded in facts stated on
-	// the page; fields that cannot be supported by the page are returned as
-	// null/empty. When false, the model may make reasonable inferences and derivations
-	// from the page content (e.g. ideal customer, competitor analysis,
-	// recommendations) while keeping verifiable specifics (names, quotes, URLs, dates,
-	// metrics) faithful to the source.
+	// When true, every returned value must be grounded in facts stated on the page;
+	// fields that cannot be supported by the page are returned as null/empty. When
+	// false (default), the model may make reasonable inferences and derivations from
+	// the page content (e.g. ideal customer, competitor analysis, recommendations)
+	// while keeping verifiable specifics (names, quotes, URLs, dates, metrics)
+	// faithful to the source.
 	FactCheck param.Opt[bool] `json:"factCheck,omitzero"`
 	// When true, follow links on subdomains of the starting URL's domain.
 	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`

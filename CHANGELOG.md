@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 (2026-05-31)
+
+Full Changelog: [v0.4.0...v0.5.0](https://github.com/context-dot-dev/context-go-sdk/compare/v0.4.0...v0.5.0)
+
+### Features
+
+* **api:** manual updates ([5b46435](https://github.com/context-dot-dev/context-go-sdk/commit/5b46435f5dd722b0392852e7e3de7ebfb94b1f41))
+
 ## 0.4.0 (2026-05-30)
 
 Full Changelog: [v0.3.0...v0.4.0](https://github.com/context-dot-dev/context-go-sdk/compare/v0.3.0...v0.4.0)

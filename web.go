@@ -35,10 +35,7 @@ func NewWebService(opts ...option.RequestOption) (r WebService) {
 	return
 }
 
-// Crawl a website, convert pages to Markdown using the scrape cache, and extract
-// structured data into the provided JSON Schema. The schema must describe the
-// response data object. This endpoint does not accept targeted page-type
-// selection.
+// Crawl a website and extract structured data using the provided JSON Schema.
 func (r *WebService) Extract(ctx context.Context, body WebExtractParams, opts ...option.RequestOption) (res *WebExtractResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/extract"

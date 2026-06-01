@@ -35,7 +35,8 @@ func NewWebService(opts ...option.RequestOption) (r WebService) {
 	return
 }
 
-// Crawl a website and extract structured data using the provided JSON Schema.
+// Crawl a website, use the provided JSON Schema and instructions to prioritize
+// relevant internal links, and extract structured data from the selected pages.
 func (r *WebService) Extract(ctx context.Context, body WebExtractParams, opts ...option.RequestOption) (res *WebExtractResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/extract"
@@ -1320,7 +1321,7 @@ type WebExtractParams struct {
 	// interpret fields in the schema.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Return cached scrape results if a prior scrape for the same parameters is
-	// younger than this many milliseconds.
+	// younger than this many milliseconds. Defaults to 7 days (604800000 ms).
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Soft time budget for the crawl in milliseconds.
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`

@@ -44,6 +44,15 @@ func (r *WebService) Extract(ctx context.Context, body WebExtractParams, opts ..
 	return res, err
 }
 
+// Analyze a company's landing page and web search evidence to return direct
+// competitors for the same product or market.
+func (r *WebService) ExtractCompetitors(ctx context.Context, query WebExtractCompetitorsParams, opts ...option.RequestOption) (res *WebExtractCompetitorsResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "web/competitors"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	return res, err
+}
+
 // Scrape font information from a website including font families, usage
 // statistics, fallbacks, and element/word counts.
 func (r *WebService) ExtractFonts(ctx context.Context, query WebExtractFontsParams, opts ...option.RequestOption) (res *WebExtractFontsResponse, err error) {
@@ -171,6 +180,102 @@ type WebExtractResponseMetadata struct {
 // Returns the unmodified JSON received from the API
 func (r WebExtractResponseMetadata) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractResponseMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractCompetitorsResponse struct {
+	// Direct competitors ordered by relevance and confidence.
+	Competitors []WebExtractCompetitorsResponseCompetitor `json:"competitors" api:"required"`
+	// Normalized input domain.
+	Domain string `json:"domain" api:"required"`
+	// Status of the response.
+	//
+	// Any of "ok".
+	Status WebExtractCompetitorsResponseStatus `json:"status" api:"required"`
+	// Target company profile inferred from the landing page.
+	Target WebExtractCompetitorsResponseTarget `json:"target" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Competitors respjson.Field
+		Domain      respjson.Field
+		Status      respjson.Field
+		Target      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractCompetitorsResponse) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractCompetitorsResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractCompetitorsResponseCompetitor struct {
+	// Confidence that this company is a direct competitor.
+	//
+	// Any of "high", "medium".
+	Confidence string `json:"confidence" api:"required"`
+	// Short description of the competitor.
+	Description string `json:"description" api:"required"`
+	// Competitor's normalized official domain.
+	Domain string `json:"domain" api:"required"`
+	// Competitor company or product name.
+	Name string `json:"name" api:"required"`
+	// Search result URLs used as evidence for this competitor.
+	SourceURLs []string `json:"sourceUrls" api:"required"`
+	// Competitor website URL.
+	URL string `json:"url" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Confidence  respjson.Field
+		Description respjson.Field
+		Domain      respjson.Field
+		Name        respjson.Field
+		SourceURLs  respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractCompetitorsResponseCompetitor) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractCompetitorsResponseCompetitor) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Status of the response.
+type WebExtractCompetitorsResponseStatus string
+
+const (
+	WebExtractCompetitorsResponseStatusOk WebExtractCompetitorsResponseStatus = "ok"
+)
+
+// Target company profile inferred from the landing page.
+type WebExtractCompetitorsResponseTarget struct {
+	// Company or product name inferred from the landing page.
+	CompanyName string `json:"companyName" api:"required"`
+	// Specific operating field, product category, or market.
+	Field string `json:"field" api:"required"`
+	// One-sentence description of what the target company sells and who it serves.
+	FieldDescription string `json:"fieldDescription" api:"required"`
+	// Resolved URL used for the landing page analysis.
+	WebsiteURL string `json:"websiteUrl" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CompanyName      respjson.Field
+		Field            respjson.Field
+		FieldDescription respjson.Field
+		WebsiteURL       respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractCompetitorsResponseTarget) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractCompetitorsResponseTarget) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1361,6 +1466,28 @@ func (r WebExtractParamsPdf) MarshalJSON() (data []byte, err error) {
 }
 func (r *WebExtractParamsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractCompetitorsParams struct {
+	// Company domain to analyze, such as `stripe.com`. Full http(s) URLs are accepted
+	// and normalized to their domain.
+	Domain string `query:"domain" api:"required" json:"-"`
+	// Exact number of direct competitors to return. Defaults to 5.
+	NumCompetitors param.Opt[int64] `query:"numCompetitors,omitzero" json:"-"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebExtractCompetitorsParams]'s query parameters as
+// `url.Values`.
+func (r WebExtractCompetitorsParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
 }
 
 type WebExtractFontsParams struct {

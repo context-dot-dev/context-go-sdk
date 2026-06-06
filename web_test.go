@@ -279,7 +279,10 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeHTML(context.TODO(), contextdev.WebWebScrapeHTMLParams{
-		URL:           "https://example.com",
+		URL: "https://example.com",
+		Headers: map[string]string{
+			"foo": "J!",
+		},
 		IncludeFrames: contextdev.Bool(true),
 		MaxAgeMs:      contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeHTMLParamsPdf{
@@ -320,6 +323,9 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 			MaxTimePerMs:   contextdev.Int(1),
 			Resolution:     contextdev.Bool(true),
 		},
+		Headers: map[string]string{
+			"foo": "J!",
+		},
 		MaxAgeMs:  contextdev.Int(0),
 		TimeoutMs: contextdev.Int(1000),
 		WaitForMs: contextdev.Int(0),
@@ -347,7 +353,10 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeMd(context.TODO(), contextdev.WebWebScrapeMdParams{
-		URL:           "https://example.com",
+		URL: "https://example.com",
+		Headers: map[string]string{
+			"foo": "J!",
+		},
 		IncludeFrames: contextdev.Bool(true),
 		IncludeImages: contextdev.Bool(true),
 		IncludeLinks:  contextdev.Bool(true),
@@ -385,7 +394,10 @@ func TestWebWebScrapeSitemapWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeSitemap(context.TODO(), contextdev.WebWebScrapeSitemapParams{
-		Domain:    "domain",
+		Domain: "domain",
+		Headers: map[string]string{
+			"foo": "J!",
+		},
 		MaxLinks:  contextdev.Int(1),
 		TimeoutMs: contextdev.Int(1000),
 		URLRegex:  contextdev.String("^https?://[^/]+/blog/"),

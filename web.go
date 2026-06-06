@@ -1853,6 +1853,10 @@ type WebWebScrapeHTMLParams struct {
 	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
 	// 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// Optional outbound HTTP headers forwarded only to the target URL, sent as
+	// deep-object query params such as headers[X-Custom]=value. When provided, caching
+	// is bypassed: the result is neither read from nor written to cache.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
 	// inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
@@ -1906,6 +1910,10 @@ type WebWebScrapeImagesParams struct {
 	// Optional per-image processing, sent as deep-object query params such as
 	// enrichment[resolution]=true.
 	Enrichment WebWebScrapeImagesParamsEnrichment `query:"enrichment,omitzero" json:"-"`
+	// Optional outbound HTTP headers forwarded only to the target URL, sent as
+	// deep-object query params such as headers[X-Custom]=value. When provided, caching
+	// is bypassed: the result is neither read from nor written to cache.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	paramObj
 }
 
@@ -1968,6 +1976,10 @@ type WebWebScrapeMdParams struct {
 	// Optional browser wait time in milliseconds after initial page load before
 	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// Optional outbound HTTP headers forwarded only to the target URL, sent as
+	// deep-object query params such as headers[X-Custom]=value. When provided, caching
+	// is bypassed: the result is neither read from nor written to cache.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
 	// inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`
@@ -2018,6 +2030,10 @@ type WebWebScrapeSitemapParams struct {
 	// Optional RE2-compatible regex pattern. Only URLs matching this pattern are
 	// returned and counted against maxLinks.
 	URLRegex param.Opt[string] `query:"urlRegex,omitzero" json:"-"`
+	// Optional outbound HTTP headers forwarded only to the target URL, sent as
+	// deep-object query params such as headers[X-Custom]=value. When provided, caching
+	// is bypassed: the result is neither read from nor written to cache.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	paramObj
 }
 

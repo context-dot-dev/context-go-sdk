@@ -1824,6 +1824,15 @@ type WebWebCrawlMdParams struct {
 	// Optional browser wait time in milliseconds after initial page load for each
 	// crawled page. Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// CSS selectors to remove before each crawled page is converted to Markdown.
+	// Applied after includeSelectors. Exclusion takes precedence: an element matching
+	// both is removed. Examples: "nav", "footer", ".ad-banner", "[aria-hidden=true]".
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// CSS selectors. When provided, only matching HTML subtrees (and their
+	// descendants) are kept before each crawled page is converted to Markdown. When
+	// omitted, the entire document is kept. Examples: "article.main", "#content",
+	// "[role=main]".
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
 	// inclusive 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
@@ -1876,10 +1885,18 @@ type WebWebScrapeHTMLParams struct {
 	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
 	// 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// CSS selectors to remove from the result. Applied after includeSelectors.
+	// Exclusion takes precedence: an element matching both is removed. Examples:
+	// "nav", "footer", ".ad-banner", "[aria-hidden=true]".
+	ExcludeSelectors []string `query:"excludeSelectors,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
+	// CSS selectors. When provided, only matching subtrees (and their descendants) are
+	// kept and everything else is dropped. When omitted, the entire document is kept.
+	// Examples: "article.main", "#content", "[role=main]".
+	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
 	// inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
@@ -1999,10 +2016,18 @@ type WebWebScrapeMdParams struct {
 	// Optional browser wait time in milliseconds after initial page load before
 	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// CSS selectors to remove before conversion to Markdown. Applied after
+	// includeSelectors. Exclusion takes precedence: an element matching both is
+	// removed. Examples: "nav", "footer", ".ad-banner", "[aria-hidden=true]".
+	ExcludeSelectors []string `query:"excludeSelectors,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
+	// CSS selectors. When provided, only matching HTML subtrees (and their
+	// descendants) are kept before conversion to Markdown. When omitted, the entire
+	// document is kept. Examples: "article.main", "#content", "[role=main]".
+	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
 	// inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`

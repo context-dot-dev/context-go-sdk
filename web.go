@@ -1207,18 +1207,26 @@ func (r *WebWebCrawlMdResponseResultMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebWebScrapeHTMLResponse struct {
-	// Raw HTML content of the page
+	// The scraped content of the page. For normal pages this is the raw HTML. When the
+	// page is a sitemap or feed served behind an XSL stylesheet (which browsers render
+	// into HTML), this is the underlying XML instead — see the `type` field.
 	HTML string `json:"html" api:"required"`
 	// Indicates success
 	//
 	// Any of true.
 	Success bool `json:"success" api:"required"`
+	// Detected content type of the returned `html` field. Sitemaps and feeds are
+	// surfaced as `xml`; ordinary pages are `html`.
+	//
+	// Any of "html", "xml", "json", "text", "csv", "markdown", "svg", "pdf".
+	Type WebWebScrapeHTMLResponseType `json:"type" api:"required"`
 	// The URL that was scraped
 	URL string `json:"url" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		HTML        respjson.Field
 		Success     respjson.Field
+		Type        respjson.Field
 		URL         respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -1230,6 +1238,21 @@ func (r WebWebScrapeHTMLResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeHTMLResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Detected content type of the returned `html` field. Sitemaps and feeds are
+// surfaced as `xml`; ordinary pages are `html`.
+type WebWebScrapeHTMLResponseType string
+
+const (
+	WebWebScrapeHTMLResponseTypeHTML     WebWebScrapeHTMLResponseType = "html"
+	WebWebScrapeHTMLResponseTypeXml      WebWebScrapeHTMLResponseType = "xml"
+	WebWebScrapeHTMLResponseTypeJson     WebWebScrapeHTMLResponseType = "json"
+	WebWebScrapeHTMLResponseTypeText     WebWebScrapeHTMLResponseType = "text"
+	WebWebScrapeHTMLResponseTypeCsv      WebWebScrapeHTMLResponseType = "csv"
+	WebWebScrapeHTMLResponseTypeMarkdown WebWebScrapeHTMLResponseType = "markdown"
+	WebWebScrapeHTMLResponseTypeSvg      WebWebScrapeHTMLResponseType = "svg"
+	WebWebScrapeHTMLResponseTypePdf      WebWebScrapeHTMLResponseType = "pdf"
+)
 
 type WebWebScrapeImagesResponse struct {
 	// Images found on the page.

@@ -237,10 +237,12 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.WebCrawlMd(context.TODO(), contextdev.WebWebCrawlMdParams{
 		URL:              "https://example.com",
+		ExcludeSelectors: []string{"string"},
 		FollowSubdomains: contextdev.Bool(true),
 		IncludeFrames:    contextdev.Bool(true),
 		IncludeImages:    contextdev.Bool(true),
 		IncludeLinks:     contextdev.Bool(true),
+		IncludeSelectors: []string{"string"},
 		MaxAgeMs:         contextdev.Int(0),
 		MaxDepth:         contextdev.Int(0),
 		MaxPages:         contextdev.Int(1),
@@ -279,12 +281,14 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeHTML(context.TODO(), contextdev.WebWebScrapeHTMLParams{
-		URL: "https://example.com",
+		URL:              "https://example.com",
+		ExcludeSelectors: []string{"string"},
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		IncludeFrames: contextdev.Bool(true),
-		MaxAgeMs:      contextdev.Int(0),
+		IncludeFrames:    contextdev.Bool(true),
+		IncludeSelectors: []string{"string"},
+		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeHTMLParamsPdf{
 			End:         contextdev.Int(1),
 			ShouldParse: contextdev.Bool(true),
@@ -353,14 +357,16 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeMd(context.TODO(), contextdev.WebWebScrapeMdParams{
-		URL: "https://example.com",
+		URL:              "https://example.com",
+		ExcludeSelectors: []string{"string"},
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		IncludeFrames: contextdev.Bool(true),
-		IncludeImages: contextdev.Bool(true),
-		IncludeLinks:  contextdev.Bool(true),
-		MaxAgeMs:      contextdev.Int(0),
+		IncludeFrames:    contextdev.Bool(true),
+		IncludeImages:    contextdev.Bool(true),
+		IncludeLinks:     contextdev.Bool(true),
+		IncludeSelectors: []string{"string"},
+		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeMdParamsPdf{
 			End:         contextdev.Int(1),
 			ShouldParse: contextdev.Bool(true),

@@ -1451,7 +1451,8 @@ type WebExtractParams struct {
 	// Return cached scrape results if a prior scrape for the same parameters is
 	// younger than this many milliseconds. Defaults to 7 days (604800000 ms).
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Soft time budget for the crawl in milliseconds.
+	// Soft time budget for the crawl in milliseconds. Min: 10000 (10s). Max: 110000
+	// (110s). Default: 80000 (80s).
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
@@ -1809,8 +1810,8 @@ type WebWebCrawlMdParams struct {
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
 	// Soft time budget for the crawl in milliseconds. After each scrape, the crawler
 	// checks the elapsed time and, if exceeded, returns the pages collected so far
-	// instead of continuing. Min: 10000 (10s). Max: 240000 (4 min). Default: 120000 (2
-	// min).
+	// instead of continuing. Min: 10000 (10s). Max: 110000 (110s). Default: 80000
+	// (80s).
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
@@ -1882,6 +1883,9 @@ type WebWebScrapeHTMLParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// When true, return only the page's main content in the HTML response, excluding
+	// headers, footers, sidebars, and navigation when detectable.
+	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
 	// 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`

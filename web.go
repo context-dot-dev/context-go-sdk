@@ -1883,6 +1883,9 @@ type WebWebScrapeHTMLParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// When true, return only the page's main content in the HTML response, excluding
+	// headers, footers, sidebars, and navigation when detectable.
+	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
 	// 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`

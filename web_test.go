@@ -39,6 +39,8 @@ func TestWebExtractWithOptionalParams(t *testing.T) {
 		IncludeFrames:    contextdev.Bool(true),
 		Instructions:     contextdev.String("instructions"),
 		MaxAgeMs:         contextdev.Int(0),
+		MaxDepth:         contextdev.Int(0),
+		MaxPages:         contextdev.Int(1),
 		Pdf: contextdev.WebExtractParamsPdf{
 			End:         contextdev.Int(1),
 			ShouldParse: contextdev.Bool(true),

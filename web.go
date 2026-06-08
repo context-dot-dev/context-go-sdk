@@ -1451,6 +1451,11 @@ type WebExtractParams struct {
 	// Return cached scrape results if a prior scrape for the same parameters is
 	// younger than this many milliseconds. Defaults to 7 days (604800000 ms).
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// If omitted, there is no crawl depth limit.
+	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
+	// Maximum number of pages to analyze for extraction. Hard cap: 50. Defaults to 5.
+	MaxPages param.Opt[int64] `json:"maxPages,omitzero"`
 	// Soft time budget for the crawl in milliseconds. Min: 10000 (10s). Max: 110000
 	// (110s). Default: 80000 (80s).
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`

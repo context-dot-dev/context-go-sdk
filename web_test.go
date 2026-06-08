@@ -294,8 +294,9 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
-		TimeoutMs: contextdev.Int(1000),
-		WaitForMs: contextdev.Int(0),
+		TimeoutMs:          contextdev.Int(1000),
+		UseMainContentOnly: contextdev.Bool(true),
+		WaitForMs:          contextdev.Int(0),
 	})
 	if err != nil {
 		var apierr *contextdev.Error

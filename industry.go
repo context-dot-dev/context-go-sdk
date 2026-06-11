@@ -58,6 +58,9 @@ type IndustryGetNaicsResponse struct {
 	Codes []IndustryGetNaicsResponseCode `json:"codes"`
 	// Domain found for the brand
 	Domain string `json:"domain"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata IndustryGetNaicsResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// Industry classification type, for naics api it will be `naics`
@@ -66,6 +69,7 @@ type IndustryGetNaicsResponse struct {
 	JSON struct {
 		Codes       respjson.Field
 		Domain      respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		Type        respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -104,6 +108,28 @@ func (r *IndustryGetNaicsResponseCode) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type IndustryGetNaicsResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r IndustryGetNaicsResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *IndustryGetNaicsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type IndustryGetSicResponse struct {
 	// Echoes back which SIC dataset was used to classify the brand.
 	//
@@ -115,6 +141,9 @@ type IndustryGetSicResponse struct {
 	Codes []IndustryGetSicResponseCode `json:"codes"`
 	// Domain found for the brand
 	Domain string `json:"domain"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata IndustryGetSicResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// Industry classification type, for sic api it will be `sic`
@@ -124,6 +153,7 @@ type IndustryGetSicResponse struct {
 		Classification respjson.Field
 		Codes          respjson.Field
 		Domain         respjson.Field
+		KeyMetadata    respjson.Field
 		Status         respjson.Field
 		Type           respjson.Field
 		ExtraFields    map[string]respjson.Field
@@ -179,6 +209,28 @@ type IndustryGetSicResponseCode struct {
 // Returns the unmodified JSON received from the API
 func (r IndustryGetSicResponseCode) RawJSON() string { return r.JSON.raw }
 func (r *IndustryGetSicResponseCode) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type IndustryGetSicResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r IndustryGetSicResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *IndustryGetSicResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

@@ -68,6 +68,9 @@ type AiaiQueryResponse struct {
 	DataExtracted []AiaiQueryResponseDataExtracted `json:"data_extracted"`
 	// The domain that was analyzed
 	Domain string `json:"domain"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata AiaiQueryResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// List of URLs that were analyzed
@@ -76,6 +79,7 @@ type AiaiQueryResponse struct {
 	JSON struct {
 		DataExtracted respjson.Field
 		Domain        respjson.Field
+		KeyMetadata   respjson.Field
 		Status        respjson.Field
 		URLsAnalyzed  respjson.Field
 		ExtraFields   map[string]respjson.Field
@@ -179,9 +183,34 @@ func (r *AiaiQueryResponseDataExtractedDatapointValueUnion) UnmarshalJSON(data [
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type AiaiQueryResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r AiaiQueryResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *AiaiQueryResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type AIExtractProductResponse struct {
 	// Whether the given URL is a product detail page
 	IsProductPage bool `json:"is_product_page"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata AIExtractProductResponseKeyMetadata `json:"key_metadata"`
 	// The detected ecommerce platform, or null if not a product page
 	//
 	// Any of "amazon", "tiktok_shop", "etsy", "generic".
@@ -191,6 +220,7 @@ type AIExtractProductResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		IsProductPage respjson.Field
+		KeyMetadata   respjson.Field
 		Platform      respjson.Field
 		Product       respjson.Field
 		ExtraFields   map[string]respjson.Field
@@ -201,6 +231,28 @@ type AIExtractProductResponse struct {
 // Returns the unmodified JSON received from the API
 func (r AIExtractProductResponse) RawJSON() string { return r.JSON.raw }
 func (r *AIExtractProductResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type AIExtractProductResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r AIExtractProductResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *AIExtractProductResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -276,10 +328,14 @@ func (r *AIExtractProductResponseProduct) UnmarshalJSON(data []byte) error {
 }
 
 type AIExtractProductsResponse struct {
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata AIExtractProductsResponseKeyMetadata `json:"key_metadata"`
 	// Array of products extracted from the website
 	Products []AIExtractProductsResponseProduct `json:"products"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		KeyMetadata respjson.Field
 		Products    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -289,6 +345,28 @@ type AIExtractProductsResponse struct {
 // Returns the unmodified JSON received from the API
 func (r AIExtractProductsResponse) RawJSON() string { return r.JSON.raw }
 func (r *AIExtractProductsResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type AIExtractProductsResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r AIExtractProductsResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *AIExtractProductsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

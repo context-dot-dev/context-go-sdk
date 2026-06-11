@@ -103,12 +103,16 @@ type BrandGetResponse struct {
 	Brand BrandGetResponseBrand `json:"brand"`
 	// HTTP status code
 	Code int64 `json:"code"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandGetResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Brand       respjson.Field
 		Code        respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -631,17 +635,43 @@ func (r *BrandGetResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandGetResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BrandIdentifyFromTransactionResponse struct {
 	// Detailed brand information
 	Brand BrandIdentifyFromTransactionResponseBrand `json:"brand"`
 	// HTTP status code
 	Code int64 `json:"code"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandIdentifyFromTransactionResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Brand       respjson.Field
 		Code        respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -1166,17 +1196,43 @@ func (r *BrandIdentifyFromTransactionResponseBrandStock) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandIdentifyFromTransactionResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandIdentifyFromTransactionResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandIdentifyFromTransactionResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BrandGetByEmailResponse struct {
 	// Detailed brand information
 	Brand BrandGetByEmailResponseBrand `json:"brand"`
 	// HTTP status code
 	Code int64 `json:"code"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandGetByEmailResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Brand       respjson.Field
 		Code        respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -1699,17 +1755,43 @@ func (r *BrandGetByEmailResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandGetByEmailResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetByEmailResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetByEmailResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BrandGetByIsinResponse struct {
 	// Detailed brand information
 	Brand BrandGetByIsinResponseBrand `json:"brand"`
 	// HTTP status code
 	Code int64 `json:"code"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandGetByIsinResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Brand       respjson.Field
 		Code        respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -2232,17 +2314,43 @@ func (r *BrandGetByIsinResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandGetByIsinResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetByIsinResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetByIsinResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BrandGetByNameResponse struct {
 	// Detailed brand information
 	Brand BrandGetByNameResponseBrand `json:"brand"`
 	// HTTP status code
 	Code int64 `json:"code"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandGetByNameResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Brand       respjson.Field
 		Code        respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -2765,17 +2873,43 @@ func (r *BrandGetByNameResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandGetByNameResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetByNameResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetByNameResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BrandGetByTickerResponse struct {
 	// Detailed brand information
 	Brand BrandGetByTickerResponseBrand `json:"brand"`
 	// HTTP status code
 	Code int64 `json:"code"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandGetByTickerResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Brand       respjson.Field
 		Code        respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -3298,17 +3432,43 @@ func (r *BrandGetByTickerResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandGetByTickerResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetByTickerResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetByTickerResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BrandGetSimplifiedResponse struct {
 	// Simplified brand information
 	Brand BrandGetSimplifiedResponseBrand `json:"brand"`
 	// HTTP status code of the response
 	Code int64 `json:"code"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandGetSimplifiedResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Brand       respjson.Field
 		Code        respjson.Field
+		KeyMetadata respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -3514,6 +3674,28 @@ type BrandGetSimplifiedResponseBrandLogoResolution struct {
 // Returns the unmodified JSON received from the API
 func (r BrandGetSimplifiedResponseBrandLogoResolution) RawJSON() string { return r.JSON.raw }
 func (r *BrandGetSimplifiedResponseBrandLogoResolution) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandGetSimplifiedResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetSimplifiedResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetSimplifiedResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

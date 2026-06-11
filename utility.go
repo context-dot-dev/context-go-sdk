@@ -56,6 +56,9 @@ func (r *UtilityService) PrefetchByEmail(ctx context.Context, body UtilityPrefet
 type UtilityPrefetchResponse struct {
 	// The domain that was queued for prefetching
 	Domain string `json:"domain"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata UtilityPrefetchResponseKeyMetadata `json:"key_metadata"`
 	// Success message
 	Message string `json:"message"`
 	// Status of the response, e.g., 'ok'
@@ -63,6 +66,7 @@ type UtilityPrefetchResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Domain      respjson.Field
+		KeyMetadata respjson.Field
 		Message     respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -76,9 +80,34 @@ func (r *UtilityPrefetchResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type UtilityPrefetchResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r UtilityPrefetchResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *UtilityPrefetchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type UtilityPrefetchByEmailResponse struct {
 	// The domain that was queued for prefetching
 	Domain string `json:"domain"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata UtilityPrefetchByEmailResponseKeyMetadata `json:"key_metadata"`
 	// Success message
 	Message string `json:"message"`
 	// Status of the response, e.g., 'ok'
@@ -86,6 +115,7 @@ type UtilityPrefetchByEmailResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Domain      respjson.Field
+		KeyMetadata respjson.Field
 		Message     respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -96,6 +126,28 @@ type UtilityPrefetchByEmailResponse struct {
 // Returns the unmodified JSON received from the API
 func (r UtilityPrefetchByEmailResponse) RawJSON() string { return r.JSON.raw }
 func (r *UtilityPrefetchByEmailResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type UtilityPrefetchByEmailResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r UtilityPrefetchByEmailResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *UtilityPrefetchByEmailResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

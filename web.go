@@ -4,6 +4,7 @@ package contextdev
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"slices"
@@ -1340,29 +1341,218 @@ func (r *WebWebCrawlMdResponseResult) UnmarshalJSON(data []byte) error {
 type WebWebCrawlMdResponseResultMetadata struct {
 	// Depth relative to the start URL. 0 = start URL, 1 = one link away.
 	CrawlDepth int64 `json:"crawlDepth" api:"required"`
+	// Final URL scraped after redirects or scraper fallback, when known. Falls back to
+	// sourceUrl when unavailable.
+	FinalURL string `json:"finalUrl" api:"required"`
+	// Original URL requested by the caller.
+	SourceURL string `json:"sourceUrl" api:"required"`
 	// HTTP status code of the response
 	StatusCode int64 `json:"statusCode" api:"required"`
 	// true if the page was fetched and parsed successfully
 	Success bool `json:"success" api:"required"`
-	// The page's <title> content (empty string if unavailable)
+	// Best page title extracted from the page (empty string if unavailable).
 	Title string `json:"title" api:"required"`
-	// The URL that was fetched
+	// The crawl URL fetched for this page.
 	URL string `json:"url" api:"required"`
+	// Additional non-social meta tags not promoted to top-level metadata fields.
+	AdditionalMeta map[string]WebWebCrawlMdResponseResultMetadataAdditionalMetaUnion `json:"additionalMeta"`
+	// Resolved alternate links from link rel=alternate tags.
+	Alternates []WebWebCrawlMdResponseResultMetadataAlternate `json:"alternates"`
+	// Author metadata, when present.
+	Author string `json:"author"`
+	// Resolved canonical URL, when present.
+	CanonicalURL string `json:"canonicalUrl"`
+	// Best description extracted from standard, Open Graph, or Twitter metadata.
+	Description string `json:"description"`
+	// Resolved favicon URL, when present.
+	Favicon string `json:"favicon"`
+	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
+	Image string `json:"image"`
+	// JSON-LD structured data blocks parsed from the page.
+	JsonLd []map[string]any `json:"jsonLd"`
+	// Keywords extracted from the page's keywords meta tag.
+	Keywords []string `json:"keywords"`
+	// Language extracted from html lang or language meta tags.
+	Language string `json:"language"`
+	// Modified timestamp/date from page metadata, when present.
+	ModifiedTime string `json:"modifiedTime"`
+	// Open Graph metadata with the og: prefix removed and keys camel-cased.
+	OpenGraph map[string]WebWebCrawlMdResponseResultMetadataOpenGraphUnion `json:"openGraph"`
+	// Published timestamp/date from page metadata, when present.
+	PublishedTime string `json:"publishedTime"`
+	// Robots meta directive, when present.
+	Robots string `json:"robots"`
+	// Site or application name from page metadata.
+	SiteName string `json:"siteName"`
+	// Twitter card metadata with the twitter: prefix removed and keys camel-cased.
+	Twitter map[string]WebWebCrawlMdResponseResultMetadataTwitterUnion `json:"twitter"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		CrawlDepth  respjson.Field
-		StatusCode  respjson.Field
-		Success     respjson.Field
-		Title       respjson.Field
-		URL         respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CrawlDepth     respjson.Field
+		FinalURL       respjson.Field
+		SourceURL      respjson.Field
+		StatusCode     respjson.Field
+		Success        respjson.Field
+		Title          respjson.Field
+		URL            respjson.Field
+		AdditionalMeta respjson.Field
+		Alternates     respjson.Field
+		Author         respjson.Field
+		CanonicalURL   respjson.Field
+		Description    respjson.Field
+		Favicon        respjson.Field
+		Image          respjson.Field
+		JsonLd         respjson.Field
+		Keywords       respjson.Field
+		Language       respjson.Field
+		ModifiedTime   respjson.Field
+		OpenGraph      respjson.Field
+		PublishedTime  respjson.Field
+		Robots         respjson.Field
+		SiteName       respjson.Field
+		Twitter        respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebWebCrawlMdResponseResultMetadata) RawJSON() string { return r.JSON.raw }
 func (r *WebWebCrawlMdResponseResultMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebCrawlMdResponseResultMetadataAdditionalMetaUnion contains all possible
+// properties and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebCrawlMdResponseResultMetadataAdditionalMetaUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebCrawlMdResponseResultMetadataAdditionalMetaUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebCrawlMdResponseResultMetadataAdditionalMetaUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebCrawlMdResponseResultMetadataAdditionalMetaUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebCrawlMdResponseResultMetadataAdditionalMetaUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebCrawlMdResponseResultMetadataAlternate struct {
+	// Resolved alternate URL.
+	Href string `json:"href" api:"required"`
+	// Language or locale for the alternate URL, when present.
+	Hreflang string `json:"hreflang"`
+	// Alternate resource title, when present.
+	Title string `json:"title"`
+	// Alternate resource MIME type, when present.
+	Type string `json:"type"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Href        respjson.Field
+		Hreflang    respjson.Field
+		Title       respjson.Field
+		Type        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebCrawlMdResponseResultMetadataAlternate) RawJSON() string { return r.JSON.raw }
+func (r *WebWebCrawlMdResponseResultMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebCrawlMdResponseResultMetadataOpenGraphUnion contains all possible
+// properties and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebCrawlMdResponseResultMetadataOpenGraphUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebCrawlMdResponseResultMetadataOpenGraphUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebCrawlMdResponseResultMetadataOpenGraphUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebCrawlMdResponseResultMetadataOpenGraphUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebCrawlMdResponseResultMetadataOpenGraphUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebCrawlMdResponseResultMetadataTwitterUnion contains all possible properties
+// and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebCrawlMdResponseResultMetadataTwitterUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebCrawlMdResponseResultMetadataTwitterUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebCrawlMdResponseResultMetadataTwitterUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebCrawlMdResponseResultMetadataTwitterUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebCrawlMdResponseResultMetadataTwitterUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1393,6 +1583,8 @@ type WebWebScrapeHTMLResponse struct {
 	// page is a sitemap or feed served behind an XSL stylesheet (which browsers render
 	// into HTML), this is the underlying XML instead — see the `type` field.
 	HTML string `json:"html" api:"required"`
+	// Metadata extracted from the scraped page HTML.
+	Metadata WebWebScrapeHTMLResponseMetadata `json:"metadata" api:"required"`
 	// Indicates success
 	//
 	// Any of true.
@@ -1410,6 +1602,7 @@ type WebWebScrapeHTMLResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		HTML        respjson.Field
+		Metadata    respjson.Field
 		Success     respjson.Field
 		Type        respjson.Field
 		URL         respjson.Field
@@ -1422,6 +1615,213 @@ type WebWebScrapeHTMLResponse struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeHTMLResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeHTMLResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata extracted from the scraped page HTML.
+type WebWebScrapeHTMLResponseMetadata struct {
+	// Final URL scraped after redirects or scraper fallback, when known. Falls back to
+	// sourceUrl when unavailable.
+	FinalURL string `json:"finalUrl" api:"required"`
+	// Original URL requested by the caller.
+	SourceURL string `json:"sourceUrl" api:"required"`
+	// Additional non-social meta tags not promoted to top-level metadata fields.
+	AdditionalMeta map[string]WebWebScrapeHTMLResponseMetadataAdditionalMetaUnion `json:"additionalMeta"`
+	// Resolved alternate links from link rel=alternate tags.
+	Alternates []WebWebScrapeHTMLResponseMetadataAlternate `json:"alternates"`
+	// Author metadata, when present.
+	Author string `json:"author"`
+	// Resolved canonical URL, when present.
+	CanonicalURL string `json:"canonicalUrl"`
+	// Best description extracted from standard, Open Graph, or Twitter metadata.
+	Description string `json:"description"`
+	// Resolved favicon URL, when present.
+	Favicon string `json:"favicon"`
+	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
+	Image string `json:"image"`
+	// JSON-LD structured data blocks parsed from the page.
+	JsonLd []map[string]any `json:"jsonLd"`
+	// Keywords extracted from the page's keywords meta tag.
+	Keywords []string `json:"keywords"`
+	// Language extracted from html lang or language meta tags.
+	Language string `json:"language"`
+	// Modified timestamp/date from page metadata, when present.
+	ModifiedTime string `json:"modifiedTime"`
+	// Open Graph metadata with the og: prefix removed and keys camel-cased.
+	OpenGraph map[string]WebWebScrapeHTMLResponseMetadataOpenGraphUnion `json:"openGraph"`
+	// Published timestamp/date from page metadata, when present.
+	PublishedTime string `json:"publishedTime"`
+	// Robots meta directive, when present.
+	Robots string `json:"robots"`
+	// Site or application name from page metadata.
+	SiteName string `json:"siteName"`
+	// Best title extracted from the page.
+	Title string `json:"title"`
+	// Twitter card metadata with the twitter: prefix removed and keys camel-cased.
+	Twitter map[string]WebWebScrapeHTMLResponseMetadataTwitterUnion `json:"twitter"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		FinalURL       respjson.Field
+		SourceURL      respjson.Field
+		AdditionalMeta respjson.Field
+		Alternates     respjson.Field
+		Author         respjson.Field
+		CanonicalURL   respjson.Field
+		Description    respjson.Field
+		Favicon        respjson.Field
+		Image          respjson.Field
+		JsonLd         respjson.Field
+		Keywords       respjson.Field
+		Language       respjson.Field
+		ModifiedTime   respjson.Field
+		OpenGraph      respjson.Field
+		PublishedTime  respjson.Field
+		Robots         respjson.Field
+		SiteName       respjson.Field
+		Title          respjson.Field
+		Twitter        respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeHTMLResponseMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeHTMLResponseMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeHTMLResponseMetadataAdditionalMetaUnion contains all possible
+// properties and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebScrapeHTMLResponseMetadataAdditionalMetaUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeHTMLResponseMetadataAdditionalMetaUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeHTMLResponseMetadataAdditionalMetaUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeHTMLResponseMetadataAdditionalMetaUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeHTMLResponseMetadataAdditionalMetaUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeHTMLResponseMetadataAlternate struct {
+	// Resolved alternate URL.
+	Href string `json:"href" api:"required"`
+	// Language or locale for the alternate URL, when present.
+	Hreflang string `json:"hreflang"`
+	// Alternate resource title, when present.
+	Title string `json:"title"`
+	// Alternate resource MIME type, when present.
+	Type string `json:"type"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Href        respjson.Field
+		Hreflang    respjson.Field
+		Title       respjson.Field
+		Type        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeHTMLResponseMetadataAlternate) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeHTMLResponseMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeHTMLResponseMetadataOpenGraphUnion contains all possible properties
+// and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebScrapeHTMLResponseMetadataOpenGraphUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeHTMLResponseMetadataOpenGraphUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeHTMLResponseMetadataOpenGraphUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeHTMLResponseMetadataOpenGraphUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeHTMLResponseMetadataOpenGraphUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeHTMLResponseMetadataTwitterUnion contains all possible properties
+// and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebScrapeHTMLResponseMetadataTwitterUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeHTMLResponseMetadataTwitterUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeHTMLResponseMetadataTwitterUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeHTMLResponseMetadataTwitterUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeHTMLResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1583,6 +1983,8 @@ func (r *WebWebScrapeImagesResponseKeyMetadata) UnmarshalJSON(data []byte) error
 type WebWebScrapeMdResponse struct {
 	// Page content converted to GitHub Flavored Markdown
 	Markdown string `json:"markdown" api:"required"`
+	// Metadata extracted from the scraped page HTML.
+	Metadata WebWebScrapeMdResponseMetadata `json:"metadata" api:"required"`
 	// Indicates success
 	//
 	// Any of true.
@@ -1595,6 +1997,7 @@ type WebWebScrapeMdResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Markdown    respjson.Field
+		Metadata    respjson.Field
 		Success     respjson.Field
 		URL         respjson.Field
 		KeyMetadata respjson.Field
@@ -1606,6 +2009,213 @@ type WebWebScrapeMdResponse struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeMdResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeMdResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata extracted from the scraped page HTML.
+type WebWebScrapeMdResponseMetadata struct {
+	// Final URL scraped after redirects or scraper fallback, when known. Falls back to
+	// sourceUrl when unavailable.
+	FinalURL string `json:"finalUrl" api:"required"`
+	// Original URL requested by the caller.
+	SourceURL string `json:"sourceUrl" api:"required"`
+	// Additional non-social meta tags not promoted to top-level metadata fields.
+	AdditionalMeta map[string]WebWebScrapeMdResponseMetadataAdditionalMetaUnion `json:"additionalMeta"`
+	// Resolved alternate links from link rel=alternate tags.
+	Alternates []WebWebScrapeMdResponseMetadataAlternate `json:"alternates"`
+	// Author metadata, when present.
+	Author string `json:"author"`
+	// Resolved canonical URL, when present.
+	CanonicalURL string `json:"canonicalUrl"`
+	// Best description extracted from standard, Open Graph, or Twitter metadata.
+	Description string `json:"description"`
+	// Resolved favicon URL, when present.
+	Favicon string `json:"favicon"`
+	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
+	Image string `json:"image"`
+	// JSON-LD structured data blocks parsed from the page.
+	JsonLd []map[string]any `json:"jsonLd"`
+	// Keywords extracted from the page's keywords meta tag.
+	Keywords []string `json:"keywords"`
+	// Language extracted from html lang or language meta tags.
+	Language string `json:"language"`
+	// Modified timestamp/date from page metadata, when present.
+	ModifiedTime string `json:"modifiedTime"`
+	// Open Graph metadata with the og: prefix removed and keys camel-cased.
+	OpenGraph map[string]WebWebScrapeMdResponseMetadataOpenGraphUnion `json:"openGraph"`
+	// Published timestamp/date from page metadata, when present.
+	PublishedTime string `json:"publishedTime"`
+	// Robots meta directive, when present.
+	Robots string `json:"robots"`
+	// Site or application name from page metadata.
+	SiteName string `json:"siteName"`
+	// Best title extracted from the page.
+	Title string `json:"title"`
+	// Twitter card metadata with the twitter: prefix removed and keys camel-cased.
+	Twitter map[string]WebWebScrapeMdResponseMetadataTwitterUnion `json:"twitter"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		FinalURL       respjson.Field
+		SourceURL      respjson.Field
+		AdditionalMeta respjson.Field
+		Alternates     respjson.Field
+		Author         respjson.Field
+		CanonicalURL   respjson.Field
+		Description    respjson.Field
+		Favicon        respjson.Field
+		Image          respjson.Field
+		JsonLd         respjson.Field
+		Keywords       respjson.Field
+		Language       respjson.Field
+		ModifiedTime   respjson.Field
+		OpenGraph      respjson.Field
+		PublishedTime  respjson.Field
+		Robots         respjson.Field
+		SiteName       respjson.Field
+		Title          respjson.Field
+		Twitter        respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeMdResponseMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeMdResponseMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeMdResponseMetadataAdditionalMetaUnion contains all possible
+// properties and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebScrapeMdResponseMetadataAdditionalMetaUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeMdResponseMetadataAdditionalMetaUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeMdResponseMetadataAdditionalMetaUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeMdResponseMetadataAdditionalMetaUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeMdResponseMetadataAdditionalMetaUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeMdResponseMetadataAlternate struct {
+	// Resolved alternate URL.
+	Href string `json:"href" api:"required"`
+	// Language or locale for the alternate URL, when present.
+	Hreflang string `json:"hreflang"`
+	// Alternate resource title, when present.
+	Title string `json:"title"`
+	// Alternate resource MIME type, when present.
+	Type string `json:"type"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Href        respjson.Field
+		Hreflang    respjson.Field
+		Title       respjson.Field
+		Type        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeMdResponseMetadataAlternate) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeMdResponseMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeMdResponseMetadataOpenGraphUnion contains all possible properties
+// and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebScrapeMdResponseMetadataOpenGraphUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeMdResponseMetadataOpenGraphUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeMdResponseMetadataOpenGraphUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeMdResponseMetadataOpenGraphUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeMdResponseMetadataOpenGraphUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeMdResponseMetadataTwitterUnion contains all possible properties and
+// values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebWebScrapeMdResponseMetadataTwitterUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeMdResponseMetadataTwitterUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeMdResponseMetadataTwitterUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeMdResponseMetadataTwitterUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeMdResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

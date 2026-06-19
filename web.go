@@ -1592,7 +1592,8 @@ type WebWebScrapeHTMLResponse struct {
 	// Detected content type of the returned `html` field. Sitemaps and feeds are
 	// surfaced as `xml`; ordinary pages are `html`.
 	//
-	// Any of "html", "xml", "json", "text", "csv", "markdown", "svg", "pdf".
+	// Any of "html", "xml", "json", "text", "csv", "markdown", "svg", "pdf", "docx",
+	// "doc".
 	Type WebWebScrapeHTMLResponseType `json:"type" api:"required"`
 	// The URL that was scraped
 	URL string `json:"url" api:"required"`
@@ -1838,6 +1839,8 @@ const (
 	WebWebScrapeHTMLResponseTypeMarkdown WebWebScrapeHTMLResponseType = "markdown"
 	WebWebScrapeHTMLResponseTypeSvg      WebWebScrapeHTMLResponseType = "svg"
 	WebWebScrapeHTMLResponseTypePdf      WebWebScrapeHTMLResponseType = "pdf"
+	WebWebScrapeHTMLResponseTypeDocx     WebWebScrapeHTMLResponseType = "docx"
+	WebWebScrapeHTMLResponseTypeDoc      WebWebScrapeHTMLResponseType = "doc"
 )
 
 // Metadata about the API key used for the request. Included in every response

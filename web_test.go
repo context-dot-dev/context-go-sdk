@@ -162,6 +162,7 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		HandleCookiePopup: contextdev.WebScreenshotParamsHandleCookiePopupTrue,
 		MaxAgeMs:          contextdev.Int(0),
 		Page:              contextdev.WebScreenshotParamsPageLogin,
+		ScrollOffset:      contextdev.Int(0),
 		TimeoutMs:         contextdev.Int(1000),
 		Viewport: contextdev.WebScreenshotParamsViewport{
 			Height: contextdev.Int(240),

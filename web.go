@@ -2491,6 +2491,13 @@ type WebScreenshotParams struct {
 	// and is younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always capture fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// Optional vertical scroll offset in pixels for capturing a long page in
+	// viewport-sized chunks. When provided, the full page is captured once and the
+	// returned image is the viewport-sized slice that begins at this Y offset (e.g.
+	// request scrollOffset=0, then 1080, then 2160 to walk a 1920x1080 landing page
+	// top to bottom). The final slice may be shorter than the viewport height. Takes
+	// precedence over fullScreenshot. Max: 100000.
+	ScrollOffset param.Opt[int64] `query:"scrollOffset,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).

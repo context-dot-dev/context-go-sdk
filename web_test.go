@@ -195,6 +195,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.Search(context.TODO(), contextdev.WebSearchParams{
 		Query:          "x",
+		Country:        contextdev.WebSearchParamsCountryAf,
 		ExcludeDomains: []string{"string"},
 		Freshness:      contextdev.WebSearchParamsFreshnessLast24Hours,
 		IncludeDomains: []string{"string"},
@@ -214,6 +215,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 			UseMainContentOnly:  contextdev.Bool(true),
 			WaitForMs:           contextdev.Int(0),
 		},
+		NumResults:  contextdev.Int(10),
 		QueryFanout: contextdev.Bool(true),
 		TimeoutMs:   contextdev.Int(1000),
 	})

@@ -156,6 +156,7 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.Screenshot(context.TODO(), contextdev.WebScreenshotParams{
+		ColorScheme:       contextdev.WebScreenshotParamsColorSchemeLight,
 		Country:           contextdev.WebScreenshotParamsCountryDe,
 		DirectURL:         contextdev.String("https://example.com"),
 		Domain:            contextdev.String("domain"),

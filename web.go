@@ -2506,6 +2506,11 @@ type WebScreenshotParams struct {
 	// the screenshot. Min: 0. Max: 30000 (30 seconds). Defaults to 3000 ms when
 	// omitted.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// Optional parameter to choose the site's visual theme in the screenshot. Use
+	// 'light' or 'dark' when the site offers both appearances.
+	//
+	// Any of "light", "dark".
+	ColorScheme WebScreenshotParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
 	// Two-letter ISO 3166-1 alpha-2 country code for the website request location.
 	// When provided, Context.dev fetches the target page from that country.
 	//
@@ -2559,6 +2564,15 @@ func (r WebScreenshotParams) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Optional parameter to choose the site's visual theme in the screenshot. Use
+// 'light' or 'dark' when the site offers both appearances.
+type WebScreenshotParamsColorScheme string
+
+const (
+	WebScreenshotParamsColorSchemeLight WebScreenshotParamsColorScheme = "light"
+	WebScreenshotParamsColorSchemeDark  WebScreenshotParamsColorScheme = "dark"
+)
 
 // Two-letter ISO 3166-1 alpha-2 country code for the website request location.
 // When provided, Context.dev fetches the target page from that country.

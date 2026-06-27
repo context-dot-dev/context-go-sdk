@@ -128,10 +128,11 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.ExtractStyleguide(context.TODO(), contextdev.WebExtractStyleguideParams{
-		DirectURL: contextdev.String("https://example.com"),
-		Domain:    contextdev.String("domain"),
-		MaxAgeMs:  contextdev.Int(86400000),
-		TimeoutMs: contextdev.Int(1000),
+		ColorScheme: contextdev.WebExtractStyleguideParamsColorSchemeLight,
+		DirectURL:   contextdev.String("https://example.com"),
+		Domain:      contextdev.String("domain"),
+		MaxAgeMs:    contextdev.Int(86400000),
+		TimeoutMs:   contextdev.Int(1000),
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -156,6 +157,8 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.Screenshot(context.TODO(), contextdev.WebScreenshotParams{
+		ColorScheme:       contextdev.WebScreenshotParamsColorSchemeLight,
+		Country:           contextdev.WebScreenshotParamsCountryDe,
 		DirectURL:         contextdev.String("https://example.com"),
 		Domain:            contextdev.String("domain"),
 		FullScreenshot:    contextdev.WebScreenshotParamsFullScreenshotTrue,
@@ -194,6 +197,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.Search(context.TODO(), contextdev.WebSearchParams{
 		Query:          "x",
+		Country:        contextdev.WebSearchParamsCountryAf,
 		ExcludeDomains: []string{"string"},
 		Freshness:      contextdev.WebSearchParamsFreshnessLast24Hours,
 		IncludeDomains: []string{"string"},
@@ -213,6 +217,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 			UseMainContentOnly:  contextdev.Bool(true),
 			WaitForMs:           contextdev.Int(0),
 		},
+		NumResults:  contextdev.Int(10),
 		QueryFanout: contextdev.Bool(true),
 		TimeoutMs:   contextdev.Int(1000),
 	})
@@ -240,6 +245,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.WebCrawlMd(context.TODO(), contextdev.WebWebCrawlMdParams{
 		URL:              "https://example.com",
+		Country:          contextdev.WebWebCrawlMdParamsCountryDe,
 		ExcludeSelectors: []string{"string"},
 		FollowSubdomains: contextdev.Bool(true),
 		IncludeFrames:    contextdev.Bool(true),
@@ -285,6 +291,7 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.WebScrapeHTML(context.TODO(), contextdev.WebWebScrapeHTMLParams{
 		URL:              "https://example.com",
+		Country:          contextdev.WebWebScrapeHTMLParamsCountryDe,
 		ExcludeSelectors: []string{"string"},
 		Headers: map[string]string{
 			"foo": "J!",
@@ -362,6 +369,7 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.WebScrapeMd(context.TODO(), contextdev.WebWebScrapeMdParams{
 		URL:              "https://example.com",
+		Country:          contextdev.WebWebScrapeMdParamsCountryDe,
 		ExcludeSelectors: []string{"string"},
 		Headers: map[string]string{
 			"foo": "J!",

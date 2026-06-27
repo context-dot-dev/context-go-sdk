@@ -2466,6 +2466,11 @@ type WebExtractStyleguideParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional browser color scheme to emulate for websites that respond to
+	// prefers-color-scheme. This value is part of the styleguide cache key.
+	//
+	// Any of "light", "dark".
+	ColorScheme WebExtractStyleguideParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2477,6 +2482,15 @@ func (r WebExtractStyleguideParams) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Optional browser color scheme to emulate for websites that respond to
+// prefers-color-scheme. This value is part of the styleguide cache key.
+type WebExtractStyleguideParamsColorScheme string
+
+const (
+	WebExtractStyleguideParamsColorSchemeLight WebExtractStyleguideParamsColorScheme = "light"
+	WebExtractStyleguideParamsColorSchemeDark  WebExtractStyleguideParamsColorScheme = "dark"
+)
 
 type WebScreenshotParams struct {
 	// A specific URL to screenshot directly, bypassing domain resolution (e.g.,

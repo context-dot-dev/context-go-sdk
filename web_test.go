@@ -128,10 +128,11 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.ExtractStyleguide(context.TODO(), contextdev.WebExtractStyleguideParams{
-		DirectURL: contextdev.String("https://example.com"),
-		Domain:    contextdev.String("domain"),
-		MaxAgeMs:  contextdev.Int(86400000),
-		TimeoutMs: contextdev.Int(1000),
+		ColorScheme: contextdev.WebExtractStyleguideParamsColorSchemeLight,
+		DirectURL:   contextdev.String("https://example.com"),
+		Domain:      contextdev.String("domain"),
+		MaxAgeMs:    contextdev.Int(86400000),
+		TimeoutMs:   contextdev.Int(1000),
 	})
 	if err != nil {
 		var apierr *contextdev.Error

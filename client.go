@@ -23,6 +23,10 @@ type Client struct {
 	Brand    BrandService
 	Industry IndustryService
 	Utility  UtilityService
+	// Monitor pages, sitemaps, and extracted website data for exact or semantic
+	// changes. The change.detected webhook payload is documented by the
+	// MonitorsChangeDetectedWebhookPayload schema.
+	Monitors MonitorService
 }
 
 // DefaultClientOptions read from the environment (CONTEXT_DEV_API_KEY,
@@ -60,6 +64,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Brand = NewBrandService(opts...)
 	r.Industry = NewIndustryService(opts...)
 	r.Utility = NewUtilityService(opts...)
+	r.Monitors = NewMonitorService(opts...)
 
 	return
 }

@@ -18,6 +18,24 @@ func ValueOf[T Constant[T]]() T {
 	return t.Default()
 }
 
+type Exact string    // Always "exact"
+type Extract string  // Always "extract"
+type Page string     // Always "page"
+type Semantic string // Always "semantic"
+type Sitemap string  // Always "sitemap"
+
+func (c Exact) Default() Exact       { return "exact" }
+func (c Extract) Default() Extract   { return "extract" }
+func (c Page) Default() Page         { return "page" }
+func (c Semantic) Default() Semantic { return "semantic" }
+func (c Sitemap) Default() Sitemap   { return "sitemap" }
+
+func (c Exact) MarshalJSON() ([]byte, error)    { return marshalString(c) }
+func (c Extract) MarshalJSON() ([]byte, error)  { return marshalString(c) }
+func (c Page) MarshalJSON() ([]byte, error)     { return marshalString(c) }
+func (c Semantic) MarshalJSON() ([]byte, error) { return marshalString(c) }
+func (c Sitemap) MarshalJSON() ([]byte, error)  { return marshalString(c) }
+
 type constant[T any] interface {
 	Constant[T]
 	*T

@@ -28,25 +28,25 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Monitors.New(context.TODO(), contextdev.MonitorNewParams{
-		OfMonitorsCreatePageExactMonitorRequest: &contextdev.MonitorNewParamsBodyMonitorsCreatePageExactMonitorRequest{
-			ChangeDetection: contextdev.MonitorNewParamsBodyMonitorsCreatePageExactMonitorRequestChangeDetection{
-				Type: "exact",
-			},
-			Name: "Acme pricing page",
-			Schedule: contextdev.MonitorNewParamsBodyMonitorsCreatePageExactMonitorRequestSchedule{
-				Frequency: 6,
-				Type:      "interval",
-				Unit:      "hours",
-			},
-			Target: contextdev.MonitorNewParamsBodyMonitorsCreatePageExactMonitorRequestTarget{
-				Type:                "page",
+		ChangeDetection: contextdev.MonitorNewParamsChangeDetectionUnion{
+			OfExact: &contextdev.MonitorNewParamsChangeDetectionExact{},
+		},
+		Name: "Acme pricing page",
+		Schedule: contextdev.MonitorNewParamsSchedule{
+			Frequency: 6,
+			Type:      "interval",
+			Unit:      "hours",
+		},
+		Target: contextdev.MonitorNewParamsTargetUnion{
+			OfPage: &contextdev.MonitorNewParamsTargetPage{
 				URL:                 "https://acme.com/pricing",
 				NormalizeWhitespace: contextdev.Bool(true),
 			},
-			Tags: []string{"pricing", "competitor"},
-			Webhook: contextdev.MonitorNewParamsBodyMonitorsCreatePageExactMonitorRequestWebhook{
-				URL: "https://example.com/webhook",
-			},
+		},
+		Mode: contextdev.MonitorNewParamsModeWeb,
+		Tags: []string{"pricing", "competitor"},
+		Webhook: contextdev.MonitorNewParamsWebhook{
+			URL: "https://example.com/webhook",
 		},
 	})
 	if err != nil {
@@ -146,8 +146,12 @@ func TestMonitorListWithOptionalParams(t *testing.T) {
 		ChangeDetectionType: contextdev.MonitorListParamsChangeDetectionTypeExact,
 		Cursor:              contextdev.String("cursor"),
 		Limit:               contextdev.Int(1),
+		Q:                   contextdev.String("q"),
+		SearchBy:            []string{"name"},
+		SearchType:          contextdev.MonitorListParamsSearchTypeExact,
 		Status:              contextdev.MonitorListParamsStatusActive,
 		Tag:                 contextdev.String("tag"),
+		Tags:                []string{"string"},
 		TargetType:          contextdev.MonitorListParamsTargetTypePage,
 	})
 	if err != nil {

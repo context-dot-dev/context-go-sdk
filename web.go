@@ -3248,6 +3248,10 @@ type WebWebCrawlMdParams struct {
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum number of pages to crawl. Hard cap: 500.
 	MaxPages param.Opt[int64] `json:"maxPages,omitzero"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting each crawled page. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Truncate base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
 	// Soft time budget for the crawl in milliseconds. After each scrape, the crawler
@@ -3554,6 +3558,10 @@ type WebWebScrapeHTMLParams struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting HTML. Defaults to false. This adds a bit of latency in exchange for
+	// more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -3914,6 +3922,10 @@ type WebWebScrapeMdParams struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// converting to Markdown. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
 	// Shorten base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer

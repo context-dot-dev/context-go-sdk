@@ -166,13 +166,17 @@ func (r *WebExtractResponse) UnmarshalJSON(data []byte) error {
 
 type WebExtractResponseMetadata struct {
 	MaxCrawlDepth int64 `json:"maxCrawlDepth" api:"required"`
-	NumFailed     int64 `json:"numFailed" api:"required"`
-	NumSkipped    int64 `json:"numSkipped" api:"required"`
-	NumSucceeded  int64 `json:"numSucceeded" api:"required"`
-	NumURLs       int64 `json:"numUrls" api:"required"`
+	// Number of crawled pages excluded because they were anti-bot challenges, error
+	// pages, or parked-domain placeholders.
+	NumBlocked   int64 `json:"numBlocked" api:"required"`
+	NumFailed    int64 `json:"numFailed" api:"required"`
+	NumSkipped   int64 `json:"numSkipped" api:"required"`
+	NumSucceeded int64 `json:"numSucceeded" api:"required"`
+	NumURLs      int64 `json:"numUrls" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		MaxCrawlDepth respjson.Field
+		NumBlocked    respjson.Field
 		NumFailed     respjson.Field
 		NumSkipped    respjson.Field
 		NumSucceeded  respjson.Field

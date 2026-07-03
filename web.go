@@ -1594,10 +1594,11 @@ type WebWebScrapeHTMLResponse struct {
 	// Any of true.
 	Success bool `json:"success" api:"required"`
 	// Detected content type of the returned `html` field. Sitemaps and feeds are
-	// surfaced as `xml`; ordinary pages are `html`.
+	// surfaced as `xml`; ordinary pages are `html`. Excel workbooks are surfaced as
+	// `xlsx`/`xls` with the extracted sheets as HTML tables.
 	//
 	// Any of "html", "xml", "json", "text", "csv", "markdown", "svg", "pdf", "docx",
-	// "doc".
+	// "doc", "xlsx", "xls".
 	Type WebWebScrapeHTMLResponseType `json:"type" api:"required"`
 	// The URL that was scraped
 	URL string `json:"url" api:"required"`
@@ -1831,7 +1832,8 @@ func (r *WebWebScrapeHTMLResponseMetadataTwitterUnion) UnmarshalJSON(data []byte
 }
 
 // Detected content type of the returned `html` field. Sitemaps and feeds are
-// surfaced as `xml`; ordinary pages are `html`.
+// surfaced as `xml`; ordinary pages are `html`. Excel workbooks are surfaced as
+// `xlsx`/`xls` with the extracted sheets as HTML tables.
 type WebWebScrapeHTMLResponseType string
 
 const (
@@ -1845,6 +1847,8 @@ const (
 	WebWebScrapeHTMLResponseTypePdf      WebWebScrapeHTMLResponseType = "pdf"
 	WebWebScrapeHTMLResponseTypeDocx     WebWebScrapeHTMLResponseType = "docx"
 	WebWebScrapeHTMLResponseTypeDoc      WebWebScrapeHTMLResponseType = "doc"
+	WebWebScrapeHTMLResponseTypeXlsx     WebWebScrapeHTMLResponseType = "xlsx"
+	WebWebScrapeHTMLResponseTypeXls      WebWebScrapeHTMLResponseType = "xls"
 )
 
 // Metadata about the API key used for the request. Included in every response

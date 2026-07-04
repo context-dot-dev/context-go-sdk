@@ -3867,6 +3867,11 @@ func (r WebWebScrapeHTMLParamsPdf) URLQuery() (v url.Values, err error) {
 type WebWebScrapeImagesParams struct {
 	// Page URL to inspect. Must include http:// or https://.
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
+	// When true, visually duplicate images are removed: every image is loaded and
+	// perceptually hashed, and only the highest-resolution copy of each duplicate
+	// group is kept. Images that cannot be downloaded or hashed are kept. Default:
+	// false.
+	Dedupe param.Opt[bool] `query:"dedupe,omitzero" json:"-"`
 	// Reuse a cached result this many milliseconds old or newer. Default: 86400000 (1
 	// day). Set to 0 to bypass cache. Maximum: 2592000000 (30 days).
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`

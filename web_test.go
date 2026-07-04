@@ -333,7 +333,8 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeImages(context.TODO(), contextdev.WebWebScrapeImagesParams{
-		URL: "https://example.com",
+		URL:    "https://example.com",
+		Dedupe: contextdev.Bool(true),
 		Enrichment: contextdev.WebWebScrapeImagesParamsEnrichment{
 			Classification: contextdev.Bool(true),
 			HostedURL:      contextdev.Bool(true),

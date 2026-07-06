@@ -14,7 +14,7 @@ import (
 	"encoding"
 	"encoding/base64"
 	"fmt"
-	"github.com/context-dot-dev/context-go-sdk/internal/encoding/json/shims"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/encoding/json/shims"
 	"reflect"
 	"strconv"
 	"strings"

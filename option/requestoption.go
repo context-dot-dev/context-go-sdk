@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/context-dot-dev/context-go-sdk/internal/requestconfig"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/requestconfig"
 	"github.com/tidwall/sjson"
 )
 

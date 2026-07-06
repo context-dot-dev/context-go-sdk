@@ -3,7 +3,7 @@ package param
 import (
 	"encoding/json"
 	"fmt"
-	shimjson "github.com/context-dot-dev/context-go-sdk/internal/encoding/json"
+	shimjson "github.com/context-dot-dev/context-go-sdk/v2/internal/encoding/json"
 	"time"
 )
 

@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/context-dot-dev/context-go-sdk/internal"
-	"github.com/context-dot-dev/context-go-sdk/internal/apierror"
-	"github.com/context-dot-dev/context-go-sdk/internal/apiform"
-	"github.com/context-dot-dev/context-go-sdk/internal/apiquery"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apierror"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apiform"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apiquery"
 )
 
 func getDefaultHeaders() map[string]string {

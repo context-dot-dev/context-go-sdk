@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/context-dot-dev/context-go-sdk/internal/requestconfig"
-	"github.com/context-dot-dev/context-go-sdk/option"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/requestconfig"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 // Client creates a struct with services and top level methods that help with

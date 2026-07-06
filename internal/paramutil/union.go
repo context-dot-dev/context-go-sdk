@@ -2,7 +2,7 @@ package paramutil
 
 import (
 	"fmt"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 	"reflect"
 )
 

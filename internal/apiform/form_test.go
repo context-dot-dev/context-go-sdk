@@ -2,7 +2,7 @@ package apiform
 
 import (
 	"bytes"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 	"io"
 	"mime/multipart"
 	"strings"

@@ -14,6 +14,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/option"
 	"github.com/context-dot-dev/context-go-sdk/packages/param"
 	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/shared/constant"
 )
 
 // BrandService contains methods and other services that help with interacting with
@@ -880,7 +881,7 @@ type BrandGetParams struct {
 	// This field is a request body variant, only one variant field can be set.
 	// Retrieve brand data by stock ticker. Cannot be combined with domain, name, or
 	// email.
-	OfByStock *BrandGetParamsBodyByStock `json:",inline"`
+	OfByTicker *BrandGetParamsBodyByTicker `json:",inline"`
 	// This field is a request body variant, only one variant field can be set.
 	// Identify brand data from a transaction descriptor. Cannot be combined with
 	// domain, name, email, or ticker.
@@ -893,7 +894,7 @@ func (u BrandGetParams) MarshalJSON() ([]byte, error) {
 	return param.MarshalUnion(u, u.OfByDomain,
 		u.OfByName,
 		u.OfByEmail,
-		u.OfByStock,
+		u.OfByTicker,
 		u.OfByTransaction)
 }
 func (r *BrandGetParams) UnmarshalJSON(data []byte) error {
@@ -902,7 +903,7 @@ func (r *BrandGetParams) UnmarshalJSON(data []byte) error {
 
 // Retrieve brand data by domain. Cannot be combined with name, email, or ticker.
 //
-// The property Domain is required.
+// The properties Domain, Type are required.
 type BrandGetParamsBodyByDomain struct {
 	// Domain name to retrieve brand data for (e.g., 'stripe.com').
 	Domain string `json:"domain" api:"required"`
@@ -938,6 +939,10 @@ type BrandGetParamsBodyByDomain struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Discriminator for domain-based brand retrieval.
+	//
+	// This field can be elided, and will marshal its zero value as "by_domain".
+	Type constant.ByDomain `json:"type" default:"by_domain"`
 	paramObj
 }
 
@@ -958,7 +963,7 @@ func init() {
 // Retrieve brand data by company name. Cannot be combined with domain, email, or
 // ticker.
 //
-// The property Name is required.
+// The properties Name, Type are required.
 type BrandGetParamsBodyByName struct {
 	// Company name to retrieve brand data for (e.g., 'Apple Inc').
 	Name string `json:"name" api:"required"`
@@ -997,6 +1002,10 @@ type BrandGetParamsBodyByName struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Discriminator for name-based brand retrieval.
+	//
+	// This field can be elided, and will marshal its zero value as "by_name".
+	Type constant.ByName `json:"type" default:"by_name"`
 	paramObj
 }
 
@@ -1018,7 +1027,7 @@ func init() {
 // Free and disposable email providers are rejected with 422. Cannot be combined
 // with domain, name, or ticker.
 //
-// The property Email is required.
+// The properties Email, Type are required.
 type BrandGetParamsBodyByEmail struct {
 	// Email address to retrieve brand data for (e.g., 'jane@stripe.com').
 	Email string `json:"email" api:"required" format:"email"`
@@ -1054,6 +1063,10 @@ type BrandGetParamsBodyByEmail struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Discriminator for email-based brand retrieval.
+	//
+	// This field can be elided, and will marshal its zero value as "by_email".
+	Type constant.ByEmail `json:"type" default:"by_email"`
 	paramObj
 }
 
@@ -1074,8 +1087,8 @@ func init() {
 // Retrieve brand data by stock ticker. Cannot be combined with domain, name, or
 // email.
 //
-// The property Ticker is required.
-type BrandGetParamsBodyByStock struct {
+// The properties Ticker, Type are required.
+type BrandGetParamsBodyByTicker struct {
 	// Stock ticker symbol to retrieve brand data for (e.g., 'AAPL').
 	Ticker string `json:"ticker" api:"required"`
 	// Maximum age in milliseconds for cached brand data before the API performs a hard
@@ -1112,19 +1125,23 @@ type BrandGetParamsBodyByStock struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Discriminator for ticker-based brand retrieval.
+	//
+	// This field can be elided, and will marshal its zero value as "by_ticker".
+	Type constant.ByTicker `json:"type" default:"by_ticker"`
 	paramObj
 }
 
-func (r BrandGetParamsBodyByStock) MarshalJSON() (data []byte, err error) {
-	type shadow BrandGetParamsBodyByStock
+func (r BrandGetParamsBodyByTicker) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByTicker
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BrandGetParamsBodyByStock) UnmarshalJSON(data []byte) error {
+func (r *BrandGetParamsBodyByTicker) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[BrandGetParamsBodyByStock](
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByTicker](
 		"force_language", "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese", "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian", "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian", "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi", "fijian", "finnish", "french", "galician", "georgian", "german", "greek", "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi", "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian", "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean", "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian", "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese", "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo", "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian", "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi", "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili", "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan", "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu", "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba", "zulu",
 	)
 }
@@ -1132,7 +1149,7 @@ func init() {
 // Identify brand data from a transaction descriptor. Cannot be combined with
 // domain, name, email, or ticker.
 //
-// The property TransactionInfo is required.
+// The properties TransactionInfo, Type are required.
 type BrandGetParamsBodyByTransaction struct {
 	// Transaction information to identify the brand.
 	TransactionInfo string `json:"transaction_info" api:"required"`
@@ -1176,6 +1193,10 @@ type BrandGetParamsBodyByTransaction struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Discriminator for transaction-based brand retrieval.
+	//
+	// This field can be elided, and will marshal its zero value as "by_transaction".
+	Type constant.ByTransaction `json:"type" default:"by_transaction"`
 	paramObj
 }
 

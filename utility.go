@@ -109,7 +109,7 @@ const (
 
 type UtilityPrefetchParams struct {
 	// Identifier of the brand to prefetch. Provide exactly one of domain or email.
-	Identifier UtilityPrefetchParamsIdentifier `json:"identifier,omitzero" api:"required"`
+	Identifier UtilityPrefetchParamsIdentifierUnion `json:"identifier,omitzero" api:"required"`
 	// What to prefetch. Currently only 'brand' is supported.
 	//
 	// Any of "brand".
@@ -129,22 +129,55 @@ func (r *UtilityPrefetchParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Identifier of the brand to prefetch. Provide exactly one of domain or email.
-type UtilityPrefetchParamsIdentifier struct {
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type UtilityPrefetchParamsIdentifierUnion struct {
+	OfByDomain *UtilityPrefetchParamsIdentifierByDomain `json:",omitzero,inline"`
+	OfByEmail  *UtilityPrefetchParamsIdentifierByEmail  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u UtilityPrefetchParamsIdentifierUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfByDomain, u.OfByEmail)
+}
+func (u *UtilityPrefetchParamsIdentifierUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+// Prefetch brand data by domain.
+//
+// The property Domain is required.
+type UtilityPrefetchParamsIdentifierByDomain struct {
 	// Domain name to prefetch brand data for
-	Domain param.Opt[string] `json:"domain,omitzero"`
-	// Email address to prefetch brand data for. The domain will be extracted from the
-	// email. Free email providers (gmail.com, yahoo.com, etc.) and disposable email
-	// addresses are not allowed.
-	Email param.Opt[string] `json:"email,omitzero" format:"email"`
+	Domain string `json:"domain" api:"required"`
 	paramObj
 }
 
-func (r UtilityPrefetchParamsIdentifier) MarshalJSON() (data []byte, err error) {
-	type shadow UtilityPrefetchParamsIdentifier
+func (r UtilityPrefetchParamsIdentifierByDomain) MarshalJSON() (data []byte, err error) {
+	type shadow UtilityPrefetchParamsIdentifierByDomain
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *UtilityPrefetchParamsIdentifier) UnmarshalJSON(data []byte) error {
+func (r *UtilityPrefetchParamsIdentifierByDomain) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Prefetch brand data by email. The domain will be extracted and validated.
+//
+// The property Email is required.
+type UtilityPrefetchParamsIdentifierByEmail struct {
+	// Email address to prefetch brand data for. The domain will be extracted from the
+	// email. Free email providers (gmail.com, yahoo.com, etc.) and disposable email
+	// addresses are not allowed.
+	Email string `json:"email" api:"required" format:"email"`
+	paramObj
+}
+
+func (r UtilityPrefetchParamsIdentifierByEmail) MarshalJSON() (data []byte, err error) {
+	type shadow UtilityPrefetchParamsIdentifierByEmail
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *UtilityPrefetchParamsIdentifierByEmail) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

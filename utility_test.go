@@ -27,9 +27,10 @@ func TestUtilityPrefetchWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Utility.Prefetch(context.TODO(), contextdev.UtilityPrefetchParams{
-		Identifier: contextdev.UtilityPrefetchParamsIdentifier{
-			Domain: contextdev.String("domain"),
-			Email:  contextdev.String("dev@stainless.com"),
+		Identifier: contextdev.UtilityPrefetchParamsIdentifierUnion{
+			OfByDomain: &contextdev.UtilityPrefetchParamsIdentifierByDomain{
+				Domain: "domain",
+			},
 		},
 		Type:      contextdev.UtilityPrefetchParamsTypeBrand,
 		TimeoutMs: contextdev.Int(1000),

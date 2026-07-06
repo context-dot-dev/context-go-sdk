@@ -1,7 +1,7 @@
 package apiquery
 
 import (
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 	"net/url"
 	"testing"
 	"time"

@@ -2,7 +2,7 @@
 
 <!-- x-release-please-start-version -->
 
-<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk"><img src="https://pkg.go.dev/badge/github.com/context-dot-dev/context-go-sdk.svg" alt="Go Reference"></a>
+<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2"><img src="https://pkg.go.dev/badge/github.com/context-dot-dev/context-go-sdk/v2.svg" alt="Go Reference"></a>
 
 <!-- x-release-please-end -->
 
@@ -26,7 +26,7 @@ Use the Context Dev MCP Server to enable AI assistants to interact with this API
 
 ```go
 import (
-	"github.com/context-dot-dev/context-go-sdk" // imported as contextdev
+	"github.com/context-dot-dev/context-go-sdk/v2" // imported as contextdev
 )
 ```
 
@@ -37,7 +37,7 @@ Or to pin the version:
 <!-- x-release-please-start-version -->
 
 ```sh
-go get -u 'github.com/context-dot-dev/context-go-sdk@v1.5.0'
+go get -u 'github.com/context-dot-dev/context-go-sdk/v2@v2.0.0'
 ```
 
 <!-- x-release-please-end -->
@@ -57,8 +57,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/context-dot-dev/context-go-sdk"
-	"github.com/context-dot-dev/context-go-sdk/option"
+	"github.com/context-dot-dev/context-go-sdk/v2"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 func main() {
@@ -289,7 +289,7 @@ client.Brand.Get(context.TODO(), ...,
 
 The request option `option.WithDebugLog(nil)` may be helpful while debugging.
 
-See the [full list of request options](https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/option).
+See the [full list of request options](https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2/option).
 
 ### Pagination
 

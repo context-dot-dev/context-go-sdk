@@ -1,4 +1,4 @@
-module github.com/context-dot-dev/context-go-sdk
+module github.com/context-dot-dev/context-go-sdk/v2
 
 go 1.22
 

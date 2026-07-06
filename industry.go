@@ -8,12 +8,12 @@ import (
 	"net/url"
 	"slices"
 
-	"github.com/context-dot-dev/context-go-sdk/internal/apijson"
-	"github.com/context-dot-dev/context-go-sdk/internal/apiquery"
-	"github.com/context-dot-dev/context-go-sdk/internal/requestconfig"
-	"github.com/context-dot-dev/context-go-sdk/option"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
-	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apijson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apiquery"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/requestconfig"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
 // IndustryService contains methods and other services that help with interacting

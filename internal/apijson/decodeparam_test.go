@@ -3,8 +3,8 @@ package apijson_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/context-dot-dev/context-go-sdk/internal/apijson"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apijson"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 	"reflect"
 	"testing"
 )

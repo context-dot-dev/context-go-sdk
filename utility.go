@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/context-dot-dev/context-go-sdk/internal/apijson"
-	"github.com/context-dot-dev/context-go-sdk/internal/requestconfig"
-	"github.com/context-dot-dev/context-go-sdk/option"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
-	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apijson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/requestconfig"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
 // UtilityService contains methods and other services that help with interacting
@@ -33,22 +33,13 @@ func NewUtilityService(opts ...option.RequestOption) (r UtilityService) {
 	return
 }
 
-// Signal that you may fetch brand data for a particular domain soon to improve
-// latency.
+// Signal that you may fetch brand data soon to improve latency. The type field
+// selects what to prefetch (currently only 'brand') and identifier carries exactly
+// one lookup key: a domain, or an email whose domain is extracted and validated
+// (free email providers and disposable email addresses are not allowed).
 func (r *UtilityService) Prefetch(ctx context.Context, body UtilityPrefetchParams, opts ...option.RequestOption) (res *UtilityPrefetchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
-	path := "brand/prefetch"
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
-	return res, err
-}
-
-// Signal that you may fetch brand data for a particular domain soon to improve
-// latency. This endpoint accepts an email address, extracts the domain from it,
-// validates that it's not a disposable or free email provider, and queues the
-// domain for prefetching.
-func (r *UtilityService) PrefetchByEmail(ctx context.Context, body UtilityPrefetchByEmailParams, opts ...option.RequestOption) (res *UtilityPrefetchByEmailResponse, err error) {
-	opts = slices.Concat(r.options, opts)
-	path := "brand/prefetch-by-email"
+	path := "utility/prefetch"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
 	return res, err
 }
@@ -63,12 +54,18 @@ type UtilityPrefetchResponse struct {
 	Message string `json:"message"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
+	// The type of prefetch that was queued, echoed from the request (currently always
+	// 'brand')
+	//
+	// Any of "brand".
+	Type UtilityPrefetchResponseType `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Domain      respjson.Field
 		KeyMetadata respjson.Field
 		Message     respjson.Field
 		Status      respjson.Field
+		Type        respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -102,58 +99,21 @@ func (r *UtilityPrefetchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type UtilityPrefetchByEmailResponse struct {
-	// The domain that was queued for prefetching
-	Domain string `json:"domain"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
-	KeyMetadata UtilityPrefetchByEmailResponseKeyMetadata `json:"key_metadata"`
-	// Success message
-	Message string `json:"message"`
-	// Status of the response, e.g., 'ok'
-	Status string `json:"status"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Domain      respjson.Field
-		KeyMetadata respjson.Field
-		Message     respjson.Field
-		Status      respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
+// The type of prefetch that was queued, echoed from the request (currently always
+// 'brand')
+type UtilityPrefetchResponseType string
 
-// Returns the unmodified JSON received from the API
-func (r UtilityPrefetchByEmailResponse) RawJSON() string { return r.JSON.raw }
-func (r *UtilityPrefetchByEmailResponse) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
-type UtilityPrefetchByEmailResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
-	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
-	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		CreditsConsumed  respjson.Field
-		CreditsRemaining respjson.Field
-		ExtraFields      map[string]respjson.Field
-		raw              string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r UtilityPrefetchByEmailResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
-func (r *UtilityPrefetchByEmailResponseKeyMetadata) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
+const (
+	UtilityPrefetchResponseTypeBrand UtilityPrefetchResponseType = "brand"
+)
 
 type UtilityPrefetchParams struct {
-	// Domain name to prefetch brand data for
-	Domain string `json:"domain" api:"required"`
+	// Identifier of the brand to prefetch. Provide exactly one of domain or email.
+	Identifier UtilityPrefetchParamsIdentifierUnion `json:"identifier,omitzero" api:"required"`
+	// What to prefetch. Currently only 'brand' is supported.
+	//
+	// Any of "brand".
+	Type UtilityPrefetchParamsType `json:"type,omitzero" api:"required"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -169,22 +129,61 @@ func (r *UtilityPrefetchParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type UtilityPrefetchByEmailParams struct {
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type UtilityPrefetchParamsIdentifierUnion struct {
+	OfByDomain *UtilityPrefetchParamsIdentifierByDomain `json:",omitzero,inline"`
+	OfByEmail  *UtilityPrefetchParamsIdentifierByEmail  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u UtilityPrefetchParamsIdentifierUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfByDomain, u.OfByEmail)
+}
+func (u *UtilityPrefetchParamsIdentifierUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+// Prefetch brand data by domain.
+//
+// The property Domain is required.
+type UtilityPrefetchParamsIdentifierByDomain struct {
+	// Domain name to prefetch brand data for
+	Domain string `json:"domain" api:"required"`
+	paramObj
+}
+
+func (r UtilityPrefetchParamsIdentifierByDomain) MarshalJSON() (data []byte, err error) {
+	type shadow UtilityPrefetchParamsIdentifierByDomain
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *UtilityPrefetchParamsIdentifierByDomain) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Prefetch brand data by email. The domain will be extracted and validated.
+//
+// The property Email is required.
+type UtilityPrefetchParamsIdentifierByEmail struct {
 	// Email address to prefetch brand data for. The domain will be extracted from the
 	// email. Free email providers (gmail.com, yahoo.com, etc.) and disposable email
 	// addresses are not allowed.
 	Email string `json:"email" api:"required" format:"email"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	paramObj
 }
 
-func (r UtilityPrefetchByEmailParams) MarshalJSON() (data []byte, err error) {
-	type shadow UtilityPrefetchByEmailParams
+func (r UtilityPrefetchParamsIdentifierByEmail) MarshalJSON() (data []byte, err error) {
+	type shadow UtilityPrefetchParamsIdentifierByEmail
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *UtilityPrefetchByEmailParams) UnmarshalJSON(data []byte) error {
+func (r *UtilityPrefetchParamsIdentifierByEmail) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// What to prefetch. Currently only 'brand' is supported.
+type UtilityPrefetchParamsType string
+
+const (
+	UtilityPrefetchParamsTypeBrand UtilityPrefetchParamsType = "brand"
+)

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/context-dot-dev/context-go-sdk"
-	"github.com/context-dot-dev/context-go-sdk/internal/testutil"
-	"github.com/context-dot-dev/context-go-sdk/option"
+	"github.com/context-dot-dev/context-go-sdk/v2"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/testutil"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 func TestMonitorNewWithOptionalParams(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/context-dot-dev/context-go-sdk"
-	"github.com/context-dot-dev/context-go-sdk/internal/testutil"
-	"github.com/context-dot-dev/context-go-sdk/option"
+	"github.com/context-dot-dev/context-go-sdk/v2"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/testutil"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 func TestWebExtractWithOptionalParams(t *testing.T) {
@@ -260,6 +260,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
+		SettleAnimations:    contextdev.Bool(true),
 		ShortenBase64Images: contextdev.Bool(true),
 		StopAfterMs:         contextdev.Int(10000),
 		TimeoutMs:           contextdev.Int(1000),
@@ -304,6 +305,7 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
+		SettleAnimations:   contextdev.Bool(true),
 		TimeoutMs:          contextdev.Int(1000),
 		UseMainContentOnly: contextdev.Bool(true),
 		WaitForMs:          contextdev.Int(0),
@@ -331,7 +333,8 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeImages(context.TODO(), contextdev.WebWebScrapeImagesParams{
-		URL: "https://example.com",
+		URL:    "https://example.com",
+		Dedupe: contextdev.Bool(true),
 		Enrichment: contextdev.WebWebScrapeImagesParamsEnrichment{
 			Classification: contextdev.Bool(true),
 			HostedURL:      contextdev.Bool(true),
@@ -384,6 +387,7 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
+		SettleAnimations:    contextdev.Bool(true),
 		ShortenBase64Images: contextdev.Bool(true),
 		TimeoutMs:           contextdev.Int(1000),
 		UseMainContentOnly:  contextdev.Bool(true),

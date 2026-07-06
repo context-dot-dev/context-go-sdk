@@ -3,8 +3,8 @@
 package contextdev
 
 import (
-	"github.com/context-dot-dev/context-go-sdk/internal/apierror"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apierror"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 )
 
 // aliased to make [param.APIUnion] private when embedding

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 )
 
 var encoders sync.Map // map[reflect.Type]encoderFunc

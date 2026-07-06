@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/context-dot-dev/context-go-sdk"
-	"github.com/context-dot-dev/context-go-sdk/internal/testutil"
-	"github.com/context-dot-dev/context-go-sdk/option"
+	"github.com/context-dot-dev/context-go-sdk/v2"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/testutil"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 func TestUsage(t *testing.T) {
@@ -26,7 +26,9 @@ func TestUsage(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	brand, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-		Domain: "REPLACE_ME",
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
+		},
 	})
 	if err != nil {
 		t.Fatalf("err should be nil: %s", err.Error())

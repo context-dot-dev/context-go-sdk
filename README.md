@@ -2,7 +2,7 @@
 
 <!-- x-release-please-start-version -->
 
-<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk"><img src="https://pkg.go.dev/badge/github.com/context-dot-dev/context-go-sdk.svg" alt="Go Reference"></a>
+<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2"><img src="https://pkg.go.dev/badge/github.com/context-dot-dev/context-go-sdk.svg" alt="Go Reference"></a>
 
 <!-- x-release-please-end -->
 
@@ -26,7 +26,7 @@ Use the Context Dev MCP Server to enable AI assistants to interact with this API
 
 ```go
 import (
-	"github.com/context-dot-dev/context-go-sdk" // imported as contextdev
+	"github.com/context-dot-dev/context-go-sdk/v2" // imported as contextdev
 )
 ```
 
@@ -37,7 +37,7 @@ Or to pin the version:
 <!-- x-release-please-start-version -->
 
 ```sh
-go get -u 'github.com/context-dot-dev/context-go-sdk@v1.5.0'
+go get -u 'github.com/context-dot-dev/context-go-sdk@v2.0.0'
 ```
 
 <!-- x-release-please-end -->
@@ -57,8 +57,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/context-dot-dev/context-go-sdk"
-	"github.com/context-dot-dev/context-go-sdk/option"
+	"github.com/context-dot-dev/context-go-sdk/v2"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 func main() {
@@ -66,7 +66,9 @@ func main() {
 		option.WithAPIKey("My API Key"), // defaults to os.LookupEnv("CONTEXT_DEV_API_KEY")
 	)
 	brand, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-		Domain: "REPLACE_ME",
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
+		},
 	})
 	if err != nil {
 		panic(err.Error())
@@ -309,7 +311,9 @@ To handle errors, we recommend that you use the `errors.As` pattern:
 
 ```go
 _, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-	Domain: "REPLACE_ME",
+	OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+		Domain: "stripe.com",
+	},
 })
 if err != nil {
 	var apierr *contextdev.Error
@@ -338,7 +342,9 @@ defer cancel()
 client.Brand.Get(
 	ctx,
 	contextdev.BrandGetParams{
-		Domain: "REPLACE_ME",
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
+		},
 	},
 	// This sets the per-retry timeout
 	option.WithRequestTimeout(20*time.Second),
@@ -376,7 +382,9 @@ client := contextdev.NewClient(
 client.Brand.Get(
 	context.TODO(),
 	contextdev.BrandGetParams{
-		Domain: "REPLACE_ME",
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
+		},
 	},
 	option.WithMaxRetries(5),
 )
@@ -393,7 +401,9 @@ var response *http.Response
 brand, err := client.Brand.Get(
 	context.TODO(),
 	contextdev.BrandGetParams{
-		Domain: "REPLACE_ME",
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
+		},
 	},
 	option.WithResponseInto(&response),
 )

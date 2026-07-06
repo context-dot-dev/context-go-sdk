@@ -9,12 +9,12 @@ import (
 	"net/url"
 	"slices"
 
-	"github.com/context-dot-dev/context-go-sdk/internal/apijson"
-	"github.com/context-dot-dev/context-go-sdk/internal/apiquery"
-	"github.com/context-dot-dev/context-go-sdk/internal/requestconfig"
-	"github.com/context-dot-dev/context-go-sdk/option"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
-	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apijson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apiquery"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/requestconfig"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
 // WebService contains methods and other services that help with interacting with
@@ -166,13 +166,17 @@ func (r *WebExtractResponse) UnmarshalJSON(data []byte) error {
 
 type WebExtractResponseMetadata struct {
 	MaxCrawlDepth int64 `json:"maxCrawlDepth" api:"required"`
-	NumFailed     int64 `json:"numFailed" api:"required"`
-	NumSkipped    int64 `json:"numSkipped" api:"required"`
-	NumSucceeded  int64 `json:"numSucceeded" api:"required"`
-	NumURLs       int64 `json:"numUrls" api:"required"`
+	// Number of crawled pages excluded because they were anti-bot challenges, error
+	// pages, or parked-domain placeholders.
+	NumBlocked   int64 `json:"numBlocked" api:"required"`
+	NumFailed    int64 `json:"numFailed" api:"required"`
+	NumSkipped   int64 `json:"numSkipped" api:"required"`
+	NumSucceeded int64 `json:"numSucceeded" api:"required"`
+	NumURLs      int64 `json:"numUrls" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		MaxCrawlDepth respjson.Field
+		NumBlocked    respjson.Field
 		NumFailed     respjson.Field
 		NumSkipped    respjson.Field
 		NumSucceeded  respjson.Field
@@ -1590,10 +1594,12 @@ type WebWebScrapeHTMLResponse struct {
 	// Any of true.
 	Success bool `json:"success" api:"required"`
 	// Detected content type of the returned `html` field. Sitemaps and feeds are
-	// surfaced as `xml`; ordinary pages are `html`.
+	// surfaced as `xml`; ordinary pages are `html`. Excel workbooks are surfaced as
+	// `xlsx`/`xls` with the extracted sheets as HTML tables; PowerPoint presentations
+	// are surfaced as `pptx`/`ppt` with the extracted slides as HTML.
 	//
 	// Any of "html", "xml", "json", "text", "csv", "markdown", "svg", "pdf", "docx",
-	// "doc".
+	// "doc", "xlsx", "xls", "pptx", "ppt".
 	Type WebWebScrapeHTMLResponseType `json:"type" api:"required"`
 	// The URL that was scraped
 	URL string `json:"url" api:"required"`
@@ -1827,7 +1833,9 @@ func (r *WebWebScrapeHTMLResponseMetadataTwitterUnion) UnmarshalJSON(data []byte
 }
 
 // Detected content type of the returned `html` field. Sitemaps and feeds are
-// surfaced as `xml`; ordinary pages are `html`.
+// surfaced as `xml`; ordinary pages are `html`. Excel workbooks are surfaced as
+// `xlsx`/`xls` with the extracted sheets as HTML tables; PowerPoint presentations
+// are surfaced as `pptx`/`ppt` with the extracted slides as HTML.
 type WebWebScrapeHTMLResponseType string
 
 const (
@@ -1841,6 +1849,10 @@ const (
 	WebWebScrapeHTMLResponseTypePdf      WebWebScrapeHTMLResponseType = "pdf"
 	WebWebScrapeHTMLResponseTypeDocx     WebWebScrapeHTMLResponseType = "docx"
 	WebWebScrapeHTMLResponseTypeDoc      WebWebScrapeHTMLResponseType = "doc"
+	WebWebScrapeHTMLResponseTypeXlsx     WebWebScrapeHTMLResponseType = "xlsx"
+	WebWebScrapeHTMLResponseTypeXls      WebWebScrapeHTMLResponseType = "xls"
+	WebWebScrapeHTMLResponseTypePptx     WebWebScrapeHTMLResponseType = "pptx"
+	WebWebScrapeHTMLResponseTypePpt      WebWebScrapeHTMLResponseType = "ppt"
 )
 
 // Metadata about the API key used for the request. Included in every response
@@ -3248,6 +3260,10 @@ type WebWebCrawlMdParams struct {
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum number of pages to crawl. Hard cap: 500.
 	MaxPages param.Opt[int64] `json:"maxPages,omitzero"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting each crawled page. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Truncate base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
 	// Soft time budget for the crawl in milliseconds. After each scrape, the crawler
@@ -3554,6 +3570,10 @@ type WebWebScrapeHTMLParams struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting HTML. Defaults to false. This adds a bit of latency in exchange for
+	// more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -3847,6 +3867,11 @@ func (r WebWebScrapeHTMLParamsPdf) URLQuery() (v url.Values, err error) {
 type WebWebScrapeImagesParams struct {
 	// Page URL to inspect. Must include http:// or https://.
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
+	// When true, visually duplicate images are removed: every image is loaded and
+	// perceptually hashed, and only the highest-resolution copy of each duplicate
+	// group is kept. Images that cannot be downloaded or hashed are kept. Default:
+	// false.
+	Dedupe param.Opt[bool] `query:"dedupe,omitzero" json:"-"`
 	// Reuse a cached result this many milliseconds old or newer. Default: 86400000 (1
 	// day). Set to 0 to bypass cache. Maximum: 2592000000 (30 days).
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
@@ -3914,6 +3939,10 @@ type WebWebScrapeMdParams struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// converting to Markdown. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
 	// Shorten base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer

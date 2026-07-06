@@ -4,15 +4,14 @@ package contextdev
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"slices"
 
-	"github.com/context-dot-dev/context-go-sdk/internal/apijson"
-	"github.com/context-dot-dev/context-go-sdk/internal/requestconfig"
-	"github.com/context-dot-dev/context-go-sdk/option"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
-	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apijson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/requestconfig"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
 // AIService contains methods and other services that help with interacting with
@@ -34,16 +33,6 @@ func NewAIService(opts ...option.RequestOption) (r AIService) {
 	return
 }
 
-// Use AI to extract specific data points from a brand's website. The AI will crawl
-// the website and extract the requested information based on the provided data
-// points.
-func (r *AIService) AIQuery(ctx context.Context, body AIAIQueryParams, opts ...option.RequestOption) (res *AiaiQueryResponse, err error) {
-	opts = slices.Concat(r.options, opts)
-	path := "brand/ai/query"
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
-	return res, err
-}
-
 // Given a single URL, determines if it is a product page and extracts the product
 // information.
 func (r *AIService) ExtractProduct(ctx context.Context, body AIExtractProductParams, opts ...option.RequestOption) (res *AIExtractProductResponse, err error) {
@@ -61,148 +50,6 @@ func (r *AIService) ExtractProducts(ctx context.Context, body AIExtractProductsP
 	path := "brand/ai/products"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
 	return res, err
-}
-
-type AiaiQueryResponse struct {
-	// Array of extracted data points
-	DataExtracted []AiaiQueryResponseDataExtracted `json:"data_extracted"`
-	// The domain that was analyzed
-	Domain string `json:"domain"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
-	KeyMetadata AiaiQueryResponseKeyMetadata `json:"key_metadata"`
-	// Status of the response, e.g., 'ok'
-	Status string `json:"status"`
-	// List of URLs that were analyzed
-	URLsAnalyzed []string `json:"urls_analyzed"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		DataExtracted respjson.Field
-		Domain        respjson.Field
-		KeyMetadata   respjson.Field
-		Status        respjson.Field
-		URLsAnalyzed  respjson.Field
-		ExtraFields   map[string]respjson.Field
-		raw           string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r AiaiQueryResponse) RawJSON() string { return r.JSON.raw }
-func (r *AiaiQueryResponse) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type AiaiQueryResponseDataExtracted struct {
-	// Name of the extracted data point
-	DatapointName string `json:"datapoint_name"`
-	// Value of the extracted data point. Can be a primitive type, an array of
-	// primitives, or an array of objects when datapoint_list_type is 'object'.
-	DatapointValue AiaiQueryResponseDataExtractedDatapointValueUnion `json:"datapoint_value"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		DatapointName  respjson.Field
-		DatapointValue respjson.Field
-		ExtraFields    map[string]respjson.Field
-		raw            string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r AiaiQueryResponseDataExtracted) RawJSON() string { return r.JSON.raw }
-func (r *AiaiQueryResponseDataExtracted) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// AiaiQueryResponseDataExtractedDatapointValueUnion contains all possible
-// properties and values from [string], [float64], [bool], [[]string], [[]float64],
-// [[]any].
-//
-// Use the methods beginning with 'As' to cast the union to one of its variants.
-//
-// If the underlying value is not a json object, one of the following properties
-// will be valid: OfString OfFloat OfBool OfStringArray OfFloatArray OfAnyArray]
-type AiaiQueryResponseDataExtractedDatapointValueUnion struct {
-	// This field will be present if the value is a [string] instead of an object.
-	OfString string `json:",inline"`
-	// This field will be present if the value is a [float64] instead of an object.
-	OfFloat float64 `json:",inline"`
-	// This field will be present if the value is a [bool] instead of an object.
-	OfBool bool `json:",inline"`
-	// This field will be present if the value is a [[]string] instead of an object.
-	OfStringArray []string `json:",inline"`
-	// This field will be present if the value is a [[]float64] instead of an object.
-	OfFloatArray []float64 `json:",inline"`
-	// This field will be present if the value is a [[]any] instead of an object.
-	OfAnyArray []any `json:",inline"`
-	JSON       struct {
-		OfString      respjson.Field
-		OfFloat       respjson.Field
-		OfBool        respjson.Field
-		OfStringArray respjson.Field
-		OfFloatArray  respjson.Field
-		OfAnyArray    respjson.Field
-		raw           string
-	} `json:"-"`
-}
-
-func (u AiaiQueryResponseDataExtractedDatapointValueUnion) AsString() (v string) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
-}
-
-func (u AiaiQueryResponseDataExtractedDatapointValueUnion) AsFloat() (v float64) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
-}
-
-func (u AiaiQueryResponseDataExtractedDatapointValueUnion) AsBool() (v bool) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
-}
-
-func (u AiaiQueryResponseDataExtractedDatapointValueUnion) AsStringArray() (v []string) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
-}
-
-func (u AiaiQueryResponseDataExtractedDatapointValueUnion) AsFloatArray() (v []float64) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
-}
-
-func (u AiaiQueryResponseDataExtractedDatapointValueUnion) AsAnyArray() (v []any) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
-}
-
-// Returns the unmodified JSON received from the API
-func (u AiaiQueryResponseDataExtractedDatapointValueUnion) RawJSON() string { return u.JSON.raw }
-
-func (r *AiaiQueryResponseDataExtractedDatapointValueUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
-type AiaiQueryResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
-	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
-	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		CreditsConsumed  respjson.Field
-		CreditsRemaining respjson.Field
-		ExtraFields      map[string]respjson.Field
-		raw              string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r AiaiQueryResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
-func (r *AiaiQueryResponseKeyMetadata) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
 }
 
 type AIExtractProductResponse struct {
@@ -427,102 +274,6 @@ type AIExtractProductsResponseProduct struct {
 // Returns the unmodified JSON received from the API
 func (r AIExtractProductsResponseProduct) RawJSON() string { return r.JSON.raw }
 func (r *AIExtractProductsResponseProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type AIAIQueryParams struct {
-	// Array of data points to extract from the website
-	DataToExtract []AIAIQueryParamsDataToExtract `json:"data_to_extract,omitzero" api:"required"`
-	// The domain name to analyze
-	Domain string `json:"domain" api:"required"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
-	// Optional object specifying which pages to analyze
-	SpecificPages AIAIQueryParamsSpecificPages `json:"specific_pages,omitzero"`
-	paramObj
-}
-
-func (r AIAIQueryParams) MarshalJSON() (data []byte, err error) {
-	type shadow AIAIQueryParams
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *AIAIQueryParams) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// The properties DatapointDescription, DatapointExample, DatapointName,
-// DatapointType are required.
-type AIAIQueryParamsDataToExtract struct {
-	// Description of what to extract
-	DatapointDescription string `json:"datapoint_description" api:"required"`
-	// Example of the expected value
-	DatapointExample string `json:"datapoint_example" api:"required"`
-	// Name of the data point to extract
-	DatapointName string `json:"datapoint_name" api:"required"`
-	// Type of the data point
-	//
-	// Any of "text", "number", "date", "boolean", "list", "url".
-	DatapointType string `json:"datapoint_type,omitzero" api:"required"`
-	// Type of items in the list when datapoint_type is 'list'. Defaults to 'string'.
-	// Use 'object' to extract an array of objects matching a schema.
-	//
-	// Any of "string", "text", "number", "date", "boolean", "list", "url", "object".
-	DatapointListType string `json:"datapoint_list_type,omitzero"`
-	// Schema definition for objects when datapoint_list_type is 'object'. Provide a
-	// map of field names to their scalar types.
-	//
-	// Any of "string", "number", "date", "boolean".
-	DatapointObjectSchema map[string]string `json:"datapoint_object_schema,omitzero"`
-	paramObj
-}
-
-func (r AIAIQueryParamsDataToExtract) MarshalJSON() (data []byte, err error) {
-	type shadow AIAIQueryParamsDataToExtract
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *AIAIQueryParamsDataToExtract) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func init() {
-	apijson.RegisterFieldValidator[AIAIQueryParamsDataToExtract](
-		"datapoint_type", "text", "number", "date", "boolean", "list", "url",
-	)
-	apijson.RegisterFieldValidator[AIAIQueryParamsDataToExtract](
-		"datapoint_list_type", "string", "text", "number", "date", "boolean", "list", "url", "object",
-	)
-}
-
-// Optional object specifying which pages to analyze
-type AIAIQueryParamsSpecificPages struct {
-	// Whether to analyze the about us page
-	AboutUs param.Opt[bool] `json:"about_us,omitzero"`
-	// Whether to analyze the blog
-	Blog param.Opt[bool] `json:"blog,omitzero"`
-	// Whether to analyze the careers page
-	Careers param.Opt[bool] `json:"careers,omitzero"`
-	// Whether to analyze the contact us page
-	ContactUs param.Opt[bool] `json:"contact_us,omitzero"`
-	// Whether to analyze the FAQ page
-	Faq param.Opt[bool] `json:"faq,omitzero"`
-	// Whether to analyze the home page
-	HomePage param.Opt[bool] `json:"home_page,omitzero"`
-	// Whether to analyze the pricing page
-	Pricing param.Opt[bool] `json:"pricing,omitzero"`
-	// Whether to analyze the privacy policy page
-	PrivacyPolicy param.Opt[bool] `json:"privacy_policy,omitzero"`
-	// Whether to analyze the terms and conditions page
-	TermsAndConditions param.Opt[bool] `json:"terms_and_conditions,omitzero"`
-	paramObj
-}
-
-func (r AIAIQueryParamsSpecificPages) MarshalJSON() (data []byte, err error) {
-	type shadow AIAIQueryParamsSpecificPages
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *AIAIQueryParamsSpecificPages) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

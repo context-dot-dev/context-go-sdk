@@ -12,13 +12,13 @@ import (
 	"slices"
 	"time"
 
-	"github.com/context-dot-dev/context-go-sdk/internal/apijson"
-	"github.com/context-dot-dev/context-go-sdk/internal/apiquery"
-	"github.com/context-dot-dev/context-go-sdk/internal/requestconfig"
-	"github.com/context-dot-dev/context-go-sdk/option"
-	"github.com/context-dot-dev/context-go-sdk/packages/param"
-	"github.com/context-dot-dev/context-go-sdk/packages/respjson"
-	"github.com/context-dot-dev/context-go-sdk/shared/constant"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apijson"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/apiquery"
+	"github.com/context-dot-dev/context-go-sdk/v2/internal/requestconfig"
+	"github.com/context-dot-dev/context-go-sdk/v2/option"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
+	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
 // Monitor pages, sitemaps, and extracted website data for exact or semantic
@@ -184,13 +184,23 @@ type MonitorNewResponse struct {
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
 	Schedule MonitorNewResponseSchedule `json:"schedule" api:"required"`
+	// Monitor lifecycle status. `failed` means the most recent run failed (see the
+	// monitor's `last_error`); failed monitors keep running on schedule and flip back
+	// to `active` on the next successful run. Monitors are auto-`paused` after
+	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+	// status to `active`.
+	//
 	// Any of "active", "paused", "failed".
 	Status MonitorNewResponseStatus `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
 	Target       MonitorNewResponseTargetUnion `json:"target" api:"required"`
 	UpdatedAt    time.Time                     `json:"updated_at" api:"required" format:"date-time"`
 	LastChangeAt time.Time                     `json:"last_change_at" api:"nullable" format:"date-time"`
-	LastRunAt    time.Time                     `json:"last_run_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run; null when the last run succeeded.
+	LastError MonitorNewResponseLastError `json:"last_error" api:"nullable"`
+	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due.
+	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorNewResponseWebhook `json:"webhook" api:"nullable"`
@@ -206,7 +216,9 @@ type MonitorNewResponse struct {
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
 		LastChangeAt    respjson.Field
+		LastError       respjson.Field
 		LastRunAt       respjson.Field
+		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
 		ExtraFields     map[string]respjson.Field
@@ -363,6 +375,11 @@ func (r *MonitorNewResponseSchedule) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Monitor lifecycle status. `failed` means the most recent run failed (see the
+// monitor's `last_error`); failed monitors keep running on schedule and flip back
+// to `active` on the next successful run. Monitors are auto-`paused` after
+// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+// status to `active`.
 type MonitorNewResponseStatus string
 
 const (
@@ -492,7 +509,10 @@ func (r *MonitorNewResponseTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a sitemap for URL additions and removals.
+// Watch a sitemap for URL additions and removals. Crawled URLs are normalized
+// (lowercased host, no trailing slash/fragment) and scoped to the monitored site
+// and its subdomains before comparison. A new URL set must be observed on two
+// consecutive runs before a change is reported, suppressing one-run crawl flaps.
 type MonitorNewResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -501,7 +521,8 @@ type MonitorNewResponseTargetSitemap struct {
 	Exclude []string `json:"exclude"`
 	// URL path patterns to include.
 	Include []string `json:"include"`
-	MaxURLs int64    `json:"max_urls"`
+	// Maximum number of sitemap URLs to track (capped at 10,000).
+	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type        respjson.Field
@@ -555,6 +576,25 @@ func (r *MonitorNewResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Error from the most recent failed run; null when the last run succeeded.
+type MonitorNewResponseLastError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseLastError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseLastError) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type MonitorNewResponseWebhook struct {
 	// Webhook URL called when a change is detected.
 	URL string `json:"url" api:"required" format:"uri"`
@@ -596,13 +636,23 @@ type MonitorGetResponse struct {
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
 	Schedule MonitorGetResponseSchedule `json:"schedule" api:"required"`
+	// Monitor lifecycle status. `failed` means the most recent run failed (see the
+	// monitor's `last_error`); failed monitors keep running on schedule and flip back
+	// to `active` on the next successful run. Monitors are auto-`paused` after
+	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+	// status to `active`.
+	//
 	// Any of "active", "paused", "failed".
 	Status MonitorGetResponseStatus `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
 	Target       MonitorGetResponseTargetUnion `json:"target" api:"required"`
 	UpdatedAt    time.Time                     `json:"updated_at" api:"required" format:"date-time"`
 	LastChangeAt time.Time                     `json:"last_change_at" api:"nullable" format:"date-time"`
-	LastRunAt    time.Time                     `json:"last_run_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run; null when the last run succeeded.
+	LastError MonitorGetResponseLastError `json:"last_error" api:"nullable"`
+	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due.
+	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorGetResponseWebhook `json:"webhook" api:"nullable"`
@@ -618,7 +668,9 @@ type MonitorGetResponse struct {
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
 		LastChangeAt    respjson.Field
+		LastError       respjson.Field
 		LastRunAt       respjson.Field
+		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
 		ExtraFields     map[string]respjson.Field
@@ -775,6 +827,11 @@ func (r *MonitorGetResponseSchedule) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Monitor lifecycle status. `failed` means the most recent run failed (see the
+// monitor's `last_error`); failed monitors keep running on schedule and flip back
+// to `active` on the next successful run. Monitors are auto-`paused` after
+// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+// status to `active`.
 type MonitorGetResponseStatus string
 
 const (
@@ -904,7 +961,10 @@ func (r *MonitorGetResponseTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a sitemap for URL additions and removals.
+// Watch a sitemap for URL additions and removals. Crawled URLs are normalized
+// (lowercased host, no trailing slash/fragment) and scoped to the monitored site
+// and its subdomains before comparison. A new URL set must be observed on two
+// consecutive runs before a change is reported, suppressing one-run crawl flaps.
 type MonitorGetResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -913,7 +973,8 @@ type MonitorGetResponseTargetSitemap struct {
 	Exclude []string `json:"exclude"`
 	// URL path patterns to include.
 	Include []string `json:"include"`
-	MaxURLs int64    `json:"max_urls"`
+	// Maximum number of sitemap URLs to track (capped at 10,000).
+	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type        respjson.Field
@@ -967,6 +1028,25 @@ func (r *MonitorGetResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Error from the most recent failed run; null when the last run succeeded.
+type MonitorGetResponseLastError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseLastError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseLastError) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type MonitorGetResponseWebhook struct {
 	// Webhook URL called when a change is detected.
 	URL string `json:"url" api:"required" format:"uri"`
@@ -1008,13 +1088,23 @@ type MonitorUpdateResponse struct {
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
 	Schedule MonitorUpdateResponseSchedule `json:"schedule" api:"required"`
+	// Monitor lifecycle status. `failed` means the most recent run failed (see the
+	// monitor's `last_error`); failed monitors keep running on schedule and flip back
+	// to `active` on the next successful run. Monitors are auto-`paused` after
+	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+	// status to `active`.
+	//
 	// Any of "active", "paused", "failed".
 	Status MonitorUpdateResponseStatus `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
 	Target       MonitorUpdateResponseTargetUnion `json:"target" api:"required"`
 	UpdatedAt    time.Time                        `json:"updated_at" api:"required" format:"date-time"`
 	LastChangeAt time.Time                        `json:"last_change_at" api:"nullable" format:"date-time"`
-	LastRunAt    time.Time                        `json:"last_run_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run; null when the last run succeeded.
+	LastError MonitorUpdateResponseLastError `json:"last_error" api:"nullable"`
+	LastRunAt time.Time                      `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due.
+	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                     `json:"tags"`
 	Webhook MonitorUpdateResponseWebhook `json:"webhook" api:"nullable"`
@@ -1030,7 +1120,9 @@ type MonitorUpdateResponse struct {
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
 		LastChangeAt    respjson.Field
+		LastError       respjson.Field
 		LastRunAt       respjson.Field
+		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
 		ExtraFields     map[string]respjson.Field
@@ -1187,6 +1279,11 @@ func (r *MonitorUpdateResponseSchedule) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Monitor lifecycle status. `failed` means the most recent run failed (see the
+// monitor's `last_error`); failed monitors keep running on schedule and flip back
+// to `active` on the next successful run. Monitors are auto-`paused` after
+// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+// status to `active`.
 type MonitorUpdateResponseStatus string
 
 const (
@@ -1317,7 +1414,10 @@ func (r *MonitorUpdateResponseTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a sitemap for URL additions and removals.
+// Watch a sitemap for URL additions and removals. Crawled URLs are normalized
+// (lowercased host, no trailing slash/fragment) and scoped to the monitored site
+// and its subdomains before comparison. A new URL set must be observed on two
+// consecutive runs before a change is reported, suppressing one-run crawl flaps.
 type MonitorUpdateResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -1326,7 +1426,8 @@ type MonitorUpdateResponseTargetSitemap struct {
 	Exclude []string `json:"exclude"`
 	// URL path patterns to include.
 	Include []string `json:"include"`
-	MaxURLs int64    `json:"max_urls"`
+	// Maximum number of sitemap URLs to track (capped at 10,000).
+	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type        respjson.Field
@@ -1377,6 +1478,25 @@ type MonitorUpdateResponseTargetExtract struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorUpdateResponseTargetExtract) RawJSON() string { return r.JSON.raw }
 func (r *MonitorUpdateResponseTargetExtract) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Error from the most recent failed run; null when the last run succeeded.
+type MonitorUpdateResponseLastError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseLastError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseLastError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1441,13 +1561,23 @@ type MonitorListResponseData struct {
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
 	Schedule MonitorListResponseDataSchedule `json:"schedule" api:"required"`
+	// Monitor lifecycle status. `failed` means the most recent run failed (see the
+	// monitor's `last_error`); failed monitors keep running on schedule and flip back
+	// to `active` on the next successful run. Monitors are auto-`paused` after
+	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+	// status to `active`.
+	//
 	// Any of "active", "paused", "failed".
 	Status string `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
 	Target       MonitorListResponseDataTargetUnion `json:"target" api:"required"`
 	UpdatedAt    time.Time                          `json:"updated_at" api:"required" format:"date-time"`
 	LastChangeAt time.Time                          `json:"last_change_at" api:"nullable" format:"date-time"`
-	LastRunAt    time.Time                          `json:"last_run_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run; null when the last run succeeded.
+	LastError MonitorListResponseDataLastError `json:"last_error" api:"nullable"`
+	LastRunAt time.Time                        `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due.
+	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                       `json:"tags"`
 	Webhook MonitorListResponseDataWebhook `json:"webhook" api:"nullable"`
@@ -1463,7 +1593,9 @@ type MonitorListResponseData struct {
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
 		LastChangeAt    respjson.Field
+		LastError       respjson.Field
 		LastRunAt       respjson.Field
+		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
 		ExtraFields     map[string]respjson.Field
@@ -1736,7 +1868,10 @@ func (r *MonitorListResponseDataTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a sitemap for URL additions and removals.
+// Watch a sitemap for URL additions and removals. Crawled URLs are normalized
+// (lowercased host, no trailing slash/fragment) and scoped to the monitored site
+// and its subdomains before comparison. A new URL set must be observed on two
+// consecutive runs before a change is reported, suppressing one-run crawl flaps.
 type MonitorListResponseDataTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -1745,7 +1880,8 @@ type MonitorListResponseDataTargetSitemap struct {
 	Exclude []string `json:"exclude"`
 	// URL path patterns to include.
 	Include []string `json:"include"`
-	MaxURLs int64    `json:"max_urls"`
+	// Maximum number of sitemap URLs to track (capped at 10,000).
+	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type        respjson.Field
@@ -1796,6 +1932,25 @@ type MonitorListResponseDataTargetExtract struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListResponseDataTargetExtract) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListResponseDataTargetExtract) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Error from the most recent failed run; null when the last run succeeded.
+type MonitorListResponseDataLastError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataLastError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataLastError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1946,25 +2101,35 @@ type MonitorListAccountRunsResponseData struct {
 	ChangeDetected  bool `json:"change_detected" api:"required"`
 	// Any of "exact", "semantic".
 	ChangeDetectionType string `json:"change_detection_type" api:"required"`
-	MonitorID           string `json:"monitor_id" api:"required"`
+	// Credits charged for this run (0 for skipped/failed runs).
+	CreditsCharged int64  `json:"credits_charged" api:"required"`
+	MonitorID      string `json:"monitor_id" api:"required"`
 	// The first run after monitor creation is a baseline run.
 	//
 	// Any of "baseline", "scheduled".
 	RunType string `json:"run_type" api:"required"`
-	// Any of "queued", "running", "completed", "failed".
+	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	//
+	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status string `json:"status" api:"required"`
 	// Any of "page", "sitemap", "extract".
 	TargetType  string                                  `json:"target_type" api:"required"`
 	ChangeID    string                                  `json:"change_id" api:"nullable"`
 	CompletedAt time.Time                               `json:"completed_at" api:"nullable" format:"date-time"`
 	Error       MonitorListAccountRunsResponseDataError `json:"error" api:"nullable"`
-	StartedAt   time.Time                               `json:"started_at" api:"nullable" format:"date-time"`
+	// Why a skipped run never executed; null unless status is `skipped`.
+	//
+	// Any of "insufficient_credits", "monitor_paused", "superseded".
+	SkipReason string    `json:"skip_reason" api:"nullable"`
+	StartedAt  time.Time `json:"started_at" api:"nullable" format:"date-time"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
 		BaselineCreated     respjson.Field
 		ChangeDetected      respjson.Field
 		ChangeDetectionType respjson.Field
+		CreditsCharged      respjson.Field
 		MonitorID           respjson.Field
 		RunType             respjson.Field
 		Status              respjson.Field
@@ -1972,6 +2137,7 @@ type MonitorListAccountRunsResponseData struct {
 		ChangeID            respjson.Field
 		CompletedAt         respjson.Field
 		Error               respjson.Field
+		SkipReason          respjson.Field
 		StartedAt           respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
@@ -2107,25 +2273,35 @@ type MonitorListRunsResponseData struct {
 	ChangeDetected  bool `json:"change_detected" api:"required"`
 	// Any of "exact", "semantic".
 	ChangeDetectionType string `json:"change_detection_type" api:"required"`
-	MonitorID           string `json:"monitor_id" api:"required"`
+	// Credits charged for this run (0 for skipped/failed runs).
+	CreditsCharged int64  `json:"credits_charged" api:"required"`
+	MonitorID      string `json:"monitor_id" api:"required"`
 	// The first run after monitor creation is a baseline run.
 	//
 	// Any of "baseline", "scheduled".
 	RunType string `json:"run_type" api:"required"`
-	// Any of "queued", "running", "completed", "failed".
+	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	//
+	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status string `json:"status" api:"required"`
 	// Any of "page", "sitemap", "extract".
 	TargetType  string                           `json:"target_type" api:"required"`
 	ChangeID    string                           `json:"change_id" api:"nullable"`
 	CompletedAt time.Time                        `json:"completed_at" api:"nullable" format:"date-time"`
 	Error       MonitorListRunsResponseDataError `json:"error" api:"nullable"`
-	StartedAt   time.Time                        `json:"started_at" api:"nullable" format:"date-time"`
+	// Why a skipped run never executed; null unless status is `skipped`.
+	//
+	// Any of "insufficient_credits", "monitor_paused", "superseded".
+	SkipReason string    `json:"skip_reason" api:"nullable"`
+	StartedAt  time.Time `json:"started_at" api:"nullable" format:"date-time"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
 		BaselineCreated     respjson.Field
 		ChangeDetected      respjson.Field
 		ChangeDetectionType respjson.Field
+		CreditsCharged      respjson.Field
 		MonitorID           respjson.Field
 		RunType             respjson.Field
 		Status              respjson.Field
@@ -2133,6 +2309,7 @@ type MonitorListRunsResponseData struct {
 		ChangeID            respjson.Field
 		CompletedAt         respjson.Field
 		Error               respjson.Field
+		SkipReason          respjson.Field
 		StartedAt           respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
@@ -2179,26 +2356,31 @@ type MonitorGetChangeResponse struct {
 	// Any of "web".
 	Mode      MonitorGetChangeResponseMode `json:"mode" api:"required"`
 	MonitorID string                       `json:"monitor_id" api:"required"`
-	Summary   string                       `json:"summary" api:"required"`
+	// The run that detected this change.
+	RunID   string `json:"run_id" api:"required"`
+	Summary string `json:"summary" api:"required"`
 	// Any of "page", "sitemap", "extract".
-	TargetType        MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
-	Title             string                             `json:"title" api:"required"`
-	URL               string                             `json:"url" api:"required" format:"uri"`
-	AddedURLCount     int64                              `json:"added_url_count"`
-	AddedURLs         []string                           `json:"added_urls" format:"uri"`
-	AfterTextExcerpt  string                             `json:"after_text_excerpt"`
-	BeforeTextExcerpt string                             `json:"before_text_excerpt"`
-	Confidence        float64                            `json:"confidence"`
+	TargetType    MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
+	Title         string                             `json:"title" api:"required"`
+	URL           string                             `json:"url" api:"required" format:"uri"`
+	AddedURLCount int64                              `json:"added_url_count"`
+	// At most 500 URLs are included; the corresponding count field is always exact.
+	AddedURLs         []string `json:"added_urls" format:"uri"`
+	AfterTextExcerpt  string   `json:"after_text_excerpt"`
+	BeforeTextExcerpt string   `json:"before_text_excerpt"`
+	Confidence        float64  `json:"confidence"`
 	// Text diff between the previous and current page baseline (page targets).
 	Diff     string                             `json:"diff"`
 	Evidence []MonitorGetChangeResponseEvidence `json:"evidence"`
 	// Any of "low", "medium", "high".
 	Importance      MonitorGetChangeResponseImportance `json:"importance"`
 	MatchedURLCount int64                              `json:"matched_url_count"`
-	MatchedURLs     []string                           `json:"matched_urls" format:"uri"`
-	Query           string                             `json:"query"`
-	RemovedURLCount int64                              `json:"removed_url_count"`
-	RemovedURLs     []string                           `json:"removed_urls" format:"uri"`
+	// At most 500 URLs are included; the corresponding count field is always exact.
+	MatchedURLs     []string `json:"matched_urls" format:"uri"`
+	Query           string   `json:"query"`
+	RemovedURLCount int64    `json:"removed_url_count"`
+	// At most 500 URLs are included; the corresponding count field is always exact.
+	RemovedURLs []string `json:"removed_urls" format:"uri"`
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags []string `json:"tags"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -2208,6 +2390,7 @@ type MonitorGetChangeResponse struct {
 		DetectedAt          respjson.Field
 		Mode                respjson.Field
 		MonitorID           respjson.Field
+		RunID               respjson.Field
 		Summary             respjson.Field
 		TargetType          respjson.Field
 		Title               respjson.Field
@@ -2294,10 +2477,14 @@ const (
 type MonitorRunResponse struct {
 	MonitorID string `json:"monitor_id" api:"required"`
 	Queued    bool   `json:"queued" api:"required"`
+	// The queued run. Poll GET /monitors/{monitor_id}/runs or use it to correlate
+	// results.
+	RunID string `json:"run_id" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		MonitorID   respjson.Field
 		Queued      respjson.Field
+		RunID       respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -2485,12 +2672,16 @@ func (r *MonitorNewParamsTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a sitemap for URL additions and removals.
+// Watch a sitemap for URL additions and removals. Crawled URLs are normalized
+// (lowercased host, no trailing slash/fragment) and scoped to the monitored site
+// and its subdomains before comparison. A new URL set must be observed on two
+// consecutive runs before a change is reported, suppressing one-run crawl flaps.
 //
 // The properties Type, URL are required.
 type MonitorNewParamsTargetSitemap struct {
 	// Sitemap URL to monitor.
-	URL     string           `json:"url" api:"required" format:"uri"`
+	URL string `json:"url" api:"required" format:"uri"`
+	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
 	// URL path patterns to exclude.
 	Exclude []string `json:"exclude,omitzero"`
@@ -2742,12 +2933,16 @@ func (r *MonitorUpdateParamsTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a sitemap for URL additions and removals.
+// Watch a sitemap for URL additions and removals. Crawled URLs are normalized
+// (lowercased host, no trailing slash/fragment) and scoped to the monitored site
+// and its subdomains before comparison. A new URL set must be observed on two
+// consecutive runs before a change is reported, suppressing one-run crawl flaps.
 //
 // The properties Type, URL are required.
 type MonitorUpdateParamsTargetSitemap struct {
 	// Sitemap URL to monitor.
-	URL     string           `json:"url" api:"required" format:"uri"`
+	URL string `json:"url" api:"required" format:"uri"`
+	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
 	// URL path patterns to exclude.
 	Exclude []string `json:"exclude,omitzero"`
@@ -2831,6 +3026,12 @@ type MonitorListParams struct {
 	//
 	// Any of "exact", "prefix".
 	SearchType MonitorListParamsSearchType `query:"search_type,omitzero" json:"-"`
+	// Monitor lifecycle status. `failed` means the most recent run failed (see the
+	// monitor's `last_error`); failed monitors keep running on schedule and flip back
+	// to `active` on the next successful run. Monitors are auto-`paused` after
+	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+	// status to `active`.
+	//
 	// Any of "active", "paused", "failed".
 	Status MonitorListParamsStatus `query:"status,omitzero" json:"-"`
 	// Comma-separated list of tags to filter by (matches monitors having any of them).
@@ -2864,6 +3065,11 @@ const (
 	MonitorListParamsSearchTypePrefix MonitorListParamsSearchType = "prefix"
 )
 
+// Monitor lifecycle status. `failed` means the most recent run failed (see the
+// monitor's `last_error`); failed monitors keep running on schedule and flip back
+// to `active` on the next successful run. Monitors are auto-`paused` after
+// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+// status to `active`.
 type MonitorListParamsStatus string
 
 const (
@@ -2922,7 +3128,10 @@ const (
 type MonitorListAccountRunsParams struct {
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
 	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
-	// Any of "queued", "running", "completed", "failed".
+	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	//
+	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListAccountRunsParamsStatus `query:"status,omitzero" json:"-"`
 	paramObj
 }
@@ -2936,6 +3145,8 @@ func (r MonitorListAccountRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+// (insufficient credits, monitor paused, or superseded by a concurrent run).
 type MonitorListAccountRunsParamsStatus string
 
 const (
@@ -2943,6 +3154,7 @@ const (
 	MonitorListAccountRunsParamsStatusRunning   MonitorListAccountRunsParamsStatus = "running"
 	MonitorListAccountRunsParamsStatusCompleted MonitorListAccountRunsParamsStatus = "completed"
 	MonitorListAccountRunsParamsStatusFailed    MonitorListAccountRunsParamsStatus = "failed"
+	MonitorListAccountRunsParamsStatusSkipped   MonitorListAccountRunsParamsStatus = "skipped"
 )
 
 type MonitorListChangesParams struct {
@@ -2967,7 +3179,10 @@ func (r MonitorListChangesParams) URLQuery() (v url.Values, err error) {
 type MonitorListRunsParams struct {
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
 	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
-	// Any of "queued", "running", "completed", "failed".
+	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	//
+	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListRunsParamsStatus `query:"status,omitzero" json:"-"`
 	paramObj
 }
@@ -2980,6 +3195,8 @@ func (r MonitorListRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+// (insufficient credits, monitor paused, or superseded by a concurrent run).
 type MonitorListRunsParamsStatus string
 
 const (
@@ -2987,4 +3204,5 @@ const (
 	MonitorListRunsParamsStatusRunning   MonitorListRunsParamsStatus = "running"
 	MonitorListRunsParamsStatusCompleted MonitorListRunsParamsStatus = "completed"
 	MonitorListRunsParamsStatusFailed    MonitorListRunsParamsStatus = "failed"
+	MonitorListRunsParamsStatusSkipped   MonitorListRunsParamsStatus = "skipped"
 )

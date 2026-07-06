@@ -25,11 +25,17 @@ func TestUsage(t *testing.T) {
 		option.WithBaseURL(baseURL),
 		option.WithAPIKey("My API Key"),
 	)
-	brand, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-		Domain: "REPLACE_ME",
+	response, err := client.Web.Extract(context.TODO(), contextdev.WebExtractParams{
+		Schema: map[string]any{
+			"type":                 "bar",
+			"properties":           "bar",
+			"required":             "bar",
+			"additionalProperties": "bar",
+		},
+		URL: "https://example.com",
 	})
 	if err != nil {
 		t.Fatalf("err should be nil: %s", err.Error())
 	}
-	t.Logf("%+v\n", brand.Brand)
+	t.Logf("%+v\n", response.Data)
 }

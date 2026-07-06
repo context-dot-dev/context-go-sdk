@@ -65,19 +65,15 @@ func main() {
 	client := contextdev.NewClient(
 		option.WithAPIKey("My API Key"), // defaults to os.LookupEnv("CONTEXT_DEV_API_KEY")
 	)
-	response, err := client.Web.Extract(context.TODO(), contextdev.WebExtractParams{
-		Schema: map[string]any{
-			"type":                 "bar",
-			"properties":           "bar",
-			"required":             "bar",
-			"additionalProperties": "bar",
+	brand, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
 		},
-		URL: "https://example.com",
 	})
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("%+v\n", response.Data)
+	fmt.Printf("%+v\n", brand.Brand)
 }
 
 ```
@@ -283,7 +279,7 @@ client := contextdev.NewClient(
 	option.WithHeader("X-Some-Header", "custom_header_info"),
 )
 
-client.Web.Extract(context.TODO(), ...,
+client.Brand.Get(context.TODO(), ...,
 	// Override the header
 	option.WithHeader("X-Some-Header", "some_other_custom_header_info"),
 	// Add an undocumented field to the request body, using sjson syntax
@@ -314,14 +310,10 @@ When the API returns a non-success status code, we return an error with type
 To handle errors, we recommend that you use the `errors.As` pattern:
 
 ```go
-_, err := client.Web.Extract(context.TODO(), contextdev.WebExtractParams{
-	Schema: map[string]any{
-		"type":                 "bar",
-		"properties":           "bar",
-		"required":             "bar",
-		"additionalProperties": "bar",
+_, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
+	OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+		Domain: "stripe.com",
 	},
-	URL: "https://example.com",
 })
 if err != nil {
 	var apierr *contextdev.Error
@@ -329,7 +321,7 @@ if err != nil {
 		println(string(apierr.DumpRequest(true)))  // Prints the serialized HTTP request
 		println(string(apierr.DumpResponse(true))) // Prints the serialized HTTP response
 	}
-	panic(err.Error()) // GET "/web/extract": 400 Bad Request { ... }
+	panic(err.Error()) // GET "/brand/retrieve": 400 Bad Request { ... }
 }
 ```
 
@@ -347,16 +339,12 @@ To set a per-retry timeout, use `option.WithRequestTimeout()`.
 // This sets the timeout for the request, including all the retries.
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
-client.Web.Extract(
+client.Brand.Get(
 	ctx,
-	contextdev.WebExtractParams{
-		Schema: map[string]any{
-			"type":                 "bar",
-			"properties":           "bar",
-			"required":             "bar",
-			"additionalProperties": "bar",
+	contextdev.BrandGetParams{
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
 		},
-		URL: "https://example.com",
 	},
 	// This sets the per-retry timeout
 	option.WithRequestTimeout(20*time.Second),
@@ -391,16 +379,12 @@ client := contextdev.NewClient(
 )
 
 // Override per-request:
-client.Web.Extract(
+client.Brand.Get(
 	context.TODO(),
-	contextdev.WebExtractParams{
-		Schema: map[string]any{
-			"type":                 "bar",
-			"properties":           "bar",
-			"required":             "bar",
-			"additionalProperties": "bar",
+	contextdev.BrandGetParams{
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
 		},
-		URL: "https://example.com",
 	},
 	option.WithMaxRetries(5),
 )
@@ -414,23 +398,19 @@ you need to examine response headers, status codes, or other details.
 ```go
 // Create a variable to store the HTTP response
 var response *http.Response
-response, err := client.Web.Extract(
+brand, err := client.Brand.Get(
 	context.TODO(),
-	contextdev.WebExtractParams{
-		Schema: map[string]any{
-			"type":                 "bar",
-			"properties":           "bar",
-			"required":             "bar",
-			"additionalProperties": "bar",
+	contextdev.BrandGetParams{
+		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
+			Domain: "stripe.com",
 		},
-		URL: "https://example.com",
 	},
 	option.WithResponseInto(&response),
 )
 if err != nil {
 	// handle error
 }
-fmt.Printf("%+v\n", response)
+fmt.Printf("%+v\n", brand)
 
 fmt.Printf("Status Code: %d\n", response.StatusCode)
 fmt.Printf("Headers: %+#v\n", response.Header)

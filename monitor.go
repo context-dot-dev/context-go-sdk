@@ -193,9 +193,14 @@ type MonitorNewResponse struct {
 	// Any of "active", "paused", "failed".
 	Status MonitorNewResponseStatus `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
-	Target       MonitorNewResponseTargetUnion `json:"target" api:"required"`
-	UpdatedAt    time.Time                     `json:"updated_at" api:"required" format:"date-time"`
-	LastChangeAt time.Time                     `json:"last_change_at" api:"nullable" format:"date-time"`
+	Target    MonitorNewResponseTargetUnion `json:"target" api:"required"`
+	UpdatedAt time.Time                     `json:"updated_at" api:"required" format:"date-time"`
+	// Current baseline: the last observed value the monitor compares new snapshots
+	// against. Its shape follows `target.type` (page/sitemap/extract). Only populated
+	// on GET /monitors/{monitor_id}; null until the first baseline run completes (and
+	// after a target or change_detection update, which resets the baseline).
+	Baseline     MonitorNewResponseBaselineUnion `json:"baseline" api:"nullable"`
+	LastChangeAt time.Time                       `json:"last_change_at" api:"nullable" format:"date-time"`
 	// Error from the most recent failed run; null when the last run succeeded.
 	LastError MonitorNewResponseLastError `json:"last_error" api:"nullable"`
 	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
@@ -215,6 +220,7 @@ type MonitorNewResponse struct {
 		Status          respjson.Field
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
+		Baseline        respjson.Field
 		LastChangeAt    respjson.Field
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
@@ -576,6 +582,128 @@ func (r *MonitorNewResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// MonitorNewResponseBaselineUnion contains all possible properties and values from
+// [MonitorNewResponseBaselinePageBaseline],
+// [MonitorNewResponseBaselineSitemapBaseline],
+// [MonitorNewResponseBaselineExtractBaseline].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorNewResponseBaselineUnion struct {
+	CapturedAt time.Time `json:"captured_at"`
+	// This field is from variant [MonitorNewResponseBaselinePageBaseline].
+	Text string `json:"text"`
+	// This field is from variant [MonitorNewResponseBaselineSitemapBaseline].
+	URLCount int64 `json:"url_count"`
+	// This field is from variant [MonitorNewResponseBaselineSitemapBaseline].
+	URLs []string `json:"urls"`
+	// This field is from variant [MonitorNewResponseBaselineExtractBaseline].
+	Data any `json:"data"`
+	// This field is from variant [MonitorNewResponseBaselineExtractBaseline].
+	URLsAnalyzed []string `json:"urls_analyzed"`
+	JSON         struct {
+		CapturedAt   respjson.Field
+		Text         respjson.Field
+		URLCount     respjson.Field
+		URLs         respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+func (u MonitorNewResponseBaselineUnion) AsPageBaseline() (v MonitorNewResponseBaselinePageBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorNewResponseBaselineUnion) AsSitemapBaseline() (v MonitorNewResponseBaselineSitemapBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorNewResponseBaselineUnion) AsExtractBaseline() (v MonitorNewResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorNewResponseBaselineUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorNewResponseBaselineUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `page` monitor: the visible page text as last observed.
+type MonitorNewResponseBaselinePageBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The page's visible text as last observed.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseBaselinePageBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseBaselinePageBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `sitemap` monitor: the normalized URL set as last
+// observed.
+type MonitorNewResponseBaselineSitemapBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Number of URLs in the baseline.
+	URLCount int64 `json:"url_count" api:"required"`
+	// The sitemap URLs as last observed (sorted, normalized).
+	URLs []string `json:"urls" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		URLCount    respjson.Field
+		URLs        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseBaselineSitemapBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of an `extract` monitor: the structured data as last extracted.
+type MonitorNewResponseBaselineExtractBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The extracted structured data, matching the monitor's extraction schema (same
+	// shape as the /web/extract endpoint's `data`).
+	Data any `json:"data" api:"required"`
+	// URLs that were analyzed to produce the extracted data.
+	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt   respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Error from the most recent failed run; null when the last run succeeded.
 type MonitorNewResponseLastError struct {
 	Code    string `json:"code" api:"required"`
@@ -645,9 +773,14 @@ type MonitorGetResponse struct {
 	// Any of "active", "paused", "failed".
 	Status MonitorGetResponseStatus `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
-	Target       MonitorGetResponseTargetUnion `json:"target" api:"required"`
-	UpdatedAt    time.Time                     `json:"updated_at" api:"required" format:"date-time"`
-	LastChangeAt time.Time                     `json:"last_change_at" api:"nullable" format:"date-time"`
+	Target    MonitorGetResponseTargetUnion `json:"target" api:"required"`
+	UpdatedAt time.Time                     `json:"updated_at" api:"required" format:"date-time"`
+	// Current baseline: the last observed value the monitor compares new snapshots
+	// against. Its shape follows `target.type` (page/sitemap/extract). Only populated
+	// on GET /monitors/{monitor_id}; null until the first baseline run completes (and
+	// after a target or change_detection update, which resets the baseline).
+	Baseline     MonitorGetResponseBaselineUnion `json:"baseline" api:"nullable"`
+	LastChangeAt time.Time                       `json:"last_change_at" api:"nullable" format:"date-time"`
 	// Error from the most recent failed run; null when the last run succeeded.
 	LastError MonitorGetResponseLastError `json:"last_error" api:"nullable"`
 	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
@@ -667,6 +800,7 @@ type MonitorGetResponse struct {
 		Status          respjson.Field
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
+		Baseline        respjson.Field
 		LastChangeAt    respjson.Field
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
@@ -1028,6 +1162,128 @@ func (r *MonitorGetResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// MonitorGetResponseBaselineUnion contains all possible properties and values from
+// [MonitorGetResponseBaselinePageBaseline],
+// [MonitorGetResponseBaselineSitemapBaseline],
+// [MonitorGetResponseBaselineExtractBaseline].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorGetResponseBaselineUnion struct {
+	CapturedAt time.Time `json:"captured_at"`
+	// This field is from variant [MonitorGetResponseBaselinePageBaseline].
+	Text string `json:"text"`
+	// This field is from variant [MonitorGetResponseBaselineSitemapBaseline].
+	URLCount int64 `json:"url_count"`
+	// This field is from variant [MonitorGetResponseBaselineSitemapBaseline].
+	URLs []string `json:"urls"`
+	// This field is from variant [MonitorGetResponseBaselineExtractBaseline].
+	Data any `json:"data"`
+	// This field is from variant [MonitorGetResponseBaselineExtractBaseline].
+	URLsAnalyzed []string `json:"urls_analyzed"`
+	JSON         struct {
+		CapturedAt   respjson.Field
+		Text         respjson.Field
+		URLCount     respjson.Field
+		URLs         respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+func (u MonitorGetResponseBaselineUnion) AsPageBaseline() (v MonitorGetResponseBaselinePageBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorGetResponseBaselineUnion) AsSitemapBaseline() (v MonitorGetResponseBaselineSitemapBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorGetResponseBaselineUnion) AsExtractBaseline() (v MonitorGetResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorGetResponseBaselineUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorGetResponseBaselineUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `page` monitor: the visible page text as last observed.
+type MonitorGetResponseBaselinePageBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The page's visible text as last observed.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseBaselinePageBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseBaselinePageBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `sitemap` monitor: the normalized URL set as last
+// observed.
+type MonitorGetResponseBaselineSitemapBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Number of URLs in the baseline.
+	URLCount int64 `json:"url_count" api:"required"`
+	// The sitemap URLs as last observed (sorted, normalized).
+	URLs []string `json:"urls" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		URLCount    respjson.Field
+		URLs        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseBaselineSitemapBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of an `extract` monitor: the structured data as last extracted.
+type MonitorGetResponseBaselineExtractBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The extracted structured data, matching the monitor's extraction schema (same
+	// shape as the /web/extract endpoint's `data`).
+	Data any `json:"data" api:"required"`
+	// URLs that were analyzed to produce the extracted data.
+	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt   respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Error from the most recent failed run; null when the last run succeeded.
 type MonitorGetResponseLastError struct {
 	Code    string `json:"code" api:"required"`
@@ -1097,9 +1353,14 @@ type MonitorUpdateResponse struct {
 	// Any of "active", "paused", "failed".
 	Status MonitorUpdateResponseStatus `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
-	Target       MonitorUpdateResponseTargetUnion `json:"target" api:"required"`
-	UpdatedAt    time.Time                        `json:"updated_at" api:"required" format:"date-time"`
-	LastChangeAt time.Time                        `json:"last_change_at" api:"nullable" format:"date-time"`
+	Target    MonitorUpdateResponseTargetUnion `json:"target" api:"required"`
+	UpdatedAt time.Time                        `json:"updated_at" api:"required" format:"date-time"`
+	// Current baseline: the last observed value the monitor compares new snapshots
+	// against. Its shape follows `target.type` (page/sitemap/extract). Only populated
+	// on GET /monitors/{monitor_id}; null until the first baseline run completes (and
+	// after a target or change_detection update, which resets the baseline).
+	Baseline     MonitorUpdateResponseBaselineUnion `json:"baseline" api:"nullable"`
+	LastChangeAt time.Time                          `json:"last_change_at" api:"nullable" format:"date-time"`
 	// Error from the most recent failed run; null when the last run succeeded.
 	LastError MonitorUpdateResponseLastError `json:"last_error" api:"nullable"`
 	LastRunAt time.Time                      `json:"last_run_at" api:"nullable" format:"date-time"`
@@ -1119,6 +1380,7 @@ type MonitorUpdateResponse struct {
 		Status          respjson.Field
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
+		Baseline        respjson.Field
 		LastChangeAt    respjson.Field
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
@@ -1481,6 +1743,128 @@ func (r *MonitorUpdateResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// MonitorUpdateResponseBaselineUnion contains all possible properties and values
+// from [MonitorUpdateResponseBaselinePageBaseline],
+// [MonitorUpdateResponseBaselineSitemapBaseline],
+// [MonitorUpdateResponseBaselineExtractBaseline].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorUpdateResponseBaselineUnion struct {
+	CapturedAt time.Time `json:"captured_at"`
+	// This field is from variant [MonitorUpdateResponseBaselinePageBaseline].
+	Text string `json:"text"`
+	// This field is from variant [MonitorUpdateResponseBaselineSitemapBaseline].
+	URLCount int64 `json:"url_count"`
+	// This field is from variant [MonitorUpdateResponseBaselineSitemapBaseline].
+	URLs []string `json:"urls"`
+	// This field is from variant [MonitorUpdateResponseBaselineExtractBaseline].
+	Data any `json:"data"`
+	// This field is from variant [MonitorUpdateResponseBaselineExtractBaseline].
+	URLsAnalyzed []string `json:"urls_analyzed"`
+	JSON         struct {
+		CapturedAt   respjson.Field
+		Text         respjson.Field
+		URLCount     respjson.Field
+		URLs         respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+func (u MonitorUpdateResponseBaselineUnion) AsPageBaseline() (v MonitorUpdateResponseBaselinePageBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorUpdateResponseBaselineUnion) AsSitemapBaseline() (v MonitorUpdateResponseBaselineSitemapBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorUpdateResponseBaselineUnion) AsExtractBaseline() (v MonitorUpdateResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorUpdateResponseBaselineUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorUpdateResponseBaselineUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `page` monitor: the visible page text as last observed.
+type MonitorUpdateResponseBaselinePageBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The page's visible text as last observed.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseBaselinePageBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseBaselinePageBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `sitemap` monitor: the normalized URL set as last
+// observed.
+type MonitorUpdateResponseBaselineSitemapBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Number of URLs in the baseline.
+	URLCount int64 `json:"url_count" api:"required"`
+	// The sitemap URLs as last observed (sorted, normalized).
+	URLs []string `json:"urls" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		URLCount    respjson.Field
+		URLs        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseBaselineSitemapBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of an `extract` monitor: the structured data as last extracted.
+type MonitorUpdateResponseBaselineExtractBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The extracted structured data, matching the monitor's extraction schema (same
+	// shape as the /web/extract endpoint's `data`).
+	Data any `json:"data" api:"required"`
+	// URLs that were analyzed to produce the extracted data.
+	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt   respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Error from the most recent failed run; null when the last run succeeded.
 type MonitorUpdateResponseLastError struct {
 	Code    string `json:"code" api:"required"`
@@ -1570,9 +1954,14 @@ type MonitorListResponseData struct {
 	// Any of "active", "paused", "failed".
 	Status string `json:"status" api:"required"`
 	// Discriminated union describing what the monitor watches.
-	Target       MonitorListResponseDataTargetUnion `json:"target" api:"required"`
-	UpdatedAt    time.Time                          `json:"updated_at" api:"required" format:"date-time"`
-	LastChangeAt time.Time                          `json:"last_change_at" api:"nullable" format:"date-time"`
+	Target    MonitorListResponseDataTargetUnion `json:"target" api:"required"`
+	UpdatedAt time.Time                          `json:"updated_at" api:"required" format:"date-time"`
+	// Current baseline: the last observed value the monitor compares new snapshots
+	// against. Its shape follows `target.type` (page/sitemap/extract). Only populated
+	// on GET /monitors/{monitor_id}; null until the first baseline run completes (and
+	// after a target or change_detection update, which resets the baseline).
+	Baseline     MonitorListResponseDataBaselineUnion `json:"baseline" api:"nullable"`
+	LastChangeAt time.Time                            `json:"last_change_at" api:"nullable" format:"date-time"`
 	// Error from the most recent failed run; null when the last run succeeded.
 	LastError MonitorListResponseDataLastError `json:"last_error" api:"nullable"`
 	LastRunAt time.Time                        `json:"last_run_at" api:"nullable" format:"date-time"`
@@ -1592,6 +1981,7 @@ type MonitorListResponseData struct {
 		Status          respjson.Field
 		Target          respjson.Field
 		UpdatedAt       respjson.Field
+		Baseline        respjson.Field
 		LastChangeAt    respjson.Field
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
@@ -1932,6 +2322,128 @@ type MonitorListResponseDataTargetExtract struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListResponseDataTargetExtract) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListResponseDataTargetExtract) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorListResponseDataBaselineUnion contains all possible properties and values
+// from [MonitorListResponseDataBaselinePageBaseline],
+// [MonitorListResponseDataBaselineSitemapBaseline],
+// [MonitorListResponseDataBaselineExtractBaseline].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorListResponseDataBaselineUnion struct {
+	CapturedAt time.Time `json:"captured_at"`
+	// This field is from variant [MonitorListResponseDataBaselinePageBaseline].
+	Text string `json:"text"`
+	// This field is from variant [MonitorListResponseDataBaselineSitemapBaseline].
+	URLCount int64 `json:"url_count"`
+	// This field is from variant [MonitorListResponseDataBaselineSitemapBaseline].
+	URLs []string `json:"urls"`
+	// This field is from variant [MonitorListResponseDataBaselineExtractBaseline].
+	Data any `json:"data"`
+	// This field is from variant [MonitorListResponseDataBaselineExtractBaseline].
+	URLsAnalyzed []string `json:"urls_analyzed"`
+	JSON         struct {
+		CapturedAt   respjson.Field
+		Text         respjson.Field
+		URLCount     respjson.Field
+		URLs         respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+func (u MonitorListResponseDataBaselineUnion) AsPageBaseline() (v MonitorListResponseDataBaselinePageBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorListResponseDataBaselineUnion) AsSitemapBaseline() (v MonitorListResponseDataBaselineSitemapBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorListResponseDataBaselineUnion) AsExtractBaseline() (v MonitorListResponseDataBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorListResponseDataBaselineUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorListResponseDataBaselineUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `page` monitor: the visible page text as last observed.
+type MonitorListResponseDataBaselinePageBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The page's visible text as last observed.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataBaselinePageBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataBaselinePageBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `sitemap` monitor: the normalized URL set as last
+// observed.
+type MonitorListResponseDataBaselineSitemapBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Number of URLs in the baseline.
+	URLCount int64 `json:"url_count" api:"required"`
+	// The sitemap URLs as last observed (sorted, normalized).
+	URLs []string `json:"urls" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		URLCount    respjson.Field
+		URLs        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataBaselineSitemapBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataBaselineSitemapBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of an `extract` monitor: the structured data as last extracted.
+type MonitorListResponseDataBaselineExtractBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The extracted structured data, matching the monitor's extraction schema (same
+	// shape as the /web/extract endpoint's `data`).
+	Data any `json:"data" api:"required"`
+	// URLs that were analyzed to produce the extracted data.
+	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt   respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

@@ -38,7 +38,9 @@ func NewBrandService(opts ...option.RequestOption) (r BrandService) {
 
 // Retrieve logos, backdrops, colors, industry, description, and more. Provide
 // exactly one lookup identifier in the request body: a domain, company name, email
-// address, stock ticker, or transaction descriptor.
+// address, stock ticker, transaction descriptor, or direct URL. Note:
+// `by_direct_url` fetches brand data only from the provided URL — not from the
+// entire internet.
 func (r *BrandService) Get(ctx context.Context, body BrandGetParams, opts ...option.RequestOption) (res *BrandGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "brand/retrieve"
@@ -883,6 +885,13 @@ type BrandGetParams struct {
 	// email.
 	OfByTicker *BrandGetParamsBodyByTicker `json:",inline"`
 	// This field is a request body variant, only one variant field can be set.
+	// Retrieve brand data by fetching the provided URL directly. Note: if you use
+	// this, brand data is fetched only from the provided URL — not from the entire
+	// internet — so results are limited to what that single page contains. No domain
+	// resolution, database lookup, or cross-source enrichment is performed. Cannot be
+	// combined with domain, name, email, or ticker.
+	OfByDirectURL *BrandGetParamsBodyByDirectURL `json:",inline"`
+	// This field is a request body variant, only one variant field can be set.
 	// Identify brand data from a transaction descriptor. Cannot be combined with
 	// domain, name, email, or ticker.
 	OfByTransaction *BrandGetParamsBodyByTransaction `json:",inline"`
@@ -895,6 +904,7 @@ func (u BrandGetParams) MarshalJSON() ([]byte, error) {
 		u.OfByName,
 		u.OfByEmail,
 		u.OfByTicker,
+		u.OfByDirectURL,
 		u.OfByTransaction)
 }
 func (r *BrandGetParams) UnmarshalJSON(data []byte) error {
@@ -1144,6 +1154,37 @@ func init() {
 	apijson.RegisterFieldValidator[BrandGetParamsBodyByTicker](
 		"force_language", "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese", "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian", "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian", "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi", "fijian", "finnish", "french", "galician", "georgian", "german", "greek", "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi", "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian", "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean", "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian", "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese", "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo", "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian", "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi", "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili", "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan", "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu", "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba", "zulu",
 	)
+}
+
+// Retrieve brand data by fetching the provided URL directly. Note: if you use
+// this, brand data is fetched only from the provided URL — not from the entire
+// internet — so results are limited to what that single page contains. No domain
+// resolution, database lookup, or cross-source enrichment is performed. Cannot be
+// combined with domain, name, email, or ticker.
+//
+// The properties DirectURL, Type are required.
+type BrandGetParamsBodyByDirectURL struct {
+	// Full http(s) URL to fetch brand data from (e.g.,
+	// 'https://stripe.com/enterprise'). Only this URL is fetched — not the entire
+	// internet.
+	DirectURL string `json:"direct_url" api:"required" format:"uri"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Discriminator for direct-URL-based brand retrieval.
+	//
+	// This field can be elided, and will marshal its zero value as "by_direct_url".
+	Type constant.ByDirectURL `json:"type" default:"by_direct_url"`
+	paramObj
+}
+
+func (r BrandGetParamsBodyByDirectURL) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByDirectURL
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrandGetParamsBodyByDirectURL) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 // Identify brand data from a transaction descriptor. Cannot be combined with

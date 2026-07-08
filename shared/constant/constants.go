@@ -18,6 +18,7 @@ func ValueOf[T Constant[T]]() T {
 	return t.Default()
 }
 
+type ByDirectURL string   // Always "by_direct_url"
 type ByDomain string      // Always "by_domain"
 type ByEmail string       // Always "by_email"
 type ByName string        // Always "by_name"
@@ -29,6 +30,7 @@ type Page string          // Always "page"
 type Semantic string      // Always "semantic"
 type Sitemap string       // Always "sitemap"
 
+func (c ByDirectURL) Default() ByDirectURL     { return "by_direct_url" }
 func (c ByDomain) Default() ByDomain           { return "by_domain" }
 func (c ByEmail) Default() ByEmail             { return "by_email" }
 func (c ByName) Default() ByName               { return "by_name" }
@@ -40,6 +42,7 @@ func (c Page) Default() Page                   { return "page" }
 func (c Semantic) Default() Semantic           { return "semantic" }
 func (c Sitemap) Default() Sitemap             { return "sitemap" }
 
+func (c ByDirectURL) MarshalJSON() ([]byte, error)   { return marshalString(c) }
 func (c ByDomain) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c ByEmail) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c ByName) MarshalJSON() ([]byte, error)        { return marshalString(c) }

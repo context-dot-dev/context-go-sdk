@@ -514,8 +514,9 @@ func (r *MonitorNewResponseTargetPage) UnmarshalJSON(data []byte) error {
 
 // Watch a sitemap for URL additions and removals. Crawled URLs are normalized
 // (lowercased host, no trailing slash/fragment) and scoped to the monitored site
-// and its subdomains before comparison. A new URL set must be observed on two
-// consecutive runs before a change is reported, suppressing one-run crawl flaps.
+// and its subdomains before comparison. On a detected difference the sitemap is
+// re-fetched within the same run and only URLs both observations agree on are
+// reported, suppressing transient crawl flaps.
 type MonitorNewResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -544,11 +545,14 @@ func (r *MonitorNewResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a site's extracted structured data.
+// Watch the monitor-relevant pages of a site for meaningful changes. A crawl
+// guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
+// track; each run re-checks exactly those pages, and confirmed content changes are
+// judged against the monitor's instructions. The tracked page set is refreshed by
+// a periodic re-discovery crawl.
 type MonitorNewResponseTargetExtract struct {
-	// Natural-language instructions describing what to extract and watch. This single
-	// prompt scopes both the extraction and what changes get reported: only data
-	// captured by the schema and these instructions is compared between runs.
+	// Natural-language instructions guiding which pages and facts to track and which
+	// changes to report.
 	Instructions string           `json:"instructions" api:"required"`
 	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
@@ -556,9 +560,10 @@ type MonitorNewResponseTargetExtract struct {
 	FollowSubdomains bool   `json:"follow_subdomains"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
-	// Maximum number of pages to analyze during extraction.
+	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the structured data to extract and watch for changes. If
+	// JSON Schema describing the data you care about. It guides which pages are
+	// selected for tracking and gives the change judge context on what matters. If
 	// omitted, a default summary + key-points schema is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -678,14 +683,17 @@ func (r *MonitorNewResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the structured data as last extracted.
+// Current baseline of an `extract` monitor: the pages it tracks and the structured
+// data as last extracted.
 type MonitorNewResponseBaselineExtractBaseline struct {
 	// When this baseline was last captured or replaced.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// The extracted structured data, matching the monitor's extraction schema (same
-	// shape as the /web/extract endpoint's `data`).
+	// shape as the /web/extract endpoint's `data`). Refreshed when the monitor
+	// re-discovers its page set (at most about once a day); `null` when no extraction
+	// has been captured yet.
 	Data any `json:"data" api:"required"`
-	// URLs that were analyzed to produce the extracted data.
+	// The page URLs the monitor tracks and analyzes for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1093,8 +1101,9 @@ func (r *MonitorGetResponseTargetPage) UnmarshalJSON(data []byte) error {
 
 // Watch a sitemap for URL additions and removals. Crawled URLs are normalized
 // (lowercased host, no trailing slash/fragment) and scoped to the monitored site
-// and its subdomains before comparison. A new URL set must be observed on two
-// consecutive runs before a change is reported, suppressing one-run crawl flaps.
+// and its subdomains before comparison. On a detected difference the sitemap is
+// re-fetched within the same run and only URLs both observations agree on are
+// reported, suppressing transient crawl flaps.
 type MonitorGetResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -1123,11 +1132,14 @@ func (r *MonitorGetResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a site's extracted structured data.
+// Watch the monitor-relevant pages of a site for meaningful changes. A crawl
+// guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
+// track; each run re-checks exactly those pages, and confirmed content changes are
+// judged against the monitor's instructions. The tracked page set is refreshed by
+// a periodic re-discovery crawl.
 type MonitorGetResponseTargetExtract struct {
-	// Natural-language instructions describing what to extract and watch. This single
-	// prompt scopes both the extraction and what changes get reported: only data
-	// captured by the schema and these instructions is compared between runs.
+	// Natural-language instructions guiding which pages and facts to track and which
+	// changes to report.
 	Instructions string           `json:"instructions" api:"required"`
 	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
@@ -1135,9 +1147,10 @@ type MonitorGetResponseTargetExtract struct {
 	FollowSubdomains bool   `json:"follow_subdomains"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
-	// Maximum number of pages to analyze during extraction.
+	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the structured data to extract and watch for changes. If
+	// JSON Schema describing the data you care about. It guides which pages are
+	// selected for tracking and gives the change judge context on what matters. If
 	// omitted, a default summary + key-points schema is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -1257,14 +1270,17 @@ func (r *MonitorGetResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the structured data as last extracted.
+// Current baseline of an `extract` monitor: the pages it tracks and the structured
+// data as last extracted.
 type MonitorGetResponseBaselineExtractBaseline struct {
 	// When this baseline was last captured or replaced.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// The extracted structured data, matching the monitor's extraction schema (same
-	// shape as the /web/extract endpoint's `data`).
+	// shape as the /web/extract endpoint's `data`). Refreshed when the monitor
+	// re-discovers its page set (at most about once a day); `null` when no extraction
+	// has been captured yet.
 	Data any `json:"data" api:"required"`
-	// URLs that were analyzed to produce the extracted data.
+	// The page URLs the monitor tracks and analyzes for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1673,8 +1689,9 @@ func (r *MonitorUpdateResponseTargetPage) UnmarshalJSON(data []byte) error {
 
 // Watch a sitemap for URL additions and removals. Crawled URLs are normalized
 // (lowercased host, no trailing slash/fragment) and scoped to the monitored site
-// and its subdomains before comparison. A new URL set must be observed on two
-// consecutive runs before a change is reported, suppressing one-run crawl flaps.
+// and its subdomains before comparison. On a detected difference the sitemap is
+// re-fetched within the same run and only URLs both observations agree on are
+// reported, suppressing transient crawl flaps.
 type MonitorUpdateResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -1703,11 +1720,14 @@ func (r *MonitorUpdateResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a site's extracted structured data.
+// Watch the monitor-relevant pages of a site for meaningful changes. A crawl
+// guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
+// track; each run re-checks exactly those pages, and confirmed content changes are
+// judged against the monitor's instructions. The tracked page set is refreshed by
+// a periodic re-discovery crawl.
 type MonitorUpdateResponseTargetExtract struct {
-	// Natural-language instructions describing what to extract and watch. This single
-	// prompt scopes both the extraction and what changes get reported: only data
-	// captured by the schema and these instructions is compared between runs.
+	// Natural-language instructions guiding which pages and facts to track and which
+	// changes to report.
 	Instructions string           `json:"instructions" api:"required"`
 	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
@@ -1715,9 +1735,10 @@ type MonitorUpdateResponseTargetExtract struct {
 	FollowSubdomains bool   `json:"follow_subdomains"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
-	// Maximum number of pages to analyze during extraction.
+	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the structured data to extract and watch for changes. If
+	// JSON Schema describing the data you care about. It guides which pages are
+	// selected for tracking and gives the change judge context on what matters. If
 	// omitted, a default summary + key-points schema is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -1837,14 +1858,17 @@ func (r *MonitorUpdateResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the structured data as last extracted.
+// Current baseline of an `extract` monitor: the pages it tracks and the structured
+// data as last extracted.
 type MonitorUpdateResponseBaselineExtractBaseline struct {
 	// When this baseline was last captured or replaced.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// The extracted structured data, matching the monitor's extraction schema (same
-	// shape as the /web/extract endpoint's `data`).
+	// shape as the /web/extract endpoint's `data`). Refreshed when the monitor
+	// re-discovers its page set (at most about once a day); `null` when no extraction
+	// has been captured yet.
 	Data any `json:"data" api:"required"`
-	// URLs that were analyzed to produce the extracted data.
+	// The page URLs the monitor tracks and analyzes for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2254,8 +2278,9 @@ func (r *MonitorListResponseDataTargetPage) UnmarshalJSON(data []byte) error {
 
 // Watch a sitemap for URL additions and removals. Crawled URLs are normalized
 // (lowercased host, no trailing slash/fragment) and scoped to the monitored site
-// and its subdomains before comparison. A new URL set must be observed on two
-// consecutive runs before a change is reported, suppressing one-run crawl flaps.
+// and its subdomains before comparison. On a detected difference the sitemap is
+// re-fetched within the same run and only URLs both observations agree on are
+// reported, suppressing transient crawl flaps.
 type MonitorListResponseDataTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
@@ -2284,11 +2309,14 @@ func (r *MonitorListResponseDataTargetSitemap) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a site's extracted structured data.
+// Watch the monitor-relevant pages of a site for meaningful changes. A crawl
+// guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
+// track; each run re-checks exactly those pages, and confirmed content changes are
+// judged against the monitor's instructions. The tracked page set is refreshed by
+// a periodic re-discovery crawl.
 type MonitorListResponseDataTargetExtract struct {
-	// Natural-language instructions describing what to extract and watch. This single
-	// prompt scopes both the extraction and what changes get reported: only data
-	// captured by the schema and these instructions is compared between runs.
+	// Natural-language instructions guiding which pages and facts to track and which
+	// changes to report.
 	Instructions string           `json:"instructions" api:"required"`
 	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
@@ -2296,9 +2324,10 @@ type MonitorListResponseDataTargetExtract struct {
 	FollowSubdomains bool   `json:"follow_subdomains"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
-	// Maximum number of pages to analyze during extraction.
+	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the structured data to extract and watch for changes. If
+	// JSON Schema describing the data you care about. It guides which pages are
+	// selected for tracking and gives the change judge context on what matters. If
 	// omitted, a default summary + key-points schema is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -2418,14 +2447,17 @@ func (r *MonitorListResponseDataBaselineSitemapBaseline) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the structured data as last extracted.
+// Current baseline of an `extract` monitor: the pages it tracks and the structured
+// data as last extracted.
 type MonitorListResponseDataBaselineExtractBaseline struct {
 	// When this baseline was last captured or replaced.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// The extracted structured data, matching the monitor's extraction schema (same
-	// shape as the /web/extract endpoint's `data`).
+	// shape as the /web/extract endpoint's `data`). Refreshed when the monitor
+	// re-discovers its page set (at most about once a day); `null` when no extraction
+	// has been captured yet.
 	Data any `json:"data" api:"required"`
-	// URLs that were analyzed to produce the extracted data.
+	// The page URLs the monitor tracks and analyzes for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3181,8 +3213,9 @@ func (r *MonitorNewParamsTargetPage) UnmarshalJSON(data []byte) error {
 
 // Watch a sitemap for URL additions and removals. Crawled URLs are normalized
 // (lowercased host, no trailing slash/fragment) and scoped to the monitored site
-// and its subdomains before comparison. A new URL set must be observed on two
-// consecutive runs before a change is reported, suppressing one-run crawl flaps.
+// and its subdomains before comparison. On a detected difference the sitemap is
+// re-fetched within the same run and only URLs both observations agree on are
+// reported, suppressing transient crawl flaps.
 //
 // The properties Type, URL are required.
 type MonitorNewParamsTargetSitemap struct {
@@ -3207,22 +3240,26 @@ func (r *MonitorNewParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a site's extracted structured data.
+// Watch the monitor-relevant pages of a site for meaningful changes. A crawl
+// guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
+// track; each run re-checks exactly those pages, and confirmed content changes are
+// judged against the monitor's instructions. The tracked page set is refreshed by
+// a periodic re-discovery crawl.
 //
 // The properties Instructions, Type, URL are required.
 type MonitorNewParamsTargetExtract struct {
-	// Natural-language instructions describing what to extract and watch. This single
-	// prompt scopes both the extraction and what changes get reported: only data
-	// captured by the schema and these instructions is compared between runs.
+	// Natural-language instructions guiding which pages and facts to track and which
+	// changes to report.
 	Instructions string `json:"instructions" api:"required"`
 	// Root URL to extract structured data from.
 	URL              string          `json:"url" api:"required" format:"uri"`
 	FollowSubdomains param.Opt[bool] `json:"follow_subdomains,omitzero"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
-	// Maximum number of pages to analyze during extraction.
+	// Maximum number of pages to track.
 	MaxPages param.Opt[int64] `json:"max_pages,omitzero"`
-	// JSON Schema describing the structured data to extract and watch for changes. If
+	// JSON Schema describing the data you care about. It guides which pages are
+	// selected for tracking and gives the change judge context on what matters. If
 	// omitted, a default summary + key-points schema is used.
 	Schema map[string]any `json:"schema,omitzero"`
 	// This field can be elided, and will marshal its zero value as "extract".
@@ -3445,8 +3482,9 @@ func (r *MonitorUpdateParamsTargetPage) UnmarshalJSON(data []byte) error {
 
 // Watch a sitemap for URL additions and removals. Crawled URLs are normalized
 // (lowercased host, no trailing slash/fragment) and scoped to the monitored site
-// and its subdomains before comparison. A new URL set must be observed on two
-// consecutive runs before a change is reported, suppressing one-run crawl flaps.
+// and its subdomains before comparison. On a detected difference the sitemap is
+// re-fetched within the same run and only URLs both observations agree on are
+// reported, suppressing transient crawl flaps.
 //
 // The properties Type, URL are required.
 type MonitorUpdateParamsTargetSitemap struct {
@@ -3471,22 +3509,26 @@ func (r *MonitorUpdateParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a site's extracted structured data.
+// Watch the monitor-relevant pages of a site for meaningful changes. A crawl
+// guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
+// track; each run re-checks exactly those pages, and confirmed content changes are
+// judged against the monitor's instructions. The tracked page set is refreshed by
+// a periodic re-discovery crawl.
 //
 // The properties Instructions, Type, URL are required.
 type MonitorUpdateParamsTargetExtract struct {
-	// Natural-language instructions describing what to extract and watch. This single
-	// prompt scopes both the extraction and what changes get reported: only data
-	// captured by the schema and these instructions is compared between runs.
+	// Natural-language instructions guiding which pages and facts to track and which
+	// changes to report.
 	Instructions string `json:"instructions" api:"required"`
 	// Root URL to extract structured data from.
 	URL              string          `json:"url" api:"required" format:"uri"`
 	FollowSubdomains param.Opt[bool] `json:"follow_subdomains,omitzero"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
-	// Maximum number of pages to analyze during extraction.
+	// Maximum number of pages to track.
 	MaxPages param.Opt[int64] `json:"max_pages,omitzero"`
-	// JSON Schema describing the structured data to extract and watch for changes. If
+	// JSON Schema describing the data you care about. It guides which pages are
+	// selected for tracking and gives the change judge context on what matters. If
 	// omitted, a default summary + key-points schema is used.
 	Schema map[string]any `json:"schema,omitzero"`
 	// This field can be elided, and will marshal its zero value as "extract".

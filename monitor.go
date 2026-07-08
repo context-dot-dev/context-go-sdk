@@ -250,12 +250,9 @@ type MonitorNewResponseChangeDetectionUnion struct {
 	// Any of "exact", "semantic".
 	Type string `json:"type"`
 	// This field is from variant [MonitorNewResponseChangeDetectionSemantic].
-	Query string `json:"query"`
-	// This field is from variant [MonitorNewResponseChangeDetectionSemantic].
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	JSON                struct {
 		Type                respjson.Field
-		Query               respjson.Field
 		ConfidenceThreshold respjson.Field
 		raw                 string
 	} `json:"-"`
@@ -324,14 +321,14 @@ func (r *MonitorNewResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes that match a natural language query.
+// Detect meaning-level changes to the extracted data, ignoring cosmetic or
+// paraphrase-only differences. What is watched is determined by the extract
+// target's `schema` and `instructions`.
 type MonitorNewResponseChangeDetectionSemantic struct {
-	Query               string            `json:"query" api:"required"`
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Query               respjson.Field
 		Type                respjson.Field
 		ConfidenceThreshold respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -414,9 +411,9 @@ type MonitorNewResponseTargetUnion struct {
 	// This field is from variant [MonitorNewResponseTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
 	// This field is from variant [MonitorNewResponseTargetExtract].
-	FollowSubdomains bool `json:"follow_subdomains"`
-	// This field is from variant [MonitorNewResponseTargetExtract].
 	Instructions string `json:"instructions"`
+	// This field is from variant [MonitorNewResponseTargetExtract].
+	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorNewResponseTargetExtract].
 	MaxDepth int64 `json:"max_depth"`
 	// This field is from variant [MonitorNewResponseTargetExtract].
@@ -430,8 +427,8 @@ type MonitorNewResponseTargetUnion struct {
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		FollowSubdomains    respjson.Field
 		Instructions        respjson.Field
+		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
@@ -549,12 +546,14 @@ func (r *MonitorNewResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 
 // Watch a site's extracted structured data.
 type MonitorNewResponseTargetExtract struct {
-	Type constant.Extract `json:"type" default:"extract"`
+	// Natural-language instructions describing what to extract and watch. This single
+	// prompt scopes both the extraction and what changes get reported: only data
+	// captured by the schema and these instructions is compared between runs.
+	Instructions string           `json:"instructions" api:"required"`
+	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
 	URL              string `json:"url" api:"required" format:"uri"`
 	FollowSubdomains bool   `json:"follow_subdomains"`
-	// Optional natural-language instructions guiding what to extract.
-	Instructions string `json:"instructions"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to analyze during extraction.
@@ -564,10 +563,10 @@ type MonitorNewResponseTargetExtract struct {
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		Instructions     respjson.Field
 		Type             respjson.Field
 		URL              respjson.Field
 		FollowSubdomains respjson.Field
-		Instructions     respjson.Field
 		MaxDepth         respjson.Field
 		MaxPages         respjson.Field
 		Schema           respjson.Field
@@ -830,12 +829,9 @@ type MonitorGetResponseChangeDetectionUnion struct {
 	// Any of "exact", "semantic".
 	Type string `json:"type"`
 	// This field is from variant [MonitorGetResponseChangeDetectionSemantic].
-	Query string `json:"query"`
-	// This field is from variant [MonitorGetResponseChangeDetectionSemantic].
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	JSON                struct {
 		Type                respjson.Field
-		Query               respjson.Field
 		ConfidenceThreshold respjson.Field
 		raw                 string
 	} `json:"-"`
@@ -904,14 +900,14 @@ func (r *MonitorGetResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes that match a natural language query.
+// Detect meaning-level changes to the extracted data, ignoring cosmetic or
+// paraphrase-only differences. What is watched is determined by the extract
+// target's `schema` and `instructions`.
 type MonitorGetResponseChangeDetectionSemantic struct {
-	Query               string            `json:"query" api:"required"`
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Query               respjson.Field
 		Type                respjson.Field
 		ConfidenceThreshold respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -994,9 +990,9 @@ type MonitorGetResponseTargetUnion struct {
 	// This field is from variant [MonitorGetResponseTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
 	// This field is from variant [MonitorGetResponseTargetExtract].
-	FollowSubdomains bool `json:"follow_subdomains"`
-	// This field is from variant [MonitorGetResponseTargetExtract].
 	Instructions string `json:"instructions"`
+	// This field is from variant [MonitorGetResponseTargetExtract].
+	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorGetResponseTargetExtract].
 	MaxDepth int64 `json:"max_depth"`
 	// This field is from variant [MonitorGetResponseTargetExtract].
@@ -1010,8 +1006,8 @@ type MonitorGetResponseTargetUnion struct {
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		FollowSubdomains    respjson.Field
 		Instructions        respjson.Field
+		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
@@ -1129,12 +1125,14 @@ func (r *MonitorGetResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 
 // Watch a site's extracted structured data.
 type MonitorGetResponseTargetExtract struct {
-	Type constant.Extract `json:"type" default:"extract"`
+	// Natural-language instructions describing what to extract and watch. This single
+	// prompt scopes both the extraction and what changes get reported: only data
+	// captured by the schema and these instructions is compared between runs.
+	Instructions string           `json:"instructions" api:"required"`
+	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
 	URL              string `json:"url" api:"required" format:"uri"`
 	FollowSubdomains bool   `json:"follow_subdomains"`
-	// Optional natural-language instructions guiding what to extract.
-	Instructions string `json:"instructions"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to analyze during extraction.
@@ -1144,10 +1142,10 @@ type MonitorGetResponseTargetExtract struct {
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		Instructions     respjson.Field
 		Type             respjson.Field
 		URL              respjson.Field
 		FollowSubdomains respjson.Field
-		Instructions     respjson.Field
 		MaxDepth         respjson.Field
 		MaxPages         respjson.Field
 		Schema           respjson.Field
@@ -1410,12 +1408,9 @@ type MonitorUpdateResponseChangeDetectionUnion struct {
 	// Any of "exact", "semantic".
 	Type string `json:"type"`
 	// This field is from variant [MonitorUpdateResponseChangeDetectionSemantic].
-	Query string `json:"query"`
-	// This field is from variant [MonitorUpdateResponseChangeDetectionSemantic].
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	JSON                struct {
 		Type                respjson.Field
-		Query               respjson.Field
 		ConfidenceThreshold respjson.Field
 		raw                 string
 	} `json:"-"`
@@ -1484,14 +1479,14 @@ func (r *MonitorUpdateResponseChangeDetectionExact) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes that match a natural language query.
+// Detect meaning-level changes to the extracted data, ignoring cosmetic or
+// paraphrase-only differences. What is watched is determined by the extract
+// target's `schema` and `instructions`.
 type MonitorUpdateResponseChangeDetectionSemantic struct {
-	Query               string            `json:"query" api:"required"`
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Query               respjson.Field
 		Type                respjson.Field
 		ConfidenceThreshold respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -1575,9 +1570,9 @@ type MonitorUpdateResponseTargetUnion struct {
 	// This field is from variant [MonitorUpdateResponseTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
 	// This field is from variant [MonitorUpdateResponseTargetExtract].
-	FollowSubdomains bool `json:"follow_subdomains"`
-	// This field is from variant [MonitorUpdateResponseTargetExtract].
 	Instructions string `json:"instructions"`
+	// This field is from variant [MonitorUpdateResponseTargetExtract].
+	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorUpdateResponseTargetExtract].
 	MaxDepth int64 `json:"max_depth"`
 	// This field is from variant [MonitorUpdateResponseTargetExtract].
@@ -1591,8 +1586,8 @@ type MonitorUpdateResponseTargetUnion struct {
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		FollowSubdomains    respjson.Field
 		Instructions        respjson.Field
+		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
@@ -1710,12 +1705,14 @@ func (r *MonitorUpdateResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 
 // Watch a site's extracted structured data.
 type MonitorUpdateResponseTargetExtract struct {
-	Type constant.Extract `json:"type" default:"extract"`
+	// Natural-language instructions describing what to extract and watch. This single
+	// prompt scopes both the extraction and what changes get reported: only data
+	// captured by the schema and these instructions is compared between runs.
+	Instructions string           `json:"instructions" api:"required"`
+	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
 	URL              string `json:"url" api:"required" format:"uri"`
 	FollowSubdomains bool   `json:"follow_subdomains"`
-	// Optional natural-language instructions guiding what to extract.
-	Instructions string `json:"instructions"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to analyze during extraction.
@@ -1725,10 +1722,10 @@ type MonitorUpdateResponseTargetExtract struct {
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		Instructions     respjson.Field
 		Type             respjson.Field
 		URL              respjson.Field
 		FollowSubdomains respjson.Field
-		Instructions     respjson.Field
 		MaxDepth         respjson.Field
 		MaxPages         respjson.Field
 		Schema           respjson.Field
@@ -2011,12 +2008,9 @@ type MonitorListResponseDataChangeDetectionUnion struct {
 	// Any of "exact", "semantic".
 	Type string `json:"type"`
 	// This field is from variant [MonitorListResponseDataChangeDetectionSemantic].
-	Query string `json:"query"`
-	// This field is from variant [MonitorListResponseDataChangeDetectionSemantic].
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	JSON                struct {
 		Type                respjson.Field
-		Query               respjson.Field
 		ConfidenceThreshold respjson.Field
 		raw                 string
 	} `json:"-"`
@@ -2087,14 +2081,14 @@ func (r *MonitorListResponseDataChangeDetectionExact) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes that match a natural language query.
+// Detect meaning-level changes to the extracted data, ignoring cosmetic or
+// paraphrase-only differences. What is watched is determined by the extract
+// target's `schema` and `instructions`.
 type MonitorListResponseDataChangeDetectionSemantic struct {
-	Query               string            `json:"query" api:"required"`
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Query               respjson.Field
 		Type                respjson.Field
 		ConfidenceThreshold respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -2157,9 +2151,9 @@ type MonitorListResponseDataTargetUnion struct {
 	// This field is from variant [MonitorListResponseDataTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
 	// This field is from variant [MonitorListResponseDataTargetExtract].
-	FollowSubdomains bool `json:"follow_subdomains"`
-	// This field is from variant [MonitorListResponseDataTargetExtract].
 	Instructions string `json:"instructions"`
+	// This field is from variant [MonitorListResponseDataTargetExtract].
+	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorListResponseDataTargetExtract].
 	MaxDepth int64 `json:"max_depth"`
 	// This field is from variant [MonitorListResponseDataTargetExtract].
@@ -2173,8 +2167,8 @@ type MonitorListResponseDataTargetUnion struct {
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		FollowSubdomains    respjson.Field
 		Instructions        respjson.Field
+		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
@@ -2292,12 +2286,14 @@ func (r *MonitorListResponseDataTargetSitemap) UnmarshalJSON(data []byte) error 
 
 // Watch a site's extracted structured data.
 type MonitorListResponseDataTargetExtract struct {
-	Type constant.Extract `json:"type" default:"extract"`
+	// Natural-language instructions describing what to extract and watch. This single
+	// prompt scopes both the extraction and what changes get reported: only data
+	// captured by the schema and these instructions is compared between runs.
+	Instructions string           `json:"instructions" api:"required"`
+	Type         constant.Extract `json:"type" default:"extract"`
 	// Root URL to extract structured data from.
 	URL              string `json:"url" api:"required" format:"uri"`
 	FollowSubdomains bool   `json:"follow_subdomains"`
-	// Optional natural-language instructions guiding what to extract.
-	Instructions string `json:"instructions"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to analyze during extraction.
@@ -2307,10 +2303,10 @@ type MonitorListResponseDataTargetExtract struct {
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		Instructions     respjson.Field
 		Type             respjson.Field
 		URL              respjson.Field
 		FollowSubdomains respjson.Field
-		Instructions     respjson.Field
 		MaxDepth         respjson.Field
 		MaxPages         respjson.Field
 		Schema           respjson.Field
@@ -2889,7 +2885,6 @@ type MonitorGetChangeResponse struct {
 	MatchedURLCount int64                              `json:"matched_url_count"`
 	// At most 500 URLs are included; the corresponding count field is always exact.
 	MatchedURLs     []string `json:"matched_urls" format:"uri"`
-	Query           string   `json:"query"`
 	RemovedURLCount int64    `json:"removed_url_count"`
 	// At most 500 URLs are included; the corresponding count field is always exact.
 	RemovedURLs []string `json:"removed_urls" format:"uri"`
@@ -2917,7 +2912,6 @@ type MonitorGetChangeResponse struct {
 		Importance          respjson.Field
 		MatchedURLCount     respjson.Field
 		MatchedURLs         respjson.Field
-		Query               respjson.Field
 		RemovedURLCount     respjson.Field
 		RemovedURLs         respjson.Field
 		Tags                respjson.Field
@@ -3085,11 +3079,12 @@ func (r *MonitorNewParamsChangeDetectionExact) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes that match a natural language query.
+// Detect meaning-level changes to the extracted data, ignoring cosmetic or
+// paraphrase-only differences. What is watched is determined by the extract
+// target's `schema` and `instructions`.
 //
-// The properties Query, Type are required.
+// The property Type is required.
 type MonitorNewParamsChangeDetectionSemantic struct {
-	Query               string             `json:"query" api:"required"`
 	ConfidenceThreshold param.Opt[float64] `json:"confidence_threshold,omitzero"`
 	// This field can be elided, and will marshal its zero value as "semantic".
 	Type constant.Semantic `json:"type" default:"semantic"`
@@ -3214,13 +3209,15 @@ func (r *MonitorNewParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 
 // Watch a site's extracted structured data.
 //
-// The properties Type, URL are required.
+// The properties Instructions, Type, URL are required.
 type MonitorNewParamsTargetExtract struct {
+	// Natural-language instructions describing what to extract and watch. This single
+	// prompt scopes both the extraction and what changes get reported: only data
+	// captured by the schema and these instructions is compared between runs.
+	Instructions string `json:"instructions" api:"required"`
 	// Root URL to extract structured data from.
 	URL              string          `json:"url" api:"required" format:"uri"`
 	FollowSubdomains param.Opt[bool] `json:"follow_subdomains,omitzero"`
-	// Optional natural-language instructions guiding what to extract.
-	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
 	// Maximum number of pages to analyze during extraction.
@@ -3339,11 +3336,12 @@ func (r *MonitorUpdateParamsChangeDetectionExact) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes that match a natural language query.
+// Detect meaning-level changes to the extracted data, ignoring cosmetic or
+// paraphrase-only differences. What is watched is determined by the extract
+// target's `schema` and `instructions`.
 //
-// The properties Query, Type are required.
+// The property Type is required.
 type MonitorUpdateParamsChangeDetectionSemantic struct {
-	Query               string             `json:"query" api:"required"`
 	ConfidenceThreshold param.Opt[float64] `json:"confidence_threshold,omitzero"`
 	// This field can be elided, and will marshal its zero value as "semantic".
 	Type constant.Semantic `json:"type" default:"semantic"`
@@ -3475,13 +3473,15 @@ func (r *MonitorUpdateParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 
 // Watch a site's extracted structured data.
 //
-// The properties Type, URL are required.
+// The properties Instructions, Type, URL are required.
 type MonitorUpdateParamsTargetExtract struct {
+	// Natural-language instructions describing what to extract and watch. This single
+	// prompt scopes both the extraction and what changes get reported: only data
+	// captured by the schema and these instructions is compared between runs.
+	Instructions string `json:"instructions" api:"required"`
 	// Root URL to extract structured data from.
 	URL              string          `json:"url" api:"required" format:"uri"`
 	FollowSubdomains param.Opt[bool] `json:"follow_subdomains,omitzero"`
-	// Optional natural-language instructions guiding what to extract.
-	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Optional maximum link depth from the starting URL (0 = only the starting page).
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
 	// Maximum number of pages to analyze during extraction.
@@ -3528,10 +3528,10 @@ type MonitorListParams struct {
 	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
 	// Any of "exact", "semantic".
 	ChangeDetectionType MonitorListParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
-	// Comma-separated fields to search with `q`. Defaults to all of them. Note `query`
-	// only exists on semantic monitors.
+	// Comma-separated fields to search with `q`. Defaults to all of them. Note
+	// `instructions` only exists on extract monitors.
 	//
-	// Any of "name", "url", "query", "tags".
+	// Any of "name", "url", "instructions", "tags".
 	SearchBy []string `query:"search_by,omitzero" json:"-"`
 	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
 	// matching.

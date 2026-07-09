@@ -321,9 +321,9 @@ func (r *MonitorNewResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to the extracted data, ignoring cosmetic or
-// paraphrase-only differences. What is watched is determined by the extract
-// target's `schema` and `instructions`.
+// Detect meaning-level changes to tracked page content, ignoring cosmetic or
+// paraphrase-only differences. Which changes are meaningful is judged against the
+// extract target's `instructions` (and `schema`, when provided).
 type MonitorNewResponseChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -548,8 +548,8 @@ func (r *MonitorNewResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 // Watch the monitor-relevant pages of a site for meaningful changes. A crawl
 // guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
 // track; each run re-checks exactly those pages, and confirmed content changes are
-// judged against the monitor's instructions. The tracked page set is refreshed by
-// a periodic re-discovery crawl.
+// judged for relevance against the monitor's `instructions` (and `schema`, when
+// provided). The tracked page set is refreshed by a periodic re-discovery crawl.
 type MonitorNewResponseTargetExtract struct {
 	// Natural-language instructions guiding which pages and facts to track and which
 	// changes to report.
@@ -562,9 +562,14 @@ type MonitorNewResponseTargetExtract struct {
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the data you care about. It guides which pages are
-	// selected for tracking and gives the change judge context on what matters. If
-	// omitted, a default summary + key-points schema is used.
+	// JSON Schema describing the data you care about. It is used three ways: it guides
+	// which pages are selected for tracking, it gives the change judge extra context
+	// on which changes matter (alongside `instructions`), and it defines the shape of
+	// the baseline `data` snapshot on GET /monitors/{monitor_id} (refreshed at most
+	// about once a day). It is not a response format for changes: change events and
+	// webhook payloads always contain diffs, summaries, and evidence excerpts — never
+	// data in this schema's shape. If omitted, a default summary + key-points schema
+	// is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -908,9 +913,9 @@ func (r *MonitorGetResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to the extracted data, ignoring cosmetic or
-// paraphrase-only differences. What is watched is determined by the extract
-// target's `schema` and `instructions`.
+// Detect meaning-level changes to tracked page content, ignoring cosmetic or
+// paraphrase-only differences. Which changes are meaningful is judged against the
+// extract target's `instructions` (and `schema`, when provided).
 type MonitorGetResponseChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -1135,8 +1140,8 @@ func (r *MonitorGetResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 // Watch the monitor-relevant pages of a site for meaningful changes. A crawl
 // guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
 // track; each run re-checks exactly those pages, and confirmed content changes are
-// judged against the monitor's instructions. The tracked page set is refreshed by
-// a periodic re-discovery crawl.
+// judged for relevance against the monitor's `instructions` (and `schema`, when
+// provided). The tracked page set is refreshed by a periodic re-discovery crawl.
 type MonitorGetResponseTargetExtract struct {
 	// Natural-language instructions guiding which pages and facts to track and which
 	// changes to report.
@@ -1149,9 +1154,14 @@ type MonitorGetResponseTargetExtract struct {
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the data you care about. It guides which pages are
-	// selected for tracking and gives the change judge context on what matters. If
-	// omitted, a default summary + key-points schema is used.
+	// JSON Schema describing the data you care about. It is used three ways: it guides
+	// which pages are selected for tracking, it gives the change judge extra context
+	// on which changes matter (alongside `instructions`), and it defines the shape of
+	// the baseline `data` snapshot on GET /monitors/{monitor_id} (refreshed at most
+	// about once a day). It is not a response format for changes: change events and
+	// webhook payloads always contain diffs, summaries, and evidence excerpts — never
+	// data in this schema's shape. If omitted, a default summary + key-points schema
+	// is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1495,9 +1505,9 @@ func (r *MonitorUpdateResponseChangeDetectionExact) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to the extracted data, ignoring cosmetic or
-// paraphrase-only differences. What is watched is determined by the extract
-// target's `schema` and `instructions`.
+// Detect meaning-level changes to tracked page content, ignoring cosmetic or
+// paraphrase-only differences. Which changes are meaningful is judged against the
+// extract target's `instructions` (and `schema`, when provided).
 type MonitorUpdateResponseChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -1723,8 +1733,8 @@ func (r *MonitorUpdateResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 // Watch the monitor-relevant pages of a site for meaningful changes. A crawl
 // guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
 // track; each run re-checks exactly those pages, and confirmed content changes are
-// judged against the monitor's instructions. The tracked page set is refreshed by
-// a periodic re-discovery crawl.
+// judged for relevance against the monitor's `instructions` (and `schema`, when
+// provided). The tracked page set is refreshed by a periodic re-discovery crawl.
 type MonitorUpdateResponseTargetExtract struct {
 	// Natural-language instructions guiding which pages and facts to track and which
 	// changes to report.
@@ -1737,9 +1747,14 @@ type MonitorUpdateResponseTargetExtract struct {
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the data you care about. It guides which pages are
-	// selected for tracking and gives the change judge context on what matters. If
-	// omitted, a default summary + key-points schema is used.
+	// JSON Schema describing the data you care about. It is used three ways: it guides
+	// which pages are selected for tracking, it gives the change judge extra context
+	// on which changes matter (alongside `instructions`), and it defines the shape of
+	// the baseline `data` snapshot on GET /monitors/{monitor_id} (refreshed at most
+	// about once a day). It is not a response format for changes: change events and
+	// webhook payloads always contain diffs, summaries, and evidence excerpts — never
+	// data in this schema's shape. If omitted, a default summary + key-points schema
+	// is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2105,9 +2120,9 @@ func (r *MonitorListResponseDataChangeDetectionExact) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to the extracted data, ignoring cosmetic or
-// paraphrase-only differences. What is watched is determined by the extract
-// target's `schema` and `instructions`.
+// Detect meaning-level changes to tracked page content, ignoring cosmetic or
+// paraphrase-only differences. Which changes are meaningful is judged against the
+// extract target's `instructions` (and `schema`, when provided).
 type MonitorListResponseDataChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -2312,8 +2327,8 @@ func (r *MonitorListResponseDataTargetSitemap) UnmarshalJSON(data []byte) error 
 // Watch the monitor-relevant pages of a site for meaningful changes. A crawl
 // guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
 // track; each run re-checks exactly those pages, and confirmed content changes are
-// judged against the monitor's instructions. The tracked page set is refreshed by
-// a periodic re-discovery crawl.
+// judged for relevance against the monitor's `instructions` (and `schema`, when
+// provided). The tracked page set is refreshed by a periodic re-discovery crawl.
 type MonitorListResponseDataTargetExtract struct {
 	// Natural-language instructions guiding which pages and facts to track and which
 	// changes to report.
@@ -2326,9 +2341,14 @@ type MonitorListResponseDataTargetExtract struct {
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema describing the data you care about. It guides which pages are
-	// selected for tracking and gives the change judge context on what matters. If
-	// omitted, a default summary + key-points schema is used.
+	// JSON Schema describing the data you care about. It is used three ways: it guides
+	// which pages are selected for tracking, it gives the change judge extra context
+	// on which changes matter (alongside `instructions`), and it defines the shape of
+	// the baseline `data` snapshot on GET /monitors/{monitor_id} (refreshed at most
+	// about once a day). It is not a response format for changes: change events and
+	// webhook payloads always contain diffs, summaries, and evidence excerpts — never
+	// data in this schema's shape. If omitted, a default summary + key-points schema
+	// is used.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3111,9 +3131,9 @@ func (r *MonitorNewParamsChangeDetectionExact) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to the extracted data, ignoring cosmetic or
-// paraphrase-only differences. What is watched is determined by the extract
-// target's `schema` and `instructions`.
+// Detect meaning-level changes to tracked page content, ignoring cosmetic or
+// paraphrase-only differences. Which changes are meaningful is judged against the
+// extract target's `instructions` (and `schema`, when provided).
 //
 // The property Type is required.
 type MonitorNewParamsChangeDetectionSemantic struct {
@@ -3243,8 +3263,8 @@ func (r *MonitorNewParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 // Watch the monitor-relevant pages of a site for meaningful changes. A crawl
 // guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
 // track; each run re-checks exactly those pages, and confirmed content changes are
-// judged against the monitor's instructions. The tracked page set is refreshed by
-// a periodic re-discovery crawl.
+// judged for relevance against the monitor's `instructions` (and `schema`, when
+// provided). The tracked page set is refreshed by a periodic re-discovery crawl.
 //
 // The properties Instructions, Type, URL are required.
 type MonitorNewParamsTargetExtract struct {
@@ -3258,9 +3278,14 @@ type MonitorNewParamsTargetExtract struct {
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
 	// Maximum number of pages to track.
 	MaxPages param.Opt[int64] `json:"max_pages,omitzero"`
-	// JSON Schema describing the data you care about. It guides which pages are
-	// selected for tracking and gives the change judge context on what matters. If
-	// omitted, a default summary + key-points schema is used.
+	// JSON Schema describing the data you care about. It is used three ways: it guides
+	// which pages are selected for tracking, it gives the change judge extra context
+	// on which changes matter (alongside `instructions`), and it defines the shape of
+	// the baseline `data` snapshot on GET /monitors/{monitor_id} (refreshed at most
+	// about once a day). It is not a response format for changes: change events and
+	// webhook payloads always contain diffs, summaries, and evidence excerpts — never
+	// data in this schema's shape. If omitted, a default summary + key-points schema
+	// is used.
 	Schema map[string]any `json:"schema,omitzero"`
 	// This field can be elided, and will marshal its zero value as "extract".
 	Type constant.Extract `json:"type" default:"extract"`
@@ -3373,9 +3398,9 @@ func (r *MonitorUpdateParamsChangeDetectionExact) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to the extracted data, ignoring cosmetic or
-// paraphrase-only differences. What is watched is determined by the extract
-// target's `schema` and `instructions`.
+// Detect meaning-level changes to tracked page content, ignoring cosmetic or
+// paraphrase-only differences. Which changes are meaningful is judged against the
+// extract target's `instructions` (and `schema`, when provided).
 //
 // The property Type is required.
 type MonitorUpdateParamsChangeDetectionSemantic struct {
@@ -3512,8 +3537,8 @@ func (r *MonitorUpdateParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 // Watch the monitor-relevant pages of a site for meaningful changes. A crawl
 // guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
 // track; each run re-checks exactly those pages, and confirmed content changes are
-// judged against the monitor's instructions. The tracked page set is refreshed by
-// a periodic re-discovery crawl.
+// judged for relevance against the monitor's `instructions` (and `schema`, when
+// provided). The tracked page set is refreshed by a periodic re-discovery crawl.
 //
 // The properties Instructions, Type, URL are required.
 type MonitorUpdateParamsTargetExtract struct {
@@ -3527,9 +3552,14 @@ type MonitorUpdateParamsTargetExtract struct {
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
 	// Maximum number of pages to track.
 	MaxPages param.Opt[int64] `json:"max_pages,omitzero"`
-	// JSON Schema describing the data you care about. It guides which pages are
-	// selected for tracking and gives the change judge context on what matters. If
-	// omitted, a default summary + key-points schema is used.
+	// JSON Schema describing the data you care about. It is used three ways: it guides
+	// which pages are selected for tracking, it gives the change judge extra context
+	// on which changes matter (alongside `instructions`), and it defines the shape of
+	// the baseline `data` snapshot on GET /monitors/{monitor_id} (refreshed at most
+	// about once a day). It is not a response format for changes: change events and
+	// webhook payloads always contain diffs, summaries, and evidence excerpts — never
+	// data in this schema's shape. If omitted, a default summary + key-points schema
+	// is used.
 	Schema map[string]any `json:"schema,omitzero"`
 	// This field can be elided, and will marshal its zero value as "extract".
 	Type constant.Extract `json:"type" default:"extract"`

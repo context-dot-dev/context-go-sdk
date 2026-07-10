@@ -3020,7 +3020,7 @@ func (r *MonitorListRunsResponseDataWebhookDeliveryError) UnmarshalJSON(data []b
 // `change_detection_type` describe the change, and which optional fields are
 // present depends on them (page: `diff` + excerpts; sitemap:
 // `added_urls`/`removed_urls`; semantic:
-// `query`/`confidence`/`importance`/`evidence`/`matched_urls`).
+// `confidence`/`importance`/`evidence`/`matched_urls`).
 type MonitorGetChangeResponse struct {
 	ID string `json:"id" api:"required"`
 	// Any of "exact", "semantic".
@@ -3035,6 +3035,8 @@ type MonitorGetChangeResponse struct {
 	// The run that detected this change.
 	RunID   string `json:"run_id" api:"required"`
 	Summary string `json:"summary" api:"required"`
+	// User-defined tags for grouping and filtering monitors and their changes.
+	Tags []string `json:"tags" api:"required"`
 	// Any of "page", "sitemap", "extract".
 	TargetType    MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
 	Title         string                             `json:"title" api:"required"`
@@ -3056,8 +3058,6 @@ type MonitorGetChangeResponse struct {
 	RemovedURLCount int64    `json:"removed_url_count"`
 	// At most 500 URLs are included; the corresponding count field is always exact.
 	RemovedURLs []string `json:"removed_urls" format:"uri"`
-	// User-defined tags for grouping and filtering monitors and their changes.
-	Tags []string `json:"tags"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
@@ -3067,6 +3067,7 @@ type MonitorGetChangeResponse struct {
 		MonitorID           respjson.Field
 		RunID               respjson.Field
 		Summary             respjson.Field
+		Tags                respjson.Field
 		TargetType          respjson.Field
 		Title               respjson.Field
 		URL                 respjson.Field
@@ -3082,7 +3083,6 @@ type MonitorGetChangeResponse struct {
 		MatchedURLs         respjson.Field
 		RemovedURLCount     respjson.Field
 		RemovedURLs         respjson.Field
-		Tags                respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
 	} `json:"-"`

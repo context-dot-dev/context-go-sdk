@@ -209,6 +209,10 @@ type MonitorNewResponse struct {
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorNewResponseWebhook `json:"webhook" api:"nullable"`
+	// Present while webhook deliveries are failing consecutively; null when deliveries
+	// are healthy or no webhook is configured. Cleared on the next successful delivery
+	// and when the webhook URL changes.
+	WebhookFailure MonitorNewResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID              respjson.Field
@@ -227,6 +231,7 @@ type MonitorNewResponse struct {
 		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
+		WebhookFailure  respjson.Field
 		ExtraFields     map[string]respjson.Field
 		raw             string
 	} `json:"-"`
@@ -759,6 +764,38 @@ func (r *MonitorNewResponseWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Present while webhook deliveries are failing consecutively; null when deliveries
+// are healthy or no webhook is configured. Cleared on the next successful delivery
+// and when the webhook URL changes.
+type MonitorNewResponseWebhookFailure struct {
+	// Number of consecutive delivery attempts that did not succeed.
+	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
+	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable description of the most recent failure.
+	LastMessage string `json:"last_message" api:"required"`
+	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
+	// failed means no HTTP response was received; skipped_unsafe_url means the URL
+	// failed the public-endpoint safety check.
+	//
+	// Any of "rejected", "failed", "skipped_unsafe_url".
+	LastStatus string `json:"last_status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ConsecutiveFailures respjson.Field
+		LastFailedAt        respjson.Field
+		LastMessage         respjson.Field
+		LastStatus          respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseWebhookFailure) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseWebhookFailure) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // A web monitor. `mode` is the constant `web`; behavior is described by `target`
 // (page/sitemap/extract) and `change_detection` (exact/semantic).
 type MonitorGetResponse struct {
@@ -801,6 +838,10 @@ type MonitorGetResponse struct {
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorGetResponseWebhook `json:"webhook" api:"nullable"`
+	// Present while webhook deliveries are failing consecutively; null when deliveries
+	// are healthy or no webhook is configured. Cleared on the next successful delivery
+	// and when the webhook URL changes.
+	WebhookFailure MonitorGetResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID              respjson.Field
@@ -819,6 +860,7 @@ type MonitorGetResponse struct {
 		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
+		WebhookFailure  respjson.Field
 		ExtraFields     map[string]respjson.Field
 		raw             string
 	} `json:"-"`
@@ -1351,6 +1393,38 @@ func (r *MonitorGetResponseWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Present while webhook deliveries are failing consecutively; null when deliveries
+// are healthy or no webhook is configured. Cleared on the next successful delivery
+// and when the webhook URL changes.
+type MonitorGetResponseWebhookFailure struct {
+	// Number of consecutive delivery attempts that did not succeed.
+	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
+	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable description of the most recent failure.
+	LastMessage string `json:"last_message" api:"required"`
+	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
+	// failed means no HTTP response was received; skipped_unsafe_url means the URL
+	// failed the public-endpoint safety check.
+	//
+	// Any of "rejected", "failed", "skipped_unsafe_url".
+	LastStatus string `json:"last_status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ConsecutiveFailures respjson.Field
+		LastFailedAt        respjson.Field
+		LastMessage         respjson.Field
+		LastStatus          respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseWebhookFailure) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseWebhookFailure) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // A web monitor. `mode` is the constant `web`; behavior is described by `target`
 // (page/sitemap/extract) and `change_detection` (exact/semantic).
 type MonitorUpdateResponse struct {
@@ -1393,6 +1467,10 @@ type MonitorUpdateResponse struct {
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                     `json:"tags"`
 	Webhook MonitorUpdateResponseWebhook `json:"webhook" api:"nullable"`
+	// Present while webhook deliveries are failing consecutively; null when deliveries
+	// are healthy or no webhook is configured. Cleared on the next successful delivery
+	// and when the webhook URL changes.
+	WebhookFailure MonitorUpdateResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID              respjson.Field
@@ -1411,6 +1489,7 @@ type MonitorUpdateResponse struct {
 		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
+		WebhookFailure  respjson.Field
 		ExtraFields     map[string]respjson.Field
 		raw             string
 	} `json:"-"`
@@ -1944,6 +2023,38 @@ func (r *MonitorUpdateResponseWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Present while webhook deliveries are failing consecutively; null when deliveries
+// are healthy or no webhook is configured. Cleared on the next successful delivery
+// and when the webhook URL changes.
+type MonitorUpdateResponseWebhookFailure struct {
+	// Number of consecutive delivery attempts that did not succeed.
+	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
+	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable description of the most recent failure.
+	LastMessage string `json:"last_message" api:"required"`
+	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
+	// failed means no HTTP response was received; skipped_unsafe_url means the URL
+	// failed the public-endpoint safety check.
+	//
+	// Any of "rejected", "failed", "skipped_unsafe_url".
+	LastStatus string `json:"last_status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ConsecutiveFailures respjson.Field
+		LastFailedAt        respjson.Field
+		LastMessage         respjson.Field
+		LastStatus          respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseWebhookFailure) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseWebhookFailure) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type MonitorListResponse struct {
 	Data       []MonitorListResponseData `json:"data" api:"required"`
 	HasMore    bool                      `json:"has_more" api:"required"`
@@ -2006,6 +2117,10 @@ type MonitorListResponseData struct {
 	// User-defined tags for grouping and filtering monitors and their changes.
 	Tags    []string                       `json:"tags"`
 	Webhook MonitorListResponseDataWebhook `json:"webhook" api:"nullable"`
+	// Present while webhook deliveries are failing consecutively; null when deliveries
+	// are healthy or no webhook is configured. Cleared on the next successful delivery
+	// and when the webhook URL changes.
+	WebhookFailure MonitorListResponseDataWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID              respjson.Field
@@ -2024,6 +2139,7 @@ type MonitorListResponseData struct {
 		NextRunAt       respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
+		WebhookFailure  respjson.Field
 		ExtraFields     map[string]respjson.Field
 		raw             string
 	} `json:"-"`
@@ -2535,6 +2651,38 @@ type MonitorListResponseDataWebhook struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListResponseDataWebhook) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListResponseDataWebhook) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Present while webhook deliveries are failing consecutively; null when deliveries
+// are healthy or no webhook is configured. Cleared on the next successful delivery
+// and when the webhook URL changes.
+type MonitorListResponseDataWebhookFailure struct {
+	// Number of consecutive delivery attempts that did not succeed.
+	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
+	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable description of the most recent failure.
+	LastMessage string `json:"last_message" api:"required"`
+	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
+	// failed means no HTTP response was received; skipped_unsafe_url means the URL
+	// failed the public-endpoint safety check.
+	//
+	// Any of "rejected", "failed", "skipped_unsafe_url".
+	LastStatus string `json:"last_status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ConsecutiveFailures respjson.Field
+		LastFailedAt        respjson.Field
+		LastMessage         respjson.Field
+		LastStatus          respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataWebhookFailure) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataWebhookFailure) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

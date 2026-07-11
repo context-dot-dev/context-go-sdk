@@ -116,7 +116,22 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 	return res, err
 }
 
-// Scrapes the given URL into LLM usable Markdown.
+// Scrapes the given URL into LLM usable Markdown. Inspect key_metadata on JSON
+// responses from a recognized API key; use error_code to distinguish stable
+// failure categories.
+//
+// ### Billing & errors
+//
+// | HTTP status | Billed?        | Meaning                                                                                  |
+// | ----------- | -------------- | ---------------------------------------------------------------------------------------- |
+// | 200         | Yes — 1 credit | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
+// | 400         | No             | Invalid input, skipped PDF, or the page could not be scraped                             |
+// | 401 / 403   | No             | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
+// | 404         | No             | Target page returned or fingerprinted as not found                                       |
+// | 408         | No             | Request timed out                                                                        |
+// | 415         | No             | Unsupported content type                                                                 |
+// | 429         | No             | Per-minute rate limit exceeded; honor Retry-After                                        |
+// | 500         | No             | Internal error                                                                           |
 func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams, opts ...option.RequestOption) (res *WebWebScrapeMdResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/markdown"
@@ -1996,6 +2011,10 @@ func (r *WebWebScrapeImagesResponseKeyMetadata) UnmarshalJSON(data []byte) error
 }
 
 type WebWebScrapeMdResponse struct {
+	// UTF-8 byte length of the returned Markdown. Use 0 to identify an empty result
+	// and compare small values against your workload's minimum useful-content
+	// threshold.
+	ContentLength int64 `json:"contentLength" api:"required"`
 	// Page content converted to GitHub Flavored Markdown
 	Markdown string `json:"markdown" api:"required"`
 	// Metadata extracted from the scraped page HTML.
@@ -2011,13 +2030,14 @@ type WebWebScrapeMdResponse struct {
 	KeyMetadata WebWebScrapeMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Markdown    respjson.Field
-		Metadata    respjson.Field
-		Success     respjson.Field
-		URL         respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		ContentLength respjson.Field
+		Markdown      respjson.Field
+		Metadata      respjson.Field
+		Success       respjson.Field
+		URL           respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 

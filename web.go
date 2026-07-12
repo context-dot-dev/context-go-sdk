@@ -116,7 +116,22 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 	return res, err
 }
 
-// Scrapes the given URL into LLM usable Markdown.
+// Scrapes the given URL into LLM usable Markdown. Inspect key_metadata on JSON
+// responses from a recognized API key; use error_code to distinguish stable
+// failure categories.
+//
+// ### Billing & errors
+//
+// | HTTP status | Billed?        | Meaning                                                                                  |
+// | ----------- | -------------- | ---------------------------------------------------------------------------------------- |
+// | 200         | Yes — 1 credit | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
+// | 400         | No             | Invalid input, skipped PDF, or the page could not be scraped                             |
+// | 401 / 403   | No             | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
+// | 404         | No             | Target page returned or fingerprinted as not found                                       |
+// | 408         | No             | Request timed out                                                                        |
+// | 415         | No             | Unsupported content type                                                                 |
+// | 429         | No             | Per-minute rate limit exceeded; honor Retry-After                                        |
+// | 500         | No             | Internal error                                                                           |
 func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams, opts ...option.RequestOption) (res *WebWebScrapeMdResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/markdown"
@@ -1996,6 +2011,10 @@ func (r *WebWebScrapeImagesResponseKeyMetadata) UnmarshalJSON(data []byte) error
 }
 
 type WebWebScrapeMdResponse struct {
+	// UTF-8 byte length of the returned Markdown. Use 0 to identify an empty result
+	// and compare small values against your workload's minimum useful-content
+	// threshold.
+	ContentLength int64 `json:"contentLength" api:"required"`
 	// Page content converted to GitHub Flavored Markdown
 	Markdown string `json:"markdown" api:"required"`
 	// Metadata extracted from the scraped page HTML.
@@ -2011,13 +2030,14 @@ type WebWebScrapeMdResponse struct {
 	KeyMetadata WebWebScrapeMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Markdown    respjson.Field
-		Metadata    respjson.Field
-		Success     respjson.Field
-		URL         respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		ContentLength respjson.Field
+		Markdown      respjson.Field
+		Metadata      respjson.Field
+		Success       respjson.Field
+		URL           respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
@@ -3313,8 +3333,8 @@ type WebWebCrawlMdParams struct {
 	// omitted, the entire document is kept. Examples: "article.main", "#content",
 	// "[role=main]".
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-	// inclusive 1-based page range.
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -3539,12 +3559,16 @@ const (
 	WebWebCrawlMdParamsCountryZw WebWebCrawlMdParamsCountry = "zw"
 )
 
-// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-// inclusive 1-based page range.
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
 type WebWebCrawlMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
+	// When true, detect and OCR images embedded in the selected PDF pages, inserting
+	// recognized text at each image's position in page reading order while preserving
+	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF pages are fetched and parsed. When false, PDF pages are skipped
 	// entirely (not included in results and not counted as failures).
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
@@ -3616,8 +3640,8 @@ type WebWebScrapeHTMLParams struct {
 	// kept and everything else is dropped. When omitted, the entire document is kept.
 	// Examples: "article.main", "#content", "[role=main]".
 	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
-	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-	// inclusive 1-based page range.
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
 	paramObj
 }
@@ -3841,12 +3865,16 @@ const (
 	WebWebScrapeHTMLParamsCountryZw WebWebScrapeHTMLParamsCountry = "zw"
 )
 
-// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-// inclusive 1-based page range.
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeHTMLParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
+	// When true, detect and OCR images embedded in the selected PDF pages, inserting
+	// recognized text at each image's position in page reading order while preserving
+	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 WEBSITE_ACCESS_ERROR is returned.
 	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`
@@ -3987,8 +4015,8 @@ type WebWebScrapeMdParams struct {
 	// descendants) are kept before conversion to Markdown. When omitted, the entire
 	// document is kept. Examples: "article.main", "#content", "[role=main]".
 	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
-	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-	// inclusive 1-based page range.
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`
 	paramObj
 }
@@ -4212,12 +4240,16 @@ const (
 	WebWebScrapeMdParamsCountryZw WebWebScrapeMdParamsCountry = "zw"
 )
 
-// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-// inclusive 1-based page range.
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
+	// When true, detect and OCR images embedded in the selected PDF pages, inserting
+	// recognized text at each image's position in page reading order while preserving
+	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 WEBSITE_ACCESS_ERROR is returned.
 	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`

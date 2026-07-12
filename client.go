@@ -18,14 +18,16 @@ import (
 // directly, and instead use the [NewClient] method instead.
 type Client struct {
 	options  []option.RequestOption
+	Parse    ParseService
 	Web      WebService
 	AI       AIService
 	Brand    BrandService
 	Industry IndustryService
 	Utility  UtilityService
 	// Monitor pages, sitemaps, and extracted website data for exact or semantic
-	// changes. The change.detected webhook payload is documented by the
-	// MonitorsChangeDetectedWebhookPayload schema.
+	// changes. Webhook payloads are documented by the
+	// MonitorsChangeDetectedWebhookPayload and MonitorsRunCompletedWebhookPayload
+	// schemas.
 	Monitors MonitorService
 }
 
@@ -59,6 +61,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 
 	r = Client{options: opts}
 
+	r.Parse = NewParseService(opts...)
 	r.Web = NewWebService(opts...)
 	r.AI = NewAIService(opts...)
 	r.Brand = NewBrandService(opts...)

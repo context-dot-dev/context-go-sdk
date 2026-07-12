@@ -46,7 +46,8 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		Mode: contextdev.MonitorNewParamsModeWeb,
 		Tags: []string{"pricing", "competitor"},
 		Webhook: contextdev.MonitorNewParamsWebhook{
-			URL: "https://example.com/webhook",
+			URL:    "https://example.com/webhook",
+			Events: []string{"change.detected", "run.completed"},
 		},
 	})
 	if err != nil {
@@ -116,7 +117,8 @@ func TestMonitorUpdateWithOptionalParams(t *testing.T) {
 				},
 			},
 			Webhook: contextdev.MonitorUpdateParamsWebhook{
-				URL: "https://example.com/webhook",
+				URL:    "https://example.com/webhook",
+				Events: []string{"change.detected", "run.completed"},
 			},
 		},
 	)

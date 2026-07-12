@@ -257,6 +257,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		MaxPages:         contextdev.Int(1),
 		Pdf: contextdev.WebWebCrawlMdParamsPdf{
 			End:         contextdev.Int(1),
+			Ocr:         contextdev.Bool(true),
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
@@ -302,6 +303,7 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeHTMLParamsPdf{
 			End:         contextdev.Int(1),
+			Ocr:         contextdev.Bool(true),
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
@@ -384,6 +386,7 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeMdParamsPdf{
 			End:         contextdev.Int(1),
+			Ocr:         contextdev.Bool(true),
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},

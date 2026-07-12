@@ -168,6 +168,83 @@ func (r *MonitorService) Run(ctx context.Context, monitorID string, opts ...opti
 	return res, err
 }
 
+type WebhookDelivery struct {
+	AttemptedAt time.Time            `json:"attempted_at" api:"required" format:"date-time"`
+	Error       WebhookDeliveryError `json:"error" api:"required"`
+	// The event this delivery carried. Deliveries recorded before event selection
+	// existed report change.detected.
+	//
+	// Any of "change.detected", "run.completed".
+	Event WebhookDeliveryEvent `json:"event" api:"required"`
+	// Identifier sent in the X-Context-Id header.
+	EventID string `json:"event_id" api:"required"`
+	// The endpoint's final HTTP response status, or null when no response was
+	// received.
+	HTTPStatus int64 `json:"http_status" api:"required"`
+	// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
+	// response; failed means no HTTP response was received; skipped_unsafe_url means
+	// the URL failed the public-endpoint safety check.
+	//
+	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
+	Status WebhookDeliveryStatus `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AttemptedAt respjson.Field
+		Error       respjson.Field
+		Event       respjson.Field
+		EventID     respjson.Field
+		HTTPStatus  respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebhookDelivery) RawJSON() string { return r.JSON.raw }
+func (r *WebhookDelivery) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebhookDeliveryError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebhookDeliveryError) RawJSON() string { return r.JSON.raw }
+func (r *WebhookDeliveryError) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The event this delivery carried. Deliveries recorded before event selection
+// existed report change.detected.
+type WebhookDeliveryEvent string
+
+const (
+	WebhookDeliveryEventChangeDetected WebhookDeliveryEvent = "change.detected"
+	WebhookDeliveryEventRunCompleted   WebhookDeliveryEvent = "run.completed"
+)
+
+// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
+// response; failed means no HTTP response was received; skipped_unsafe_url means
+// the URL failed the public-endpoint safety check.
+type WebhookDeliveryStatus string
+
+const (
+	WebhookDeliveryStatusDelivered        WebhookDeliveryStatus = "delivered"
+	WebhookDeliveryStatusRejected         WebhookDeliveryStatus = "rejected"
+	WebhookDeliveryStatusFailed           WebhookDeliveryStatus = "failed"
+	WebhookDeliveryStatusSkippedUnsafeURL WebhookDeliveryStatus = "skipped_unsafe_url"
+)
+
 // A web monitor. `mode` is the constant `web`; behavior is described by `target`
 // (page/sitemap/extract) and `change_detection` (exact/semantic).
 type MonitorNewResponse struct {
@@ -2867,13 +2944,13 @@ type MonitorListAccountRunsResponseData struct {
 	// All webhook deliveries attempted by this run — one per subscribed event that
 	// fired. Omitted when no webhook was attempted, including runs created before
 	// event selection was added.
-	WebhookDeliveries []MonitorListAccountRunsResponseDataWebhookDelivery `json:"webhook_deliveries"`
+	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
 	// Deprecated: use `webhook_deliveries`, which records every attempt now that a run
 	// can deliver multiple events. Omitted when no webhook was attempted, including
 	// historical runs created before delivery tracking was added.
 	//
 	// Deprecated: deprecated
-	WebhookDelivery MonitorListAccountRunsResponseDataWebhookDelivery `json:"webhook_delivery"`
+	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
@@ -2918,62 +2995,6 @@ type MonitorListAccountRunsResponseDataError struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListAccountRunsResponseDataError) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListAccountRunsResponseDataError) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type MonitorListAccountRunsResponseDataWebhookDelivery struct {
-	AttemptedAt time.Time                                              `json:"attempted_at" api:"required" format:"date-time"`
-	Error       MonitorListAccountRunsResponseDataWebhookDeliveryError `json:"error" api:"required"`
-	// The event this delivery carried. Deliveries recorded before event selection
-	// existed report change.detected.
-	//
-	// Any of "change.detected", "run.completed".
-	Event string `json:"event" api:"required"`
-	// Identifier sent in the X-Context-Id header.
-	EventID string `json:"event_id" api:"required"`
-	// The endpoint's final HTTP response status, or null when no response was
-	// received.
-	HTTPStatus int64 `json:"http_status" api:"required"`
-	// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
-	// response; failed means no HTTP response was received; skipped_unsafe_url means
-	// the URL failed the public-endpoint safety check.
-	//
-	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
-	Status string `json:"status" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		AttemptedAt respjson.Field
-		Error       respjson.Field
-		Event       respjson.Field
-		EventID     respjson.Field
-		HTTPStatus  respjson.Field
-		Status      respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r MonitorListAccountRunsResponseDataWebhookDelivery) RawJSON() string { return r.JSON.raw }
-func (r *MonitorListAccountRunsResponseDataWebhookDelivery) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type MonitorListAccountRunsResponseDataWebhookDeliveryError struct {
-	Code    string `json:"code" api:"required"`
-	Message string `json:"message" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Code        respjson.Field
-		Message     respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r MonitorListAccountRunsResponseDataWebhookDeliveryError) RawJSON() string { return r.JSON.raw }
-func (r *MonitorListAccountRunsResponseDataWebhookDeliveryError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3107,13 +3128,13 @@ type MonitorListRunsResponseData struct {
 	// All webhook deliveries attempted by this run — one per subscribed event that
 	// fired. Omitted when no webhook was attempted, including runs created before
 	// event selection was added.
-	WebhookDeliveries []MonitorListRunsResponseDataWebhookDelivery `json:"webhook_deliveries"`
+	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
 	// Deprecated: use `webhook_deliveries`, which records every attempt now that a run
 	// can deliver multiple events. Omitted when no webhook was attempted, including
 	// historical runs created before delivery tracking was added.
 	//
 	// Deprecated: deprecated
-	WebhookDelivery MonitorListRunsResponseDataWebhookDelivery `json:"webhook_delivery"`
+	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
@@ -3158,62 +3179,6 @@ type MonitorListRunsResponseDataError struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListRunsResponseDataError) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListRunsResponseDataError) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type MonitorListRunsResponseDataWebhookDelivery struct {
-	AttemptedAt time.Time                                       `json:"attempted_at" api:"required" format:"date-time"`
-	Error       MonitorListRunsResponseDataWebhookDeliveryError `json:"error" api:"required"`
-	// The event this delivery carried. Deliveries recorded before event selection
-	// existed report change.detected.
-	//
-	// Any of "change.detected", "run.completed".
-	Event string `json:"event" api:"required"`
-	// Identifier sent in the X-Context-Id header.
-	EventID string `json:"event_id" api:"required"`
-	// The endpoint's final HTTP response status, or null when no response was
-	// received.
-	HTTPStatus int64 `json:"http_status" api:"required"`
-	// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
-	// response; failed means no HTTP response was received; skipped_unsafe_url means
-	// the URL failed the public-endpoint safety check.
-	//
-	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
-	Status string `json:"status" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		AttemptedAt respjson.Field
-		Error       respjson.Field
-		Event       respjson.Field
-		EventID     respjson.Field
-		HTTPStatus  respjson.Field
-		Status      respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r MonitorListRunsResponseDataWebhookDelivery) RawJSON() string { return r.JSON.raw }
-func (r *MonitorListRunsResponseDataWebhookDelivery) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type MonitorListRunsResponseDataWebhookDeliveryError struct {
-	Code    string `json:"code" api:"required"`
-	Message string `json:"message" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Code        respjson.Field
-		Message     respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r MonitorListRunsResponseDataWebhookDeliveryError) RawJSON() string { return r.JSON.raw }
-func (r *MonitorListRunsResponseDataWebhookDeliveryError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

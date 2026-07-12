@@ -40,7 +40,9 @@ func NewParseService(opts ...option.RequestOption) (r ParseService) {
 }
 
 // Converts raw text, source code, web/data, PDF, Microsoft Office, and image bytes
-// into LLM-usable Markdown.
+// into LLM-usable Markdown. The base request costs 1 credit. When OCR runs
+// (requires ocr=true), the entire call costs 5 credits; ocr=true requests where no
+// OCR ends up running still cost 1 credit.
 func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseHandleParams, opts ...option.RequestOption) (res *ParseHandleResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	opts = append([]option.RequestOption{option.WithRequestBody("application/octet-stream", body)}, opts...)
@@ -154,32 +156,36 @@ func (r *ParseHandleResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type ParseHandleParams struct {
-	// Optional HTTP(S) source document URL used to resolve relative links and image
-	// references. Relative references remain relative when omitted.
-	BaseURL param.Opt[string] `query:"baseUrl,omitzero" format:"uri" json:"-"`
-	// Optional file extension hint, such as pdf, docx, xlsx, pptx, html, json, csv,
-	// md, py, rtf, jpg, png, or txt.
-	Extension param.Opt[string] `query:"extension,omitzero" json:"-"`
-	// Optional filename hint used to infer the extension when extension is omitted.
-	Filename param.Opt[string] `query:"filename,omitzero" json:"-"`
 	// Include image references in Markdown output
 	IncludeImages param.Opt[bool] `query:"includeImages,omitzero" json:"-"`
 	// Preserve hyperlinks in Markdown output
 	IncludeLinks param.Opt[bool] `query:"includeLinks,omitzero" json:"-"`
-	// When true for PDF inputs, detect and OCR images embedded in the selected pages,
-	// inserting recognized text at each image's position in page reading order while
-	// preserving the PDF text layer. pdfStart/pdfEnd limit the inclusive page range.
-	// This is separate from automatic scanned-PDF OCR fallback.
+	// Gates all OCR. When true, PDFs get embedded-image OCR (recognized text inserted
+	// at each image's position in page reading order, preserving the text layer;
+	// pdf.start/pdf.end limit the page range), scanned PDFs with no text layer get
+	// full-document OCR, and raster images get their visible text transcribed. When
+	// false, no OCR runs: scanned PDFs may yield no content and images return only
+	// format/dimension metadata. Calls where OCR actually runs cost 5 credits instead
+	// of 1.
 	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
-	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
-	// Must be greater than or equal to pdfStart when both are provided.
-	PdfEnd param.Opt[int64] `query:"pdfEnd,omitzero" json:"-"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	PdfStart param.Opt[int64] `query:"pdfStart,omitzero" json:"-"`
 	// Shorten base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
 	// Extract only the main content from HTML-like inputs
 	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
+	// Optional file extension hint. Case-insensitive; a leading dot is accepted (e.g.
+	// ".pdf").
+	//
+	// Any of "txt", "text", "md", "markdown", "html", "htm", "xhtml", "xml", "rss",
+	// "atom", "csv", "tsv", "yaml", "yml", "py", "java", "js", "jsx", "mjs", "cjs",
+	// "json", "jsonl", "ndjson", "php", "sh", "bash", "zsh", "fish", "rb", "ts",
+	// "tsx", "rtf", "srt", "css", "scss", "less", "styl", "sass", "svg", "pdf",
+	// "docx", "doc", "xlsx", "xlsm", "xlsb", "xltx", "xltm", "xls", "pptx", "pptm",
+	// "ppsx", "ppsm", "potx", "potm", "ppt", "pps", "pot", "jpg", "jpeg", "jpe",
+	// "png", "gif", "bmp", "tiff", "tif", "webp", "ppm", "pbm", "pgm", "pnm".
+	Extension ParseHandleParamsExtension `query:"extension,omitzero" json:"-"`
+	// PDF page-range controls. Use start/end to limit parsing (and OCR when ocr=true)
+	// to an inclusive 1-based page range.
+	Pdf ParseHandleParamsPdf `query:"pdf,omitzero" json:"-"`
 	paramObj
 }
 
@@ -203,6 +209,102 @@ func (r ParseHandleParams) MarshalMultipart() (data []byte, contentType string, 
 
 // URLQuery serializes [ParseHandleParams]'s query parameters as `url.Values`.
 func (r ParseHandleParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional file extension hint. Case-insensitive; a leading dot is accepted (e.g.
+// ".pdf").
+type ParseHandleParamsExtension string
+
+const (
+	ParseHandleParamsExtensionTxt      ParseHandleParamsExtension = "txt"
+	ParseHandleParamsExtensionText     ParseHandleParamsExtension = "text"
+	ParseHandleParamsExtensionMd       ParseHandleParamsExtension = "md"
+	ParseHandleParamsExtensionMarkdown ParseHandleParamsExtension = "markdown"
+	ParseHandleParamsExtensionHTML     ParseHandleParamsExtension = "html"
+	ParseHandleParamsExtensionHtm      ParseHandleParamsExtension = "htm"
+	ParseHandleParamsExtensionXhtml    ParseHandleParamsExtension = "xhtml"
+	ParseHandleParamsExtensionXml      ParseHandleParamsExtension = "xml"
+	ParseHandleParamsExtensionRss      ParseHandleParamsExtension = "rss"
+	ParseHandleParamsExtensionAtom     ParseHandleParamsExtension = "atom"
+	ParseHandleParamsExtensionCsv      ParseHandleParamsExtension = "csv"
+	ParseHandleParamsExtensionTsv      ParseHandleParamsExtension = "tsv"
+	ParseHandleParamsExtensionYaml     ParseHandleParamsExtension = "yaml"
+	ParseHandleParamsExtensionYml      ParseHandleParamsExtension = "yml"
+	ParseHandleParamsExtensionPy       ParseHandleParamsExtension = "py"
+	ParseHandleParamsExtensionJava     ParseHandleParamsExtension = "java"
+	ParseHandleParamsExtensionJs       ParseHandleParamsExtension = "js"
+	ParseHandleParamsExtensionJsx      ParseHandleParamsExtension = "jsx"
+	ParseHandleParamsExtensionMjs      ParseHandleParamsExtension = "mjs"
+	ParseHandleParamsExtensionCjs      ParseHandleParamsExtension = "cjs"
+	ParseHandleParamsExtensionJson     ParseHandleParamsExtension = "json"
+	ParseHandleParamsExtensionJSONL    ParseHandleParamsExtension = "jsonl"
+	ParseHandleParamsExtensionNdjson   ParseHandleParamsExtension = "ndjson"
+	ParseHandleParamsExtensionPhp      ParseHandleParamsExtension = "php"
+	ParseHandleParamsExtensionSh       ParseHandleParamsExtension = "sh"
+	ParseHandleParamsExtensionBash     ParseHandleParamsExtension = "bash"
+	ParseHandleParamsExtensionZsh      ParseHandleParamsExtension = "zsh"
+	ParseHandleParamsExtensionFish     ParseHandleParamsExtension = "fish"
+	ParseHandleParamsExtensionRb       ParseHandleParamsExtension = "rb"
+	ParseHandleParamsExtensionTs       ParseHandleParamsExtension = "ts"
+	ParseHandleParamsExtensionTsx      ParseHandleParamsExtension = "tsx"
+	ParseHandleParamsExtensionRtf      ParseHandleParamsExtension = "rtf"
+	ParseHandleParamsExtensionSrt      ParseHandleParamsExtension = "srt"
+	ParseHandleParamsExtensionCss      ParseHandleParamsExtension = "css"
+	ParseHandleParamsExtensionScss     ParseHandleParamsExtension = "scss"
+	ParseHandleParamsExtensionLess     ParseHandleParamsExtension = "less"
+	ParseHandleParamsExtensionStyl     ParseHandleParamsExtension = "styl"
+	ParseHandleParamsExtensionSass     ParseHandleParamsExtension = "sass"
+	ParseHandleParamsExtensionSvg      ParseHandleParamsExtension = "svg"
+	ParseHandleParamsExtensionPdf      ParseHandleParamsExtension = "pdf"
+	ParseHandleParamsExtensionDocx     ParseHandleParamsExtension = "docx"
+	ParseHandleParamsExtensionDoc      ParseHandleParamsExtension = "doc"
+	ParseHandleParamsExtensionXlsx     ParseHandleParamsExtension = "xlsx"
+	ParseHandleParamsExtensionXlsm     ParseHandleParamsExtension = "xlsm"
+	ParseHandleParamsExtensionXlsb     ParseHandleParamsExtension = "xlsb"
+	ParseHandleParamsExtensionXltx     ParseHandleParamsExtension = "xltx"
+	ParseHandleParamsExtensionXltm     ParseHandleParamsExtension = "xltm"
+	ParseHandleParamsExtensionXls      ParseHandleParamsExtension = "xls"
+	ParseHandleParamsExtensionPptx     ParseHandleParamsExtension = "pptx"
+	ParseHandleParamsExtensionPptm     ParseHandleParamsExtension = "pptm"
+	ParseHandleParamsExtensionPpsx     ParseHandleParamsExtension = "ppsx"
+	ParseHandleParamsExtensionPpsm     ParseHandleParamsExtension = "ppsm"
+	ParseHandleParamsExtensionPotx     ParseHandleParamsExtension = "potx"
+	ParseHandleParamsExtensionPotm     ParseHandleParamsExtension = "potm"
+	ParseHandleParamsExtensionPpt      ParseHandleParamsExtension = "ppt"
+	ParseHandleParamsExtensionPps      ParseHandleParamsExtension = "pps"
+	ParseHandleParamsExtensionPot      ParseHandleParamsExtension = "pot"
+	ParseHandleParamsExtensionJpg      ParseHandleParamsExtension = "jpg"
+	ParseHandleParamsExtensionJpeg     ParseHandleParamsExtension = "jpeg"
+	ParseHandleParamsExtensionJpe      ParseHandleParamsExtension = "jpe"
+	ParseHandleParamsExtensionPng      ParseHandleParamsExtension = "png"
+	ParseHandleParamsExtensionGif      ParseHandleParamsExtension = "gif"
+	ParseHandleParamsExtensionBmp      ParseHandleParamsExtension = "bmp"
+	ParseHandleParamsExtensionTiff     ParseHandleParamsExtension = "tiff"
+	ParseHandleParamsExtensionTif      ParseHandleParamsExtension = "tif"
+	ParseHandleParamsExtensionWebp     ParseHandleParamsExtension = "webp"
+	ParseHandleParamsExtensionPpm      ParseHandleParamsExtension = "ppm"
+	ParseHandleParamsExtensionPbm      ParseHandleParamsExtension = "pbm"
+	ParseHandleParamsExtensionPgm      ParseHandleParamsExtension = "pgm"
+	ParseHandleParamsExtensionPnm      ParseHandleParamsExtension = "pnm"
+)
+
+// PDF page-range controls. Use start/end to limit parsing (and OCR when ocr=true)
+// to an inclusive 1-based page range.
+type ParseHandleParamsPdf struct {
+	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
+	// Must be greater than or equal to start when both are provided.
+	End param.Opt[int64] `query:"end,omitzero" json:"-"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [ParseHandleParamsPdf]'s query parameters as `url.Values`.
+func (r ParseHandleParamsPdf) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,

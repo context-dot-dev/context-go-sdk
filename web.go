@@ -3333,8 +3333,8 @@ type WebWebCrawlMdParams struct {
 	// omitted, the entire document is kept. Examples: "article.main", "#content",
 	// "[role=main]".
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-	// inclusive 1-based page range.
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -3559,12 +3559,16 @@ const (
 	WebWebCrawlMdParamsCountryZw WebWebCrawlMdParamsCountry = "zw"
 )
 
-// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-// inclusive 1-based page range.
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
 type WebWebCrawlMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
+	// When true, detect and OCR images embedded in the selected PDF pages, inserting
+	// recognized text at each image's position in page reading order while preserving
+	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF pages are fetched and parsed. When false, PDF pages are skipped
 	// entirely (not included in results and not counted as failures).
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
@@ -3636,8 +3640,8 @@ type WebWebScrapeHTMLParams struct {
 	// kept and everything else is dropped. When omitted, the entire document is kept.
 	// Examples: "article.main", "#content", "[role=main]".
 	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
-	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-	// inclusive 1-based page range.
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
 	paramObj
 }
@@ -3861,12 +3865,16 @@ const (
 	WebWebScrapeHTMLParamsCountryZw WebWebScrapeHTMLParamsCountry = "zw"
 )
 
-// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-// inclusive 1-based page range.
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeHTMLParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
+	// When true, detect and OCR images embedded in the selected PDF pages, inserting
+	// recognized text at each image's position in page reading order while preserving
+	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 WEBSITE_ACCESS_ERROR is returned.
 	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`
@@ -4007,8 +4015,8 @@ type WebWebScrapeMdParams struct {
 	// descendants) are kept before conversion to Markdown. When omitted, the entire
 	// document is kept. Examples: "article.main", "#content", "[role=main]".
 	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
-	// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-	// inclusive 1-based page range.
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`
 	paramObj
 }
@@ -4232,12 +4240,16 @@ const (
 	WebWebScrapeMdParamsCountryZw WebWebScrapeMdParamsCountry = "zw"
 )
 
-// PDF parsing controls. Use start/end to limit text extraction and OCR to an
-// inclusive 1-based page range.
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
+	// When true, detect and OCR images embedded in the selected PDF pages, inserting
+	// recognized text at each image's position in page reading order while preserving
+	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 WEBSITE_ACCESS_ERROR is returned.
 	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`

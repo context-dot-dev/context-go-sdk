@@ -33,6 +33,7 @@ func TestUtilityPrefetchWithOptionalParams(t *testing.T) {
 			},
 		},
 		Type:      contextdev.UtilityPrefetchParamsTypeBrand,
+		Tags:      []string{"production", "team-alpha"},
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {

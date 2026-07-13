@@ -29,6 +29,7 @@ func TestAIExtractProductWithOptionalParams(t *testing.T) {
 	_, err := client.AI.ExtractProduct(context.TODO(), contextdev.AIExtractProductParams{
 		URL:       "https://example.com",
 		MaxAgeMs:  contextdev.Int(0),
+		Tags:      []string{"production", "team-alpha"},
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {
@@ -58,6 +59,7 @@ func TestAIExtractProductsWithOptionalParams(t *testing.T) {
 			Domain:      "domain",
 			MaxAgeMs:    contextdev.Int(0),
 			MaxProducts: contextdev.Int(1),
+			Tags:        []string{"production", "team-alpha"},
 			TimeoutMs:   contextdev.Int(1000),
 		},
 	})

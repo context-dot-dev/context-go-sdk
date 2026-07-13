@@ -2398,6 +2398,10 @@ type WebExtractParams struct {
 	// crawled page.
 	WaitForMs param.Opt[int64]    `json:"waitForMs,omitzero"`
 	Pdf       WebExtractParamsPdf `json:"pdf,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 
@@ -2438,6 +2442,10 @@ type WebExtractCompetitorsParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2468,6 +2476,10 @@ type WebExtractFontsParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2503,6 +2515,10 @@ type WebExtractStyleguideParams struct {
 	//
 	// Any of "light", "dark".
 	ColorScheme WebExtractStyleguideParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2598,6 +2614,10 @@ type WebScreenshotParams struct {
 	// Any of "login", "signup", "blog", "careers", "pricing", "terms", "privacy",
 	// "contact".
 	Page WebScreenshotParamsPage `query:"page,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 	Viewport WebScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
 	paramObj
@@ -2934,6 +2954,10 @@ type WebSearchParams struct {
 	IncludeDomains []string `json:"includeDomains,omitzero"`
 	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
 	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 
@@ -3336,6 +3360,10 @@ type WebWebCrawlMdParams struct {
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 
@@ -3643,6 +3671,10 @@ type WebWebScrapeHTMLParams struct {
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3917,6 +3949,10 @@ type WebWebScrapeImagesParams struct {
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4018,6 +4054,10 @@ type WebWebScrapeMdParams struct {
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4284,6 +4324,10 @@ type WebWebScrapeSitemapParams struct {
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 

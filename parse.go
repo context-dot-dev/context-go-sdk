@@ -186,6 +186,10 @@ type ParseHandleParams struct {
 	// PDF page-range controls. Use start/end to limit parsing (and OCR when ocr=true)
 	// to an inclusive 1-based page range.
 	Pdf ParseHandleParamsPdf `query:"pdf,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 

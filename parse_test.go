@@ -41,6 +41,7 @@ func TestParseHandleWithOptionalParams(t *testing.T) {
 				Start: contextdev.Int(1),
 			},
 			ShortenBase64Images: contextdev.Bool(true),
+			Tags:                []string{"production", "team-alpha"},
 			UseMainContentOnly:  contextdev.Bool(true),
 		},
 	)

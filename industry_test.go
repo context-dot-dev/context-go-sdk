@@ -30,6 +30,7 @@ func TestIndustryGetNaicsWithOptionalParams(t *testing.T) {
 		Input:      "input",
 		MaxResults: contextdev.Int(1),
 		MinResults: contextdev.Int(1),
+		Tags:       []string{"production", "team-alpha"},
 		TimeoutMs:  contextdev.Int(1000),
 	})
 	if err != nil {
@@ -58,6 +59,7 @@ func TestIndustryGetSicWithOptionalParams(t *testing.T) {
 		Input:      "input",
 		MaxResults: contextdev.Int(1),
 		MinResults: contextdev.Int(1),
+		Tags:       []string{"production", "team-alpha"},
 		TimeoutMs:  contextdev.Int(1000),
 		Type:       contextdev.IndustryGetSicParamsTypeOriginalSic,
 	})

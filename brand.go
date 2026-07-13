@@ -949,6 +949,10 @@ type BrandGetParamsBodyByDomain struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	// Discriminator for domain-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_domain".
@@ -1012,6 +1016,10 @@ type BrandGetParamsBodyByName struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	// Discriminator for name-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_name".
@@ -1073,6 +1081,10 @@ type BrandGetParamsBodyByEmail struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	// Discriminator for email-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_email".
@@ -1135,6 +1147,10 @@ type BrandGetParamsBodyByTicker struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	// Discriminator for ticker-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_ticker".
@@ -1172,6 +1188,10 @@ type BrandGetParamsBodyByDirectURL struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	// Discriminator for direct-URL-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_direct_url".
@@ -1234,6 +1254,10 @@ type BrandGetParamsBodyByTransaction struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Optional caller-defined tags for tracking this request. Tags are recorded on the
+	// request's usage log and can be used to filter usage on the dashboard usage page.
+	// Up to 20 tags, each 1-50 characters.
+	Tags []string `json:"tags,omitzero"`
 	// Discriminator for transaction-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_transaction".
@@ -1267,6 +1291,10 @@ type BrandGetSimplifiedParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 

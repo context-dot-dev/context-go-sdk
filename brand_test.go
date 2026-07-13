@@ -32,6 +32,7 @@ func TestBrandGetWithOptionalParams(t *testing.T) {
 			ForceLanguage: "afrikaans",
 			MaxAgeMs:      contextdev.Int(0),
 			MaxSpeed:      contextdev.Bool(true),
+			Tags:          []string{"production", "team-alpha"},
 			TimeoutMs:     contextdev.Int(1000),
 		},
 	})
@@ -60,6 +61,7 @@ func TestBrandGetSimplifiedWithOptionalParams(t *testing.T) {
 	_, err := client.Brand.GetSimplified(context.TODO(), contextdev.BrandGetSimplifiedParams{
 		Domain:    "domain",
 		MaxAgeMs:  contextdev.Int(86400000),
+		Tags:      []string{"production", "team-alpha"},
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {

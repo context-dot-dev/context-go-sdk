@@ -27,7 +27,7 @@ func TestIndustryGetNaicsWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Industry.GetNaics(context.TODO(), contextdev.IndustryGetNaicsParams{
-		Input:      "input",
+		Input:      "xxxx",
 		MaxResults: contextdev.Int(1),
 		MinResults: contextdev.Int(1),
 		Tags:       []string{"production", "team-alpha"},
@@ -56,7 +56,7 @@ func TestIndustryGetSicWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Industry.GetSic(context.TODO(), contextdev.IndustryGetSicParams{
-		Input:      "input",
+		Input:      "xxxx",
 		MaxResults: contextdev.Int(1),
 		MinResults: contextdev.Int(1),
 		Tags:       []string{"production", "team-alpha"},

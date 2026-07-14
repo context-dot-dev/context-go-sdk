@@ -59,9 +59,10 @@ func TestBrandGetSimplifiedWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Brand.GetSimplified(context.TODO(), contextdev.BrandGetSimplifiedParams{
-		Domain:    "domain",
-		MaxAgeMs:  contextdev.Int(86400000),
+		Domain:    "xxx",
+		MaxAgeMs:  contextdev.Int(0),
 		Tags:      []string{"production", "team-alpha"},
+		Theme:     contextdev.BrandGetSimplifiedParamsThemeLight,
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {

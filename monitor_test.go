@@ -148,12 +148,12 @@ func TestMonitorListWithOptionalParams(t *testing.T) {
 		ChangeDetectionType: contextdev.MonitorListParamsChangeDetectionTypeExact,
 		Cursor:              contextdev.String("cursor"),
 		Limit:               contextdev.Int(1),
-		Q:                   contextdev.String("q"),
+		Q:                   contextdev.String("pricing"),
 		SearchBy:            []string{"name"},
 		SearchType:          contextdev.MonitorListParamsSearchTypeExact,
 		Status:              contextdev.MonitorListParamsStatusActive,
-		Tag:                 contextdev.String("tag"),
-		Tags:                []string{"string"},
+		Tag:                 contextdev.String("pricing"),
+		Tags:                []string{"x"},
 		TargetType:          contextdev.MonitorListParamsTargetTypePage,
 	})
 	if err != nil {
@@ -205,9 +205,9 @@ func TestMonitorListAccountChangesWithOptionalParams(t *testing.T) {
 		ChangeDetectionType: contextdev.MonitorListAccountChangesParamsChangeDetectionTypeExact,
 		Cursor:              contextdev.String("cursor"),
 		Limit:               contextdev.Int(1),
-		MonitorID:           contextdev.String("monitor_id"),
+		MonitorID:           contextdev.String("mon_123"),
 		Since:               contextdev.Time(time.Now()),
-		Tag:                 contextdev.String("tag"),
+		Tag:                 contextdev.String("pricing"),
 		TargetType:          contextdev.MonitorListAccountChangesParamsTargetTypePage,
 		Until:               contextdev.Time(time.Now()),
 	})
@@ -267,7 +267,7 @@ func TestMonitorListChangesWithOptionalParams(t *testing.T) {
 			Cursor: contextdev.String("cursor"),
 			Limit:  contextdev.Int(1),
 			Since:  contextdev.Time(time.Now()),
-			Tag:    contextdev.String("tag"),
+			Tag:    contextdev.String("pricing"),
 			Until:  contextdev.Time(time.Now()),
 		},
 	)

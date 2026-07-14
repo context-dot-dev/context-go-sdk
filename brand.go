@@ -109,8 +109,7 @@ type BrandGetResponseBrand struct {
 	Logos []BrandGetResponseBrandLogo `json:"logos"`
 	// Company phone number
 	Phone string `json:"phone"`
-	// The primary language of the brand's website content. Detected from the HTML lang
-	// tag, page content analysis, or social media descriptions.
+	// Language to force for the retrieved brand data.
 	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
@@ -344,37 +343,37 @@ type BrandGetResponseBrandIndustriesEic struct {
 	// & Infrastructure", "Subscription & Membership Commerce", "Social Commerce &
 	// Influencer Platforms", "Fashion & Apparel Retail", "Food, Beverage & Grocery
 	// E-commerce", "Streaming Platforms (Video, Music, Audio)", "Gaming & Interactive
-	// Entertainment", "Creator Economy & Influencer Platforms", "Advertising, Adtech &
-	// Media Buying", "Film, TV & Production Studios", "Events, Venues & Live
-	// Entertainment", "Virtual Worlds & Metaverse Experiences", "K-12 Education
-	// Platforms & Tools", "Higher Education & University Tech", "Online Learning &
-	// MOOCs", "Test Prep & Certification", "Corporate Training & Upskilling",
-	// "Tutoring & Supplemental Learning", "Education Management Systems (LMS/SIS)",
-	// "Language Learning", "Creator-Led & Cohort-Based Courses", "Special Education &
-	// Accessibility Tools", "Government Technology & Digital Services", "Civic
-	// Engagement & Policy Platforms", "International Development & Humanitarian Aid",
-	// "Philanthropy & Grantmaking", "Nonprofit Operations & Fundraising Tools",
-	// "Public Health & Social Services", "Education & Youth Development Programs",
-	// "Environmental & Climate Action Organizations", "Legal Aid & Social Justice
-	// Advocacy", "Municipal & Infrastructure Services", "Manufacturing & Industrial
-	// Automation", "Energy Production (Oil, Gas, Nuclear)", "Renewable Energy &
-	// Cleantech", "Utilities & Grid Infrastructure", "Industrial IoT & Monitoring
-	// Systems", "Construction & Heavy Equipment", "Mining & Natural Resources",
-	// "Environmental Engineering & Sustainability", "Energy Storage & Battery
-	// Technology", "Automotive OEMs & Vehicle Manufacturing", "Electric Vehicles (EVs)
-	// & Charging Infrastructure", "Mobility-as-a-Service (MaaS)", "Fleet Management",
-	// "Public Transit & Urban Mobility", "Autonomous Vehicles & ADAS", "Aftermarket
-	// Parts & Services", "Telematics & Vehicle Connectivity", "Aviation & Aerospace
-	// Transport", "Maritime Shipping", "Fitness & Wellness", "Beauty & Personal Care",
-	// "Home & Living", "Dating & Relationships", "Hobbies, Crafts & DIY", "Outdoor &
-	// Recreational Gear", "Events, Experiences & Ticketing Platforms", "Designer &
-	// Luxury Apparel", "Accessories, Jewelry & Watches", "Footwear & Leather Goods",
-	// "Beauty, Fragrance & Skincare", "Fashion Marketplaces & Retail Platforms",
-	// "Sustainable & Ethical Fashion", "Resale, Vintage & Circular Fashion", "Fashion
-	// Tech & Virtual Try-Ons", "Streetwear & Emerging Luxury", "Couture &
-	// Made-to-Measure", "News Publishing & Journalism", "Digital Media & Content
-	// Platforms", "Broadcasting (TV & Radio)", "Podcasting & Audio Media", "News
-	// Aggregators & Curation Tools", "Independent & Creator-Led Media", "Newsletters &
+	// Entertainment", "Creator Economy & Influencer Platforms", "Film, TV & Production
+	// Studios", "Events, Venues & Live Entertainment", "Virtual Worlds & Metaverse
+	// Experiences", "K-12 Education Platforms & Tools", "Higher Education & University
+	// Tech", "Online Learning & MOOCs", "Test Prep & Certification", "Corporate
+	// Training & Upskilling", "Tutoring & Supplemental Learning", "Education
+	// Management Systems (LMS/SIS)", "Language Learning", "Creator-Led & Cohort-Based
+	// Courses", "Special Education & Accessibility Tools", "Government Technology &
+	// Digital Services", "Civic Engagement & Policy Platforms", "International
+	// Development & Humanitarian Aid", "Philanthropy & Grantmaking", "Nonprofit
+	// Operations & Fundraising Tools", "Public Health & Social Services", "Education &
+	// Youth Development Programs", "Environmental & Climate Action Organizations",
+	// "Legal Aid & Social Justice Advocacy", "Municipal & Infrastructure Services",
+	// "Manufacturing & Industrial Automation", "Energy Production (Oil, Gas,
+	// Nuclear)", "Renewable Energy & Cleantech", "Utilities & Grid Infrastructure",
+	// "Industrial IoT & Monitoring Systems", "Construction & Heavy Equipment", "Mining
+	// & Natural Resources", "Environmental Engineering & Sustainability", "Energy
+	// Storage & Battery Technology", "Automotive OEMs & Vehicle Manufacturing",
+	// "Electric Vehicles (EVs) & Charging Infrastructure", "Mobility-as-a-Service
+	// (MaaS)", "Fleet Management", "Public Transit & Urban Mobility", "Autonomous
+	// Vehicles & ADAS", "Aftermarket Parts & Services", "Telematics & Vehicle
+	// Connectivity", "Aviation & Aerospace Transport", "Maritime Shipping", "Fitness &
+	// Wellness", "Beauty & Personal Care", "Home & Living", "Dating & Relationships",
+	// "Hobbies, Crafts & DIY", "Outdoor & Recreational Gear", "Events, Experiences &
+	// Ticketing Platforms", "Designer & Luxury Apparel", "Accessories, Jewelry &
+	// Watches", "Footwear & Leather Goods", "Beauty, Fragrance & Skincare", "Fashion
+	// Marketplaces & Retail Platforms", "Sustainable & Ethical Fashion", "Resale,
+	// Vintage & Circular Fashion", "Fashion Tech & Virtual Try-Ons", "Streetwear &
+	// Emerging Luxury", "Couture & Made-to-Measure", "News Publishing & Journalism",
+	// "Advertising, Adtech & Media Buying", "Digital Media & Content Platforms",
+	// "Broadcasting (TV & Radio)", "Podcasting & Audio Media", "News Aggregators &
+	// Curation Tools", "Independent & Creator-Led Media", "Newsletters &
 	// Substack-Style Platforms", "Political & Investigative Media", "Trade & Niche
 	// Publications", "Media Monitoring & Analytics", "Professional Teams & Leagues",
 	// "Sports Media & Broadcasting", "Sports Betting & Fantasy Sports", "Fitness &
@@ -1226,11 +1225,6 @@ type BrandGetParamsBodyByTransaction struct {
 	// the API will skip time-consuming operations for faster response at the cost of
 	// less comprehensive data.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
-	// Optional Merchant Category Code (MCC) to help identify the business category or
-	// industry.
-	Mcc param.Opt[int64] `json:"mcc,omitzero"`
-	// Optional phone number from the transaction to help verify brand match.
-	Phone param.Opt[float64] `json:"phone,omitzero"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -1254,6 +1248,11 @@ type BrandGetParamsBodyByTransaction struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
+	// Optional Merchant Category Code (MCC) to help identify the business category or
+	// industry.
+	Mcc BrandGetParamsBodyByTransactionMccUnion `json:"mcc,omitzero"`
+	// Optional phone number from the transaction to help verify brand match.
+	Phone BrandGetParamsBodyByTransactionPhoneUnion `json:"phone,omitzero"`
 	// Optional caller-defined tags for tracking this request. Tags are recorded on the
 	// request's usage log and can be used to filter usage on the dashboard usage page.
 	// Up to 20 tags, each 1-50 characters.
@@ -1279,6 +1278,38 @@ func init() {
 	)
 }
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BrandGetParamsBodyByTransactionMccUnion struct {
+	OfString param.Opt[string]  `json:",omitzero,inline"`
+	OfFloat  param.Opt[float64] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BrandGetParamsBodyByTransactionMccUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfString, u.OfFloat)
+}
+func (u *BrandGetParamsBodyByTransactionMccUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BrandGetParamsBodyByTransactionPhoneUnion struct {
+	OfString param.Opt[string]  `json:",omitzero,inline"`
+	OfFloat  param.Opt[float64] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BrandGetParamsBodyByTransactionPhoneUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfString, u.OfFloat)
+}
+func (u *BrandGetParamsBodyByTransactionPhoneUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
 type BrandGetSimplifiedParams struct {
 	// Domain name to retrieve simplified brand data for
 	Domain string `query:"domain" api:"required" json:"-"`
@@ -1295,6 +1326,10 @@ type BrandGetSimplifiedParams struct {
 	// recorded on the request's usage log and can be used to filter usage on the
 	// dashboard usage page. Up to 20 tags, each 1-50 characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional theme preference used when selecting brand assets.
+	//
+	// Any of "light", "dark".
+	Theme BrandGetSimplifiedParamsTheme `query:"theme,omitzero" json:"-"`
 	paramObj
 }
 
@@ -1306,3 +1341,11 @@ func (r BrandGetSimplifiedParams) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Optional theme preference used when selecting brand assets.
+type BrandGetSimplifiedParamsTheme string
+
+const (
+	BrandGetSimplifiedParamsThemeLight BrandGetSimplifiedParamsTheme = "light"
+	BrandGetSimplifiedParamsThemeDark  BrandGetSimplifiedParamsTheme = "dark"
+)

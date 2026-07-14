@@ -168,83 +168,6 @@ func (r *MonitorService) Run(ctx context.Context, monitorID string, opts ...opti
 	return res, err
 }
 
-type WebhookDelivery struct {
-	AttemptedAt time.Time            `json:"attempted_at" api:"required" format:"date-time"`
-	Error       WebhookDeliveryError `json:"error" api:"required"`
-	// The event this delivery carried. Deliveries recorded before event selection
-	// existed report change.detected.
-	//
-	// Any of "change.detected", "run.completed".
-	Event WebhookDeliveryEvent `json:"event" api:"required"`
-	// Identifier sent in the X-Context-Id header.
-	EventID string `json:"event_id" api:"required"`
-	// The endpoint's final HTTP response status, or null when no response was
-	// received.
-	HTTPStatus int64 `json:"http_status" api:"required"`
-	// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
-	// response; failed means no HTTP response was received; skipped_unsafe_url means
-	// the URL failed the public-endpoint safety check.
-	//
-	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
-	Status WebhookDeliveryStatus `json:"status" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		AttemptedAt respjson.Field
-		Error       respjson.Field
-		Event       respjson.Field
-		EventID     respjson.Field
-		HTTPStatus  respjson.Field
-		Status      respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r WebhookDelivery) RawJSON() string { return r.JSON.raw }
-func (r *WebhookDelivery) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type WebhookDeliveryError struct {
-	Code    string `json:"code" api:"required"`
-	Message string `json:"message" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Code        respjson.Field
-		Message     respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r WebhookDeliveryError) RawJSON() string { return r.JSON.raw }
-func (r *WebhookDeliveryError) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// The event this delivery carried. Deliveries recorded before event selection
-// existed report change.detected.
-type WebhookDeliveryEvent string
-
-const (
-	WebhookDeliveryEventChangeDetected WebhookDeliveryEvent = "change.detected"
-	WebhookDeliveryEventRunCompleted   WebhookDeliveryEvent = "run.completed"
-)
-
-// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
-// response; failed means no HTTP response was received; skipped_unsafe_url means
-// the URL failed the public-endpoint safety check.
-type WebhookDeliveryStatus string
-
-const (
-	WebhookDeliveryStatusDelivered        WebhookDeliveryStatus = "delivered"
-	WebhookDeliveryStatusRejected         WebhookDeliveryStatus = "rejected"
-	WebhookDeliveryStatusFailed           WebhookDeliveryStatus = "failed"
-	WebhookDeliveryStatusSkippedUnsafeURL WebhookDeliveryStatus = "skipped_unsafe_url"
-)
-
 // A web monitor. `mode` is the constant `web`; behavior is described by `target`
 // (page/sitemap/extract) and `change_detection` (exact/semantic).
 type MonitorNewResponse struct {
@@ -2944,13 +2867,13 @@ type MonitorListAccountRunsResponseData struct {
 	// All webhook deliveries attempted by this run — one per subscribed event that
 	// fired. Omitted when no webhook was attempted, including runs created before
 	// event selection was added.
-	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
+	WebhookDeliveries []MonitorListAccountRunsResponseDataWebhookDelivery `json:"webhook_deliveries"`
 	// Deprecated: use `webhook_deliveries`, which records every attempt now that a run
 	// can deliver multiple events. Omitted when no webhook was attempted, including
 	// historical runs created before delivery tracking was added.
 	//
 	// Deprecated: deprecated
-	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
+	WebhookDelivery MonitorListAccountRunsResponseDataWebhookDelivery `json:"webhook_delivery"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
@@ -2995,6 +2918,62 @@ type MonitorListAccountRunsResponseDataError struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListAccountRunsResponseDataError) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListAccountRunsResponseDataError) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorListAccountRunsResponseDataWebhookDelivery struct {
+	AttemptedAt time.Time                                              `json:"attempted_at" api:"required" format:"date-time"`
+	Error       MonitorListAccountRunsResponseDataWebhookDeliveryError `json:"error" api:"required"`
+	// The event this delivery carried. Deliveries recorded before event selection
+	// existed report change.detected.
+	//
+	// Any of "change.detected", "run.completed".
+	Event string `json:"event" api:"required"`
+	// Identifier sent in the X-Context-Id header.
+	EventID string `json:"event_id" api:"required"`
+	// The endpoint's final HTTP response status, or null when no response was
+	// received.
+	HTTPStatus int64 `json:"http_status" api:"required"`
+	// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
+	// response; failed means no HTTP response was received; skipped_unsafe_url means
+	// the URL failed the public-endpoint safety check.
+	//
+	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AttemptedAt respjson.Field
+		Error       respjson.Field
+		Event       respjson.Field
+		EventID     respjson.Field
+		HTTPStatus  respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListAccountRunsResponseDataWebhookDelivery) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListAccountRunsResponseDataWebhookDelivery) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorListAccountRunsResponseDataWebhookDeliveryError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListAccountRunsResponseDataWebhookDeliveryError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListAccountRunsResponseDataWebhookDeliveryError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3128,13 +3107,13 @@ type MonitorListRunsResponseData struct {
 	// All webhook deliveries attempted by this run — one per subscribed event that
 	// fired. Omitted when no webhook was attempted, including runs created before
 	// event selection was added.
-	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
+	WebhookDeliveries []MonitorListRunsResponseDataWebhookDelivery `json:"webhook_deliveries"`
 	// Deprecated: use `webhook_deliveries`, which records every attempt now that a run
 	// can deliver multiple events. Omitted when no webhook was attempted, including
 	// historical runs created before delivery tracking was added.
 	//
 	// Deprecated: deprecated
-	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
+	WebhookDelivery MonitorListRunsResponseDataWebhookDelivery `json:"webhook_delivery"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
@@ -3179,6 +3158,62 @@ type MonitorListRunsResponseDataError struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListRunsResponseDataError) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListRunsResponseDataError) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorListRunsResponseDataWebhookDelivery struct {
+	AttemptedAt time.Time                                       `json:"attempted_at" api:"required" format:"date-time"`
+	Error       MonitorListRunsResponseDataWebhookDeliveryError `json:"error" api:"required"`
+	// The event this delivery carried. Deliveries recorded before event selection
+	// existed report change.detected.
+	//
+	// Any of "change.detected", "run.completed".
+	Event string `json:"event" api:"required"`
+	// Identifier sent in the X-Context-Id header.
+	EventID string `json:"event_id" api:"required"`
+	// The endpoint's final HTTP response status, or null when no response was
+	// received.
+	HTTPStatus int64 `json:"http_status" api:"required"`
+	// Delivery outcome. delivered means any 2xx response; rejected means a non-2xx
+	// response; failed means no HTTP response was received; skipped_unsafe_url means
+	// the URL failed the public-endpoint safety check.
+	//
+	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AttemptedAt respjson.Field
+		Error       respjson.Field
+		Event       respjson.Field
+		EventID     respjson.Field
+		HTTPStatus  respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListRunsResponseDataWebhookDelivery) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListRunsResponseDataWebhookDelivery) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorListRunsResponseDataWebhookDeliveryError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListRunsResponseDataWebhookDeliveryError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListRunsResponseDataWebhookDeliveryError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3888,34 +3923,36 @@ func (r *MonitorUpdateParamsWebhook) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListParams struct {
+	// Opaque pagination cursor from a previous response.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
 	// Free-text search term, matched against the fields named in `search_by`.
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
 	// Filter to items that have this tag.
 	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
-	// Any of "exact", "semantic".
-	ChangeDetectionType MonitorListParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
 	// Comma-separated fields to search with `q`. Defaults to all of them. Note
 	// `instructions` only exists on extract monitors.
 	//
 	// Any of "name", "url", "instructions", "tags".
 	SearchBy []string `query:"search_by,omitzero" json:"-"`
+	// Comma-separated list of tags to filter by (matches monitors having any of them).
+	Tags []string `query:"tags,omitzero" json:"-"`
+	// Filter by change detection type.
+	//
+	// Any of "exact", "semantic".
+	ChangeDetectionType MonitorListParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
 	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
 	// matching.
 	//
 	// Any of "exact", "prefix".
 	SearchType MonitorListParamsSearchType `query:"search_type,omitzero" json:"-"`
-	// Monitor lifecycle status. `failed` means the most recent run failed (see the
-	// monitor's `last_error`); failed monitors keep running on schedule and flip back
-	// to `active` on the next successful run. Monitors are auto-`paused` after
-	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
-	// status to `active`.
+	// Filter monitors by lifecycle status.
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorListParamsStatus `query:"status,omitzero" json:"-"`
-	// Comma-separated list of tags to filter by (matches monitors having any of them).
-	Tags []string `query:"tags,omitzero" json:"-"`
+	// Filter by target type.
+	//
 	// Any of "page", "sitemap", "extract".
 	TargetType MonitorListParamsTargetType `query:"target_type,omitzero" json:"-"`
 	paramObj
@@ -3929,6 +3966,7 @@ func (r MonitorListParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Filter by change detection type.
 type MonitorListParamsChangeDetectionType string
 
 const (
@@ -3945,11 +3983,7 @@ const (
 	MonitorListParamsSearchTypePrefix MonitorListParamsSearchType = "prefix"
 )
 
-// Monitor lifecycle status. `failed` means the most recent run failed (see the
-// monitor's `last_error`); failed monitors keep running on schedule and flip back
-// to `active` on the next successful run. Monitors are auto-`paused` after
-// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
-// status to `active`.
+// Filter monitors by lifecycle status.
 type MonitorListParamsStatus string
 
 const (
@@ -3958,6 +3992,7 @@ const (
 	MonitorListParamsStatusFailed MonitorListParamsStatus = "failed"
 )
 
+// Filter by target type.
 type MonitorListParamsTargetType string
 
 const (
@@ -3967,15 +4002,24 @@ const (
 )
 
 type MonitorListAccountChangesParams struct {
-	Cursor    param.Opt[string]    `query:"cursor,omitzero" json:"-"`
-	Limit     param.Opt[int64]     `query:"limit,omitzero" json:"-"`
-	MonitorID param.Opt[string]    `query:"monitor_id,omitzero" json:"-"`
-	Since     param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
+	// Opaque pagination cursor from a previous response.
+	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Filter changes to a single monitor.
+	MonitorID param.Opt[string] `query:"monitor_id,omitzero" json:"-"`
+	// Only include items at or after this ISO 8601 timestamp.
+	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
 	// Filter to items that have this tag.
-	Tag   param.Opt[string]    `query:"tag,omitzero" json:"-"`
+	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
+	// Only include items before this ISO 8601 timestamp.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
+	// Filter by change detection type.
+	//
 	// Any of "exact", "semantic".
 	ChangeDetectionType MonitorListAccountChangesParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
+	// Filter by target type.
+	//
 	// Any of "page", "sitemap", "extract".
 	TargetType MonitorListAccountChangesParamsTargetType `query:"target_type,omitzero" json:"-"`
 	paramObj
@@ -3990,6 +4034,7 @@ func (r MonitorListAccountChangesParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Filter by change detection type.
 type MonitorListAccountChangesParamsChangeDetectionType string
 
 const (
@@ -3997,6 +4042,7 @@ const (
 	MonitorListAccountChangesParamsChangeDetectionTypeSemantic MonitorListAccountChangesParamsChangeDetectionType = "semantic"
 )
 
+// Filter by target type.
 type MonitorListAccountChangesParamsTargetType string
 
 const (
@@ -4006,10 +4052,11 @@ const (
 )
 
 type MonitorListAccountRunsParams struct {
+	// Opaque pagination cursor from a previous response.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
-	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Filter runs by lifecycle status.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListAccountRunsParamsStatus `query:"status,omitzero" json:"-"`
@@ -4025,8 +4072,7 @@ func (r MonitorListAccountRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-// (insufficient credits, monitor paused, or superseded by a concurrent run).
+// Filter runs by lifecycle status.
 type MonitorListAccountRunsParamsStatus string
 
 const (
@@ -4038,11 +4084,15 @@ const (
 )
 
 type MonitorListChangesParams struct {
-	Cursor param.Opt[string]    `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]     `query:"limit,omitzero" json:"-"`
-	Since  param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
+	// Opaque pagination cursor from a previous response.
+	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Only include items at or after this ISO 8601 timestamp.
+	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
 	// Filter to items that have this tag.
-	Tag   param.Opt[string]    `query:"tag,omitzero" json:"-"`
+	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
+	// Only include items before this ISO 8601 timestamp.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
 	paramObj
 }
@@ -4057,10 +4107,11 @@ func (r MonitorListChangesParams) URLQuery() (v url.Values, err error) {
 }
 
 type MonitorListRunsParams struct {
+	// Opaque pagination cursor from a previous response.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
-	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Filter runs by lifecycle status.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListRunsParamsStatus `query:"status,omitzero" json:"-"`
@@ -4075,8 +4126,7 @@ func (r MonitorListRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-// (insufficient credits, monitor paused, or superseded by a concurrent run).
+// Filter runs by lifecycle status.
 type MonitorListRunsParamsStatus string
 
 const (

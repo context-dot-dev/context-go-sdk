@@ -40,9 +40,7 @@ func NewParseService(opts ...option.RequestOption) (r ParseService) {
 }
 
 // Converts raw text, source code, web/data, PDF, Microsoft Office, and image bytes
-// into LLM-usable Markdown. The base request costs 1 credit. When OCR runs
-// (requires ocr=true), the entire call costs 5 credits; ocr=true requests where no
-// OCR ends up running still cost 1 credit.
+// into LLM-usable Markdown.
 func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseHandleParams, opts ...option.RequestOption) (res *ParseHandleResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	opts = append([]option.RequestOption{option.WithRequestBody("application/octet-stream", body)}, opts...)
@@ -156,24 +154,10 @@ func (r *ParseHandleResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type ParseHandleParams struct {
-	// Include image references in Markdown output
-	IncludeImages param.Opt[bool] `query:"includeImages,omitzero" json:"-"`
-	// Preserve hyperlinks in Markdown output
-	IncludeLinks param.Opt[bool] `query:"includeLinks,omitzero" json:"-"`
-	// Gates all OCR. When true, PDFs get embedded-image OCR (recognized text inserted
-	// at each image's position in page reading order, preserving the text layer;
-	// pdf.start/pdf.end limit the page range), scanned PDFs with no text layer get
-	// full-document OCR, and raster images get their visible text transcribed. When
-	// false, no OCR runs: scanned PDFs may yield no content and images return only
-	// format/dimension metadata. Calls where OCR actually runs cost 5 credits instead
-	// of 1.
-	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
-	// Shorten base64-encoded image data in the Markdown output
-	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
-	// Extract only the main content from HTML-like inputs
-	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
-	// Optional file extension hint. Case-insensitive; a leading dot is accepted (e.g.
-	// ".pdf").
+	// Optional client identifier used for usage attribution.
+	Client param.Opt[string] `query:"client,omitzero" json:"-"`
+	// Optional file extension hint, such as pdf, docx, xlsx, pptx, html, json, csv,
+	// md, py, rtf, jpg, png, or txt.
 	//
 	// Any of "txt", "text", "md", "markdown", "html", "htm", "xhtml", "xml", "rss",
 	// "atom", "csv", "tsv", "yaml", "yml", "py", "java", "js", "jsx", "mjs", "cjs",
@@ -183,13 +167,25 @@ type ParseHandleParams struct {
 	// "ppsx", "ppsm", "potx", "potm", "ppt", "pps", "pot", "jpg", "jpeg", "jpe",
 	// "png", "gif", "bmp", "tiff", "tif", "webp", "ppm", "pbm", "pgm", "pnm".
 	Extension ParseHandleParamsExtension `query:"extension,omitzero" json:"-"`
-	// PDF page-range controls. Use start/end to limit parsing (and OCR when ocr=true)
-	// to an inclusive 1-based page range.
+	// Include image references in Markdown output
+	IncludeImages ParseHandleParamsIncludeImagesUnion `query:"includeImages,omitzero" json:"-"`
+	// Preserve hyperlinks in Markdown output
+	IncludeLinks ParseHandleParamsIncludeLinksUnion `query:"includeLinks,omitzero" json:"-"`
+	// When true for PDF inputs, detect and OCR images embedded in the selected pages,
+	// inserting recognized text at each image's position in page reading order while
+	// preserving the PDF text layer. pdf.start/pdf.end limit the inclusive page range.
+	// When false, all OCR is disabled, including the automatic scanned-PDF fallback.
+	Ocr ParseHandleParamsOcrUnion `query:"ocr,omitzero" json:"-"`
+	// PDF page-range options as a JSON object, e.g. {"start": 2, "end": 5}.
 	Pdf ParseHandleParamsPdf `query:"pdf,omitzero" json:"-"`
+	// Shorten base64-encoded image data in the Markdown output
+	ShortenBase64Images ParseHandleParamsShortenBase64ImagesUnion `query:"shortenBase64Images,omitzero" json:"-"`
 	// Optional comma-separated caller-defined tags for tracking this request. Tags are
 	// recorded on the request's usage log and can be used to filter usage on the
 	// dashboard usage page. Up to 20 tags, each 1-50 characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Extract only the main content from HTML-like inputs
+	UseMainContentOnly ParseHandleParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
 	paramObj
 }
 
@@ -219,8 +215,8 @@ func (r ParseHandleParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Optional file extension hint. Case-insensitive; a leading dot is accepted (e.g.
-// ".pdf").
+// Optional file extension hint, such as pdf, docx, xlsx, pptx, html, json, csv,
+// md, py, rtf, jpg, png, or txt.
 type ParseHandleParamsExtension string
 
 const (
@@ -296,8 +292,61 @@ const (
 	ParseHandleParamsExtensionPnm      ParseHandleParamsExtension = "pnm"
 )
 
-// PDF page-range controls. Use start/end to limit parsing (and OCR when ocr=true)
-// to an inclusive 1-based page range.
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type ParseHandleParamsIncludeImagesUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfParseHandlesIncludeImagesString)
+	OfParseHandlesIncludeImagesString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type ParseHandleParamsIncludeImagesString string
+
+const (
+	ParseHandleParamsIncludeImagesStringTrue  ParseHandleParamsIncludeImagesString = "true"
+	ParseHandleParamsIncludeImagesStringFalse ParseHandleParamsIncludeImagesString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type ParseHandleParamsIncludeLinksUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfParseHandlesIncludeLinksString)
+	OfParseHandlesIncludeLinksString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type ParseHandleParamsIncludeLinksString string
+
+const (
+	ParseHandleParamsIncludeLinksStringTrue  ParseHandleParamsIncludeLinksString = "true"
+	ParseHandleParamsIncludeLinksStringFalse ParseHandleParamsIncludeLinksString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type ParseHandleParamsOcrUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfParseHandlesOcrString)
+	OfParseHandlesOcrString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type ParseHandleParamsOcrString string
+
+const (
+	ParseHandleParamsOcrStringTrue  ParseHandleParamsOcrString = "true"
+	ParseHandleParamsOcrStringFalse ParseHandleParamsOcrString = "false"
+)
+
+// PDF page-range options as a JSON object, e.g. {"start": 2, "end": 5}.
 type ParseHandleParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
@@ -314,3 +363,39 @@ func (r ParseHandleParamsPdf) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type ParseHandleParamsShortenBase64ImagesUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfParseHandlesShortenBase64ImagesString)
+	OfParseHandlesShortenBase64ImagesString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type ParseHandleParamsShortenBase64ImagesString string
+
+const (
+	ParseHandleParamsShortenBase64ImagesStringTrue  ParseHandleParamsShortenBase64ImagesString = "true"
+	ParseHandleParamsShortenBase64ImagesStringFalse ParseHandleParamsShortenBase64ImagesString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type ParseHandleParamsUseMainContentOnlyUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfParseHandlesUseMainContentOnlyString)
+	OfParseHandlesUseMainContentOnlyString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type ParseHandleParamsUseMainContentOnlyString string
+
+const (
+	ParseHandleParamsUseMainContentOnlyStringTrue  ParseHandleParamsUseMainContentOnlyString = "true"
+	ParseHandleParamsUseMainContentOnlyStringFalse ParseHandleParamsUseMainContentOnlyString = "false"
+)

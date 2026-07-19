@@ -948,9 +948,7 @@ type BrandGetParamsBodyByDomain struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminator for domain-based brand retrieval.
 	//
@@ -1015,9 +1013,7 @@ type BrandGetParamsBodyByName struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminator for name-based brand retrieval.
 	//
@@ -1080,9 +1076,7 @@ type BrandGetParamsBodyByEmail struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminator for email-based brand retrieval.
 	//
@@ -1146,9 +1140,7 @@ type BrandGetParamsBodyByTicker struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminator for ticker-based brand retrieval.
 	//
@@ -1187,9 +1179,7 @@ type BrandGetParamsBodyByDirectURL struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminator for direct-URL-based brand retrieval.
 	//
@@ -1253,9 +1243,7 @@ type BrandGetParamsBodyByTransaction struct {
 	Mcc BrandGetParamsBodyByTransactionMccUnion `json:"mcc,omitzero"`
 	// Optional phone number from the transaction to help verify brand match.
 	Phone BrandGetParamsBodyByTransactionPhoneUnion `json:"phone,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminator for transaction-based brand retrieval.
 	//

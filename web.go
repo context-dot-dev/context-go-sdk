@@ -2387,6 +2387,10 @@ type WebExtractParams struct {
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum number of pages to analyze for extraction. Hard cap: 50. Defaults to 5.
 	MaxPages param.Opt[int64] `json:"maxPages,omitzero"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting each crawled page. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Soft time budget for the crawl in milliseconds. Min: 10000 (10s). Max: 110000
 	// (110s). Default: 80000 (80s).
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
@@ -2398,9 +2402,7 @@ type WebExtractParams struct {
 	// crawled page.
 	WaitForMs param.Opt[int64]    `json:"waitForMs,omitzero"`
 	Pdf       WebExtractParamsPdf `json:"pdf,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -2962,9 +2964,7 @@ type WebSearchParams struct {
 	IncludeDomains []string `json:"includeDomains,omitzero"`
 	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
 	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -3368,9 +3368,7 @@ type WebWebCrawlMdParams struct {
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
-	// Optional caller-defined tags for tracking this request. Tags are recorded on the
-	// request's usage log and can be used to filter usage on the dashboard usage page.
-	// Up to 20 tags, each 1-50 characters.
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }

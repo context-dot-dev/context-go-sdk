@@ -46,10 +46,11 @@ func TestWebExtractWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
-		StopAfterMs: contextdev.Int(10000),
-		Tags:        []string{"production", "team-alpha"},
-		TimeoutMs:   contextdev.Int(1000),
-		WaitForMs:   contextdev.Int(0),
+		SettleAnimations: contextdev.Bool(true),
+		StopAfterMs:      contextdev.Int(10000),
+		Tags:             []string{"production", "team-alpha"},
+		TimeoutMs:        contextdev.Int(1000),
+		WaitForMs:        contextdev.Int(0),
 	})
 	if err != nil {
 		var apierr *contextdev.Error

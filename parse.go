@@ -186,6 +186,13 @@ type ParseHandleParams struct {
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Extract only the main content from HTML-like inputs
 	UseMainContentOnly ParseHandleParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr ParseHandleParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -398,4 +405,15 @@ type ParseHandleParamsUseMainContentOnlyString string
 const (
 	ParseHandleParamsUseMainContentOnlyStringTrue  ParseHandleParamsUseMainContentOnlyString = "true"
 	ParseHandleParamsUseMainContentOnlyStringFalse ParseHandleParamsUseMainContentOnlyString = "false"
+)
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type ParseHandleParamsZdr string
+
+const (
+	ParseHandleParamsZdrEnabled  ParseHandleParamsZdr = "enabled"
+	ParseHandleParamsZdrDisabled ParseHandleParamsZdr = "disabled"
 )

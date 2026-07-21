@@ -180,6 +180,7 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 			Width:  contextdev.Int(240),
 		},
 		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebScreenshotParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -278,6 +279,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		URLRegex:            contextdev.String("^https?://[^/]+/blog/"),
 		UseMainContentOnly:  contextdev.Bool(true),
 		WaitForMs:           contextdev.Int(0),
+		Zdr:                 contextdev.WebWebCrawlMdParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -332,6 +334,7 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 			OfWebWebScrapeHTMLsUseMainContentOnlyString: contextdev.String("true"),
 		},
 		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeHTMLParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -442,6 +445,7 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 			OfWebWebScrapeMdsUseMainContentOnlyString: contextdev.String("true"),
 		},
 		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeMdParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -475,6 +479,7 @@ func TestWebWebScrapeSitemapWithOptionalParams(t *testing.T) {
 		Tags:       []string{"production", "team-alpha"},
 		TimeoutMs:  contextdev.Int(1),
 		URLRegex:   contextdev.String("^https?://[^/]+/blog/"),
+		Zdr:        contextdev.WebWebScrapeSitemapParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

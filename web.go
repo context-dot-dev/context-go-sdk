@@ -1125,7 +1125,8 @@ type WebScreenshotResponse struct {
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebScreenshotResponseKeyMetadata `json:"key_metadata"`
-	// Public URL of the uploaded screenshot image
+	// Public image URL for standard requests, or an in-memory data URL when ZDR is
+	// enabled.
 	Screenshot string `json:"screenshot"`
 	// Type of screenshot that was captured
 	//
@@ -2621,6 +2622,13 @@ type WebScreenshotParams struct {
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 	Viewport WebScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebScreenshotParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2916,6 +2924,17 @@ func (r WebScreenshotParamsViewport) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebScreenshotParamsZdr string
+
+const (
+	WebScreenshotParamsZdrEnabled  WebScreenshotParamsZdr = "enabled"
+	WebScreenshotParamsZdrDisabled WebScreenshotParamsZdr = "disabled"
+)
 
 type WebSearchParams struct {
 	// Search query. Accepts natural language as well as Google-style search operators
@@ -3370,6 +3389,13 @@ type WebWebCrawlMdParams struct {
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebCrawlMdParamsZdr `json:"zdr,omitzero"`
 	paramObj
 }
 
@@ -3619,6 +3645,17 @@ func (r *WebWebCrawlMdParamsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebCrawlMdParamsZdr string
+
+const (
+	WebWebCrawlMdParamsZdrEnabled  WebWebCrawlMdParamsZdr = "enabled"
+	WebWebCrawlMdParamsZdrDisabled WebWebCrawlMdParamsZdr = "disabled"
+)
+
 type WebWebScrapeHTMLParams struct {
 	// Full URL to scrape (must include http:// or https:// protocol)
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
@@ -3682,6 +3719,13 @@ type WebWebScrapeHTMLParams struct {
 	// When true, return only the page's main content in the HTML response, excluding
 	// headers, footers, sidebars, and navigation when detectable.
 	UseMainContentOnly WebWebScrapeHTMLParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeHTMLParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4022,6 +4066,17 @@ const (
 	WebWebScrapeHTMLParamsUseMainContentOnlyStringFalse WebWebScrapeHTMLParamsUseMainContentOnlyString = "false"
 )
 
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeHTMLParamsZdr string
+
+const (
+	WebWebScrapeHTMLParamsZdrEnabled  WebWebScrapeHTMLParamsZdr = "enabled"
+	WebWebScrapeHTMLParamsZdrDisabled WebWebScrapeHTMLParamsZdr = "disabled"
+)
+
 type WebWebScrapeImagesParams struct {
 	// Page URL to inspect. Must include http:// or https://.
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
@@ -4229,6 +4284,13 @@ type WebWebScrapeMdParams struct {
 	// Extract only the main content of the page, excluding headers, footers, sidebars,
 	// and navigation
 	UseMainContentOnly WebWebScrapeMdParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeMdParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4623,6 +4685,17 @@ const (
 	WebWebScrapeMdParamsUseMainContentOnlyStringFalse WebWebScrapeMdParamsUseMainContentOnlyString = "false"
 )
 
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeMdParamsZdr string
+
+const (
+	WebWebScrapeMdParamsZdrEnabled  WebWebScrapeMdParamsZdr = "enabled"
+	WebWebScrapeMdParamsZdrDisabled WebWebScrapeMdParamsZdr = "disabled"
+)
+
 type WebWebScrapeSitemapParams struct {
 	// Domain to build a sitemap for
 	Domain string `query:"domain" api:"required" json:"-"`
@@ -4647,6 +4720,13 @@ type WebWebScrapeSitemapParams struct {
 	// recorded on the request's usage log and can be used to filter usage on the
 	// dashboard usage page. Up to 20 tags, each 1-50 characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeSitemapParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4658,3 +4738,14 @@ func (r WebWebScrapeSitemapParams) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeSitemapParamsZdr string
+
+const (
+	WebWebScrapeSitemapParamsZdrEnabled  WebWebScrapeSitemapParamsZdr = "enabled"
+	WebWebScrapeSitemapParamsZdrDisabled WebWebScrapeSitemapParamsZdr = "disabled"
+)

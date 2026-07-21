@@ -54,6 +54,7 @@ func TestParseHandleWithOptionalParams(t *testing.T) {
 			UseMainContentOnly: contextdev.ParseHandleParamsUseMainContentOnlyUnion{
 				OfParseHandlesUseMainContentOnlyString: contextdev.String("true"),
 			},
+			Zdr: contextdev.ParseHandleParamsZdrEnabled,
 		},
 	)
 	if err != nil {

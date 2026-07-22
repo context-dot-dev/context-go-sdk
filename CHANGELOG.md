@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.5.0 (2026-07-22)
+
+Full Changelog: [v2.4.0...v2.5.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.4.0...v2.5.0)
+
+### Features
+
+* **api:** api update ([6a11143](https://github.com/context-dot-dev/context-go-sdk/commit/6a1114374f33686faefa43314e5ab5eb9910b684))
+* **api:** api update ([5f8b3b8](https://github.com/context-dot-dev/context-go-sdk/commit/5f8b3b88b5fc7303a9fd2470ef9f1722e4c83350))
+* **api:** api update ([7d5e264](https://github.com/context-dot-dev/context-go-sdk/commit/7d5e26434fa5c61c25197e247e4469fcc8e80d34))
+* **api:** api update ([9440d43](https://github.com/context-dot-dev/context-go-sdk/commit/9440d43b6b1e207d22d7bb97d2eb2306495136ee))
+* **api:** api update ([533ef0c](https://github.com/context-dot-dev/context-go-sdk/commit/533ef0c9994e843f48bc3a73e5aca2247de860b1))
+* **api:** api update ([315e065](https://github.com/context-dot-dev/context-go-sdk/commit/315e06525a23999f3f827eb370df436958ef79a5))
+* **api:** api update ([d58b30f](https://github.com/context-dot-dev/context-go-sdk/commit/d58b30faedbb676b274b8d015be903e9413963d3))
+* **api:** manual updates ([2393444](https://github.com/context-dot-dev/context-go-sdk/commit/239344498e2419e37533abde86f3bdbd71de4cd9))
+* **stlc:** configurable CI runner and private-production-repo support in workflow templates ([d1d221e](https://github.com/context-dot-dev/context-go-sdk/commit/d1d221e22674292de1ba5e39d5ec6f4adf156850))
+
 ## 2.4.0 (2026-07-12)
 
 Full Changelog: [v2.3.0...v2.4.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.3.0...v2.4.0)

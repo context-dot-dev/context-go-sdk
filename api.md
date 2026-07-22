@@ -88,6 +88,7 @@ Methods:
 
 Response Types:
 
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDelivery">WebhookDelivery</a>
 - <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#MonitorNewResponse">MonitorNewResponse</a>
 - <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#MonitorGetResponse">MonitorGetResponse</a>
 - <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#MonitorUpdateResponse">MonitorUpdateResponse</a>

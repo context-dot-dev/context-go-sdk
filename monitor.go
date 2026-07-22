@@ -225,6 +225,7 @@ type MonitorNewResponse struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorNewResponseWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -544,9 +545,9 @@ type MonitorNewResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -862,6 +863,7 @@ type MonitorGetResponse struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorGetResponseWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -1181,9 +1183,9 @@ type MonitorGetResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -1499,6 +1501,7 @@ type MonitorUpdateResponse struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                     `json:"tags"`
 	Webhook MonitorUpdateResponseWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -1819,9 +1822,9 @@ type MonitorUpdateResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -2157,6 +2160,7 @@ type MonitorListResponseData struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                       `json:"tags"`
 	Webhook MonitorListResponseDataWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -2458,9 +2462,9 @@ type MonitorListResponseDataTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -2882,6 +2886,7 @@ type MonitorListAccountChangesResponseData struct {
 	MatchedURLCount int64  `json:"matched_url_count"`
 	RemovedURLCount int64  `json:"removed_url_count"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3122,6 +3127,7 @@ type MonitorListChangesResponseData struct {
 	MatchedURLCount int64  `json:"matched_url_count"`
 	RemovedURLCount int64  `json:"removed_url_count"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3334,6 +3340,7 @@ type MonitorGetChangeResponse struct {
 	RunID   string `json:"run_id" api:"required"`
 	Summary string `json:"summary" api:"required"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags" api:"required"`
 	// Any of "page", "sitemap", "extract".
 	TargetType    MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
@@ -3485,6 +3492,7 @@ type MonitorNewParams struct {
 	// Any of "web".
 	Mode MonitorNewParamsMode `json:"mode,omitzero"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -3657,9 +3665,9 @@ type MonitorNewParamsTargetSitemap struct {
 	URL string `json:"url" api:"required" format:"uri"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude,omitzero"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include,omitzero"`
 	// This field can be elided, and will marshal its zero value as "sitemap".
 	Type constant.Sitemap `json:"type" default:"sitemap"`
@@ -3757,6 +3765,7 @@ type MonitorUpdateParams struct {
 	// Any of "active", "paused".
 	Status MonitorUpdateParamsStatus `json:"status,omitzero"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminated union describing what the monitor watches.
 	Target MonitorUpdateParamsTargetUnion `json:"target,omitzero"`
@@ -3938,9 +3947,9 @@ type MonitorUpdateParamsTargetSitemap struct {
 	URL string `json:"url" api:"required" format:"uri"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude,omitzero"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include,omitzero"`
 	// This field can be elided, and will marshal its zero value as "sitemap".
 	Type constant.Sitemap `json:"type" default:"sitemap"`

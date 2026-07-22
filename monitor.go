@@ -103,6 +103,23 @@ func (r *MonitorService) Delete(ctx context.Context, monitorID string, opts ...o
 	return res, err
 }
 
+// Returns credits charged per monitor over an optional [since, until] window,
+// newest spenders first.
+func (r *MonitorService) GetCreditUsage(ctx context.Context, query MonitorGetCreditUsageParams, opts ...option.RequestOption) (res *MonitorGetCreditUsageResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "monitors/credit-usage"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	return res, err
+}
+
+// Returns how many monitors the account has and the maximum it allows.
+func (r *MonitorService) GetLimits(ctx context.Context, opts ...option.RequestOption) (res *MonitorGetLimitsResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "monitors/limits"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
+	return res, err
+}
+
 // Returns an account-wide feed of detected changes across monitors.
 func (r *MonitorService) ListAccountChanges(ctx context.Context, query MonitorListAccountChangesParams, opts ...option.RequestOption) (res *MonitorListAccountChangesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
@@ -2737,6 +2754,86 @@ func (r *MonitorDeleteResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+type MonitorGetCreditUsageResponse struct {
+	Data []MonitorGetCreditUsageResponseData `json:"data" api:"required"`
+	// Sum of credits across all monitors in the window.
+	TotalCredits int64 `json:"total_credits" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data         respjson.Field
+		TotalCredits respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetCreditUsageResponse) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetCreditUsageResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorGetCreditUsageResponseData struct {
+	// Credits charged to this monitor over the window.
+	Credits   int64  `json:"credits" api:"required"`
+	MonitorID string `json:"monitor_id" api:"required"`
+	// Monitor name (falls back to the id when the monitor was deleted).
+	Name string `json:"name" api:"required"`
+	// Number of billed runs over the window.
+	Runs int64 `json:"runs" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Credits     respjson.Field
+		MonitorID   respjson.Field
+		Name        respjson.Field
+		Runs        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetCreditUsageResponseData) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetCreditUsageResponseData) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorGetLimitsResponse struct {
+	// Maximum number of monitors allowed for the account. Defaults to the plan
+	// allowance unless a custom limit is set for the organization.
+	MonitorsLimit int64 `json:"monitors_limit" api:"required"`
+	// Number of monitors the account currently has.
+	MonitorsUsed int64 `json:"monitors_used" api:"required"`
+	// The plan tier the limit was resolved from.
+	//
+	// Any of "free", "starter", "pro", "scale".
+	Plan MonitorGetLimitsResponsePlan `json:"plan" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		MonitorsLimit respjson.Field
+		MonitorsUsed  respjson.Field
+		Plan          respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetLimitsResponse) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetLimitsResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The plan tier the limit was resolved from.
+type MonitorGetLimitsResponsePlan string
+
+const (
+	MonitorGetLimitsResponsePlanFree    MonitorGetLimitsResponsePlan = "free"
+	MonitorGetLimitsResponsePlanStarter MonitorGetLimitsResponsePlan = "starter"
+	MonitorGetLimitsResponsePlanPro     MonitorGetLimitsResponsePlan = "pro"
+	MonitorGetLimitsResponsePlanScale   MonitorGetLimitsResponsePlan = "scale"
+)
+
 type MonitorListAccountChangesResponse struct {
 	Data       []MonitorListAccountChangesResponseData `json:"data" api:"required"`
 	HasMore    bool                                    `json:"has_more" api:"required"`
@@ -4000,6 +4097,23 @@ const (
 	MonitorListParamsTargetTypeSitemap MonitorListParamsTargetType = "sitemap"
 	MonitorListParamsTargetTypeExtract MonitorListParamsTargetType = "extract"
 )
+
+type MonitorGetCreditUsageParams struct {
+	// Only include items at or after this ISO 8601 timestamp.
+	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
+	// Only include items before this ISO 8601 timestamp.
+	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [MonitorGetCreditUsageParams]'s query parameters as
+// `url.Values`.
+func (r MonitorGetCreditUsageParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
 
 type MonitorListAccountChangesParams struct {
 	// Opaque pagination cursor from a previous response.

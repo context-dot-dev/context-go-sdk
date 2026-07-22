@@ -15,6 +15,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/option"
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
 // WebService contains methods and other services that help with interacting with
@@ -97,7 +98,8 @@ func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, o
 	return res, err
 }
 
-// Scrapes the given URL and returns the raw HTML content of the page.
+// Scrapes the given URL and returns the raw HTML content of the page. The base
+// request costs 1 credit; requests with browser actions cost 2 credits.
 func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLParams, opts ...option.RequestOption) (res *WebWebScrapeHTMLResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/html"
@@ -107,8 +109,9 @@ func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLPa
 
 // Extract image assets from a web page, including standard URLs, inline SVGs, data
 // URIs, responsive image sources, metadata, CSS backgrounds, video posters, and
-// embeds. The base request costs 1 credit. When enrichment is enabled, the entire
-// call costs 5 credits.
+// embeds. The base request costs 1 credit, or 2 credits with browser actions. When
+// enrichment is enabled, the entire call costs 5 credits, including requests that
+// also use actions.
 func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImagesParams, opts ...option.RequestOption) (res *WebWebScrapeImagesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/images"
@@ -122,16 +125,16 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 //
 // ### Billing & errors
 //
-// | HTTP status | Billed?        | Meaning                                                                                  |
-// | ----------- | -------------- | ---------------------------------------------------------------------------------------- |
-// | 200         | Yes — 1 credit | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
-// | 400         | No             | Invalid input, skipped PDF, or the page could not be scraped                             |
-// | 401 / 403   | No             | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
-// | 404         | No             | Target page returned or fingerprinted as not found                                       |
-// | 408         | No             | Request timed out                                                                        |
-// | 415         | No             | Unsupported content type                                                                 |
-// | 429         | No             | Per-minute rate limit exceeded; honor Retry-After                                        |
-// | 500         | No             | Internal error                                                                           |
+// | HTTP status | Billed?                                   | Meaning                                                                                  |
+// | ----------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
+// | 400         | No                                        | Invalid input, skipped PDF, or the page could not be scraped                             |
+// | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
+// | 404         | No                                        | Target page returned or fingerprinted as not found                                       |
+// | 408         | No                                        | Request timed out                                                                        |
+// | 415         | No                                        | Unsupported content type                                                                 |
+// | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                        |
+// | 500         | No                                        | Internal error                                                                           |
 func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams, opts ...option.RequestOption) (res *WebWebScrapeMdResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/markdown"
@@ -1125,7 +1128,8 @@ type WebScreenshotResponse struct {
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebScreenshotResponseKeyMetadata `json:"key_metadata"`
-	// Public URL of the uploaded screenshot image
+	// Public image URL for standard requests, or an in-memory data URL when ZDR is
+	// enabled.
 	Screenshot string `json:"screenshot"`
 	// Type of screenshot that was captured
 	//
@@ -2387,6 +2391,10 @@ type WebExtractParams struct {
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum number of pages to analyze for extraction. Hard cap: 50. Defaults to 5.
 	MaxPages param.Opt[int64] `json:"maxPages,omitzero"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting each crawled page. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Soft time budget for the crawl in milliseconds. Min: 10000 (10s). Max: 110000
 	// (110s). Default: 80000 (80s).
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
@@ -2398,6 +2406,8 @@ type WebExtractParams struct {
 	// crawled page.
 	WaitForMs param.Opt[int64]    `json:"waitForMs,omitzero"`
 	Pdf       WebExtractParamsPdf `json:"pdf,omitzero"`
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 
@@ -2438,6 +2448,10 @@ type WebExtractCompetitorsParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2451,6 +2465,11 @@ func (r WebExtractCompetitorsParams) URLQuery() (v url.Values, err error) {
 }
 
 type WebExtractFontsParams struct {
+	// Maximum age in milliseconds for cached brand data before the API performs a hard
+	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
+	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
+	// year.
+	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// A specific URL to fetch fonts from directly, bypassing domain resolution (e.g.,
 	// 'https://example.com/design-system'). When provided, fonts are extracted from
 	// this exact URL. You must provide either 'domain' or 'directUrl', but not both.
@@ -2459,15 +2478,14 @@ type WebExtractFontsParams struct {
 	// domain will be automatically normalized and validated. You must provide either
 	// 'domain' or 'directUrl', but not both.
 	Domain param.Opt[string] `query:"domain,omitzero" json:"-"`
-	// Maximum age in milliseconds for cached data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
-	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
-	// year.
-	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2480,6 +2498,11 @@ func (r WebExtractFontsParams) URLQuery() (v url.Values, err error) {
 }
 
 type WebExtractStyleguideParams struct {
+	// Maximum age in milliseconds for cached brand data before the API performs a hard
+	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
+	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
+	// year.
+	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// A specific URL to fetch the styleguide from directly, bypassing domain
 	// resolution (e.g., 'https://example.com/design-system'). When provided, the
 	// styleguide is extracted from this exact URL. You must provide either 'domain' or
@@ -2489,11 +2512,6 @@ type WebExtractStyleguideParams struct {
 	// domain will be automatically normalized and validated. You must provide either
 	// 'domain' or 'directUrl', but not both.
 	Domain param.Opt[string] `query:"domain,omitzero" json:"-"`
-	// Maximum age in milliseconds for cached data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
-	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
-	// year.
-	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -2503,6 +2521,10 @@ type WebExtractStyleguideParams struct {
 	//
 	// Any of "light", "dark".
 	ColorScheme WebExtractStyleguideParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2525,14 +2547,6 @@ const (
 )
 
 type WebScreenshotParams struct {
-	// A specific URL to screenshot directly, bypassing domain resolution (e.g.,
-	// 'https://example.com/pricing'). When provided, the screenshot is taken of this
-	// exact URL. You must provide either 'domain' or 'directUrl', but not both.
-	DirectURL param.Opt[string] `query:"directUrl,omitzero" format:"uri" json:"-"`
-	// Domain name to take screenshot of (e.g., 'example.com', 'google.com'). The
-	// domain will be automatically normalized and validated. You must provide either
-	// 'domain' or 'directUrl', but not both.
-	Domain param.Opt[string] `query:"domain,omitzero" json:"-"`
 	// Return a cached screenshot if a prior screenshot for the same parameters exists
 	// and is younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always capture fresh.
@@ -2544,21 +2558,30 @@ type WebScreenshotParams struct {
 	// top to bottom). The final slice may be shorter than the viewport height. Takes
 	// precedence over fullScreenshot. Max: 100000.
 	ScrollOffset param.Opt[int64] `query:"scrollOffset,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load before taking
 	// the screenshot. Min: 0. Max: 30000 (30 seconds). Defaults to 3000 ms when
 	// omitted.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// A specific URL to screenshot directly, bypassing domain resolution (e.g.,
+	// 'https://example.com/pricing'). When provided, the screenshot is taken of this
+	// exact URL. You must provide either 'domain' or 'directUrl', but not both.
+	DirectURL param.Opt[string] `query:"directUrl,omitzero" format:"uri" json:"-"`
+	// Domain name to take screenshot of (e.g., 'example.com', 'google.com'). The
+	// domain will be automatically normalized and validated. You must provide either
+	// 'domain' or 'directUrl', but not both.
+	Domain param.Opt[string] `query:"domain,omitzero" json:"-"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Optional parameter to choose the site's visual theme in the screenshot. Use
 	// 'light' or 'dark' when the site offers both appearances.
 	//
 	// Any of "light", "dark".
 	ColorScheme WebScreenshotParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
-	// Two-letter ISO 3166-1 alpha-2 country code for the website request location.
-	// When provided, Context.dev fetches the target page from that country.
+	// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
+	// residential proxy exit location. Must be one of Context.dev's supported
+	// countries. When provided, Context.dev fetches the target page from that country.
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -2586,9 +2609,7 @@ type WebScreenshotParams struct {
 	// Optional parameter to control cookie/consent popup handling. If 'true', we
 	// dismiss cookie banner before capture. If 'false' or not provided, captures the
 	// page without that step.
-	//
-	// Any of "true", "false".
-	HandleCookiePopup WebScreenshotParamsHandleCookiePopup `query:"handleCookiePopup,omitzero" json:"-"`
+	HandleCookiePopup WebScreenshotParamsHandleCookiePopupUnion `query:"handleCookiePopup,omitzero" json:"-"`
 	// Optional parameter to specify which page type to screenshot. If provided, the
 	// system will scrape the domain's links and use heuristics to find the most
 	// appropriate URL for the specified page type (30 supported languages). If not
@@ -2598,8 +2619,19 @@ type WebScreenshotParams struct {
 	// Any of "login", "signup", "blog", "careers", "pricing", "terms", "privacy",
 	// "contact".
 	Page WebScreenshotParamsPage `query:"page,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 	Viewport WebScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebScreenshotParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -2620,8 +2652,9 @@ const (
 	WebScreenshotParamsColorSchemeDark  WebScreenshotParamsColorScheme = "dark"
 )
 
-// Two-letter ISO 3166-1 alpha-2 country code for the website request location.
-// When provided, Context.dev fetches the target page from that country.
+// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
+// residential proxy exit location. Must be one of Context.dev's supported
+// countries. When provided, Context.dev fetches the target page from that country.
 type WebScreenshotParamsCountry string
 
 const (
@@ -2841,14 +2874,22 @@ const (
 	WebScreenshotParamsFullScreenshotFalse WebScreenshotParamsFullScreenshot = "false"
 )
 
-// Optional parameter to control cookie/consent popup handling. If 'true', we
-// dismiss cookie banner before capture. If 'false' or not provided, captures the
-// page without that step.
-type WebScreenshotParamsHandleCookiePopup string
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScreenshotParamsHandleCookiePopupUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebScreenshotsHandleCookiePopupString)
+	OfWebScreenshotsHandleCookiePopupString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebScreenshotParamsHandleCookiePopupString string
 
 const (
-	WebScreenshotParamsHandleCookiePopupTrue  WebScreenshotParamsHandleCookiePopup = "true"
-	WebScreenshotParamsHandleCookiePopupFalse WebScreenshotParamsHandleCookiePopup = "false"
+	WebScreenshotParamsHandleCookiePopupStringTrue  WebScreenshotParamsHandleCookiePopupString = "true"
+	WebScreenshotParamsHandleCookiePopupStringFalse WebScreenshotParamsHandleCookiePopupString = "false"
 )
 
 // Optional parameter to specify which page type to screenshot. If provided, the
@@ -2886,6 +2927,17 @@ func (r WebScreenshotParamsViewport) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebScreenshotParamsZdr string
+
+const (
+	WebScreenshotParamsZdrEnabled  WebScreenshotParamsZdr = "enabled"
+	WebScreenshotParamsZdrDisabled WebScreenshotParamsZdr = "disabled"
+)
 
 type WebSearchParams struct {
 	// Search query. Accepts natural language as well as Google-style search operators
@@ -2934,6 +2986,8 @@ type WebSearchParams struct {
 	IncludeDomains []string `json:"includeDomains,omitzero"`
 	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
 	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 
@@ -3336,6 +3390,15 @@ type WebWebCrawlMdParams struct {
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	Tags []string `json:"tags,omitzero"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebCrawlMdParamsZdr `json:"zdr,omitzero"`
 	paramObj
 }
 
@@ -3585,31 +3648,46 @@ func (r *WebWebCrawlMdParamsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebCrawlMdParamsZdr string
+
+const (
+	WebWebCrawlMdParamsZdrEnabled  WebWebCrawlMdParamsZdr = "enabled"
+	WebWebCrawlMdParamsZdrDisabled WebWebCrawlMdParamsZdr = "disabled"
+)
+
 type WebWebScrapeHTMLParams struct {
 	// Full URL to scrape (must include http:// or https:// protocol)
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
-	// When true, iframes are rendered inline into the returned HTML.
-	IncludeFrames param.Opt[bool] `query:"includeFrames,omitzero" json:"-"`
 	// Return a cached result if a prior scrape for the same parameters exists and is
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
-	// When true, waits briefly for CSS and transition animations to settle before
-	// extracting HTML. Defaults to false. This adds a bit of latency in exchange for
-	// more stable output on animated pages.
-	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
+	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
+	// 30000 (30 seconds).
+	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
-	// When true, return only the page's main content in the HTML response, excluding
-	// headers, footers, sidebars, and navigation when detectable.
-	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
-	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
-	// 30000 (30 seconds).
-	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
-	// Two-letter ISO 3166-1 alpha-2 country code for the website request location.
-	// When provided, Context.dev fetches the target page from that country.
+	// Optional browser actions executed in array order after the page loads and before
+	// content is captured. Requires a paid plan. Send a JSON array in the query
+	// parameter. Maximum: 5 actions.
+	Actions []WebWebScrapeHTMLParamsActionUnion `query:"actions,omitzero" json:"-"`
+	// CSS selectors to remove from the result. Applied after includeSelectors.
+	// Exclusion takes precedence: an element matching both is removed. Examples:
+	// "nav", "footer", ".ad-banner", "[aria-hidden=true]".
+	ExcludeSelectors []string `query:"excludeSelectors,omitzero" json:"-"`
+	// CSS selectors. When provided, only matching subtrees (and their descendants) are
+	// kept and everything else is dropped. When omitted, the entire document is kept.
+	// Examples: "article.main", "#content", "[role=main]".
+	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
+	// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
+	// residential proxy exit location. Must be one of Context.dev's supported
+	// countries. When provided, Context.dev fetches the target page from that country.
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -3628,21 +3706,33 @@ type WebWebScrapeHTMLParams struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country WebWebScrapeHTMLParamsCountry `query:"country,omitzero" json:"-"`
-	// CSS selectors to remove from the result. Applied after includeSelectors.
-	// Exclusion takes precedence: an element matching both is removed. Examples:
-	// "nav", "footer", ".ad-banner", "[aria-hidden=true]".
-	ExcludeSelectors []string `query:"excludeSelectors,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// CSS selectors. When provided, only matching subtrees (and their descendants) are
-	// kept and everything else is dropped. When omitted, the entire document is kept.
-	// Examples: "article.main", "#content", "[role=main]".
-	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
+	// When true, iframes are rendered inline into the returned HTML.
+	IncludeFrames WebWebScrapeHTMLParamsIncludeFramesUnion `query:"includeFrames,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting HTML. Defaults to false. This adds a bit of latency in exchange for
+	// more stable output on animated pages.
+	SettleAnimations WebWebScrapeHTMLParamsSettleAnimationsUnion `query:"settleAnimations,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
+	// When true, return only the page's main content in the HTML response, excluding
+	// headers, footers, sidebars, and navigation when detectable.
+	UseMainContentOnly WebWebScrapeHTMLParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeHTMLParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3654,8 +3744,64 @@ func (r WebWebScrapeHTMLParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Two-letter ISO 3166-1 alpha-2 country code for the website request location.
-// When provided, Context.dev fetches the target page from that country.
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsActionUnion struct {
+	OfWait    *WebWebScrapeHTMLParamsActionWait    `query:",omitzero,inline"`
+	OfPerform *WebWebScrapeHTMLParamsActionPerform `query:",omitzero,inline"`
+	paramUnion
+}
+
+func init() {
+	apijson.RegisterUnion[WebWebScrapeHTMLParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebWebScrapeHTMLParamsActionWait]("wait"),
+		apijson.Discriminator[WebWebScrapeHTMLParamsActionPerform]("perform"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebWebScrapeHTMLParamsActionWait struct {
+	TimeMs int64 `query:"timeMs" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `query:"do" json:"-" default:"wait"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsActionWait]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeHTMLParamsActionWait) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebWebScrapeHTMLParamsActionPerform struct {
+	Action string `query:"action" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `query:"do" json:"-" default:"perform"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsActionPerform]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeHTMLParamsActionPerform) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
+// residential proxy exit location. Must be one of Context.dev's supported
+// countries. When provided, Context.dev fetches the target page from that country.
 type WebWebScrapeHTMLParamsCountry string
 
 const (
@@ -3865,21 +4011,39 @@ const (
 	WebWebScrapeHTMLParamsCountryZw WebWebScrapeHTMLParamsCountry = "zw"
 )
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsIncludeFramesUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsIncludeFramesString)
+	OfWebWebScrapeHTMLsIncludeFramesString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsIncludeFramesString string
+
+const (
+	WebWebScrapeHTMLParamsIncludeFramesStringTrue  WebWebScrapeHTMLParamsIncludeFramesString = "true"
+	WebWebScrapeHTMLParamsIncludeFramesStringFalse WebWebScrapeHTMLParamsIncludeFramesString = "false"
+)
+
 // PDF parsing controls. Use start/end to limit text extraction and embedded-image
 // detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeHTMLParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	// When true, detect and OCR images embedded in the selected PDF pages, inserting
 	// recognized text at each image's position in page reading order while preserving
 	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
-	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
+	Ocr WebWebScrapeHTMLParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 WEBSITE_ACCESS_ERROR is returned.
-	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
+	ShouldParse WebWebScrapeHTMLParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3892,31 +4056,122 @@ func (r WebWebScrapeHTMLParamsPdf) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsPdfOcrUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsPdfOcrString)
+	OfWebWebScrapeHTMLsPdfOcrString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsPdfOcrString string
+
+const (
+	WebWebScrapeHTMLParamsPdfOcrStringTrue  WebWebScrapeHTMLParamsPdfOcrString = "true"
+	WebWebScrapeHTMLParamsPdfOcrStringFalse WebWebScrapeHTMLParamsPdfOcrString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsPdfShouldParseUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsPdfShouldParseString)
+	OfWebWebScrapeHTMLsPdfShouldParseString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsPdfShouldParseString string
+
+const (
+	WebWebScrapeHTMLParamsPdfShouldParseStringTrue  WebWebScrapeHTMLParamsPdfShouldParseString = "true"
+	WebWebScrapeHTMLParamsPdfShouldParseStringFalse WebWebScrapeHTMLParamsPdfShouldParseString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsSettleAnimationsUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsSettleAnimationsString)
+	OfWebWebScrapeHTMLsSettleAnimationsString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsSettleAnimationsString string
+
+const (
+	WebWebScrapeHTMLParamsSettleAnimationsStringTrue  WebWebScrapeHTMLParamsSettleAnimationsString = "true"
+	WebWebScrapeHTMLParamsSettleAnimationsStringFalse WebWebScrapeHTMLParamsSettleAnimationsString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsUseMainContentOnlyUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsUseMainContentOnlyString)
+	OfWebWebScrapeHTMLsUseMainContentOnlyString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsUseMainContentOnlyString string
+
+const (
+	WebWebScrapeHTMLParamsUseMainContentOnlyStringTrue  WebWebScrapeHTMLParamsUseMainContentOnlyString = "true"
+	WebWebScrapeHTMLParamsUseMainContentOnlyStringFalse WebWebScrapeHTMLParamsUseMainContentOnlyString = "false"
+)
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeHTMLParamsZdr string
+
+const (
+	WebWebScrapeHTMLParamsZdrEnabled  WebWebScrapeHTMLParamsZdr = "enabled"
+	WebWebScrapeHTMLParamsZdrDisabled WebWebScrapeHTMLParamsZdr = "disabled"
+)
+
 type WebWebScrapeImagesParams struct {
 	// Page URL to inspect. Must include http:// or https://.
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
-	// When true, visually duplicate images are removed: every image is loaded and
-	// perceptually hashed, and only the highest-resolution copy of each duplicate
-	// group is kept. Images that cannot be downloaded or hashed are kept. Default:
-	// false.
-	Dedupe param.Opt[bool] `query:"dedupe,omitzero" json:"-"`
 	// Reuse a cached result this many milliseconds old or newer. Default: 86400000 (1
 	// day). Set to 0 to bypass cache. Maximum: 2592000000 (30 days).
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// Optional browser wait time in milliseconds after initial page load before
+	// collecting images. Min: 0. Max: 30000 (30 seconds).
+	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
-	// Optional browser wait time in milliseconds after initial page load before
-	// collecting images. Min: 0. Max: 30000 (30 seconds).
-	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// Optional browser actions executed in array order after the page loads and before
+	// content is captured. Requires a paid plan. Send a JSON array in the query
+	// parameter. Maximum: 5 actions.
+	Actions []WebWebScrapeImagesParamsActionUnion `query:"actions,omitzero" json:"-"`
 	// Optional per-image processing, sent as deep-object query params such as
 	// enrichment[resolution]=true.
 	Enrichment WebWebScrapeImagesParamsEnrichment `query:"enrichment,omitzero" json:"-"`
+	// When true, visually duplicate images are removed: every image is loaded and
+	// perceptually hashed, and only the highest-resolution copy of each duplicate
+	// group is kept. Images that cannot be downloaded or hashed are kept. Default:
+	// false.
+	Dedupe WebWebScrapeImagesParamsDedupeUnion `query:"dedupe,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3929,18 +4184,91 @@ func (r WebWebScrapeImagesParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeImagesParamsActionUnion struct {
+	OfWait    *WebWebScrapeImagesParamsActionWait    `query:",omitzero,inline"`
+	OfPerform *WebWebScrapeImagesParamsActionPerform `query:",omitzero,inline"`
+	paramUnion
+}
+
+func init() {
+	apijson.RegisterUnion[WebWebScrapeImagesParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebWebScrapeImagesParamsActionWait]("wait"),
+		apijson.Discriminator[WebWebScrapeImagesParamsActionPerform]("perform"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebWebScrapeImagesParamsActionWait struct {
+	TimeMs int64 `query:"timeMs" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `query:"do" json:"-" default:"wait"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeImagesParamsActionWait]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeImagesParamsActionWait) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebWebScrapeImagesParamsActionPerform struct {
+	Action string `query:"action" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `query:"do" json:"-" default:"perform"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeImagesParamsActionPerform]'s query parameters
+// as `url.Values`.
+func (r WebWebScrapeImagesParamsActionPerform) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeImagesParamsDedupeUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeImagessDedupeString)
+	OfWebWebScrapeImagessDedupeString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeImagesParamsDedupeString string
+
+const (
+	WebWebScrapeImagesParamsDedupeStringTrue  WebWebScrapeImagesParamsDedupeString = "true"
+	WebWebScrapeImagesParamsDedupeStringFalse WebWebScrapeImagesParamsDedupeString = "false"
+)
+
 // Optional per-image processing, sent as deep-object query params such as
 // enrichment[resolution]=true.
 type WebWebScrapeImagesParamsEnrichment struct {
-	// Classify each image by visual asset type.
-	Classification param.Opt[bool] `query:"classification,omitzero" json:"-"`
-	// Host materializable images on the Brand.dev CDN and return their URL and MIME
-	// type.
-	HostedURL param.Opt[bool] `query:"hostedUrl,omitzero" json:"-"`
 	// Per-image enrichment timeout in milliseconds. Default: 30000. Maximum: 60000.
 	MaxTimePerMs param.Opt[int64] `query:"maxTimePerMs,omitzero" json:"-"`
+	// Classify each image by visual asset type.
+	Classification WebWebScrapeImagesParamsEnrichmentClassificationUnion `query:"classification,omitzero" json:"-"`
+	// Host materializable images on the Brand.dev CDN and return their URL and MIME
+	// type.
+	HostedURL WebWebScrapeImagesParamsEnrichmentHostedURLUnion `query:"hostedUrl,omitzero" json:"-"`
 	// Measure image width and height when possible.
-	Resolution param.Opt[bool] `query:"resolution,omitzero" json:"-"`
+	Resolution WebWebScrapeImagesParamsEnrichmentResolutionUnion `query:"resolution,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3953,38 +4281,90 @@ func (r WebWebScrapeImagesParamsEnrichment) URLQuery() (v url.Values, err error)
 	})
 }
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeImagesParamsEnrichmentClassificationUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeImagessEnrichmentClassificationString)
+	OfWebWebScrapeImagessEnrichmentClassificationString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeImagesParamsEnrichmentClassificationString string
+
+const (
+	WebWebScrapeImagesParamsEnrichmentClassificationStringTrue  WebWebScrapeImagesParamsEnrichmentClassificationString = "true"
+	WebWebScrapeImagesParamsEnrichmentClassificationStringFalse WebWebScrapeImagesParamsEnrichmentClassificationString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeImagesParamsEnrichmentHostedURLUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeImagessEnrichmentHostedURLString)
+	OfWebWebScrapeImagessEnrichmentHostedURLString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeImagesParamsEnrichmentHostedURLString string
+
+const (
+	WebWebScrapeImagesParamsEnrichmentHostedURLStringTrue  WebWebScrapeImagesParamsEnrichmentHostedURLString = "true"
+	WebWebScrapeImagesParamsEnrichmentHostedURLStringFalse WebWebScrapeImagesParamsEnrichmentHostedURLString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeImagesParamsEnrichmentResolutionUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeImagessEnrichmentResolutionString)
+	OfWebWebScrapeImagessEnrichmentResolutionString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeImagesParamsEnrichmentResolutionString string
+
+const (
+	WebWebScrapeImagesParamsEnrichmentResolutionStringTrue  WebWebScrapeImagesParamsEnrichmentResolutionString = "true"
+	WebWebScrapeImagesParamsEnrichmentResolutionStringFalse WebWebScrapeImagesParamsEnrichmentResolutionString = "false"
+)
+
 type WebWebScrapeMdParams struct {
 	// Full URL to scrape into LLM usable Markdown (must include http:// or https://
 	// protocol)
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
-	// When true, the contents of iframes are rendered to Markdown.
-	IncludeFrames param.Opt[bool] `query:"includeFrames,omitzero" json:"-"`
-	// Include image references in Markdown output
-	IncludeImages param.Opt[bool] `query:"includeImages,omitzero" json:"-"`
-	// Preserve hyperlinks in Markdown output
-	IncludeLinks param.Opt[bool] `query:"includeLinks,omitzero" json:"-"`
 	// Return a cached result if a prior scrape for the same parameters exists and is
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
-	// When true, waits briefly for CSS and transition animations to settle before
-	// converting to Markdown. Defaults to false. This adds a bit of latency in
-	// exchange for more stable output on animated pages.
-	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
-	// Shorten base64-encoded image data in the Markdown output
-	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
+	// Optional browser wait time in milliseconds after initial page load before
+	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds).
+	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
-	// Extract only the main content of the page, excluding headers, footers, sidebars,
-	// and navigation
-	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
-	// Optional browser wait time in milliseconds after initial page load before
-	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds).
-	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
-	// Two-letter ISO 3166-1 alpha-2 country code for the website request location.
-	// When provided, Context.dev fetches the target page from that country.
+	// Optional browser actions executed in array order after the page loads and before
+	// content is captured. Requires a paid plan. Send a JSON array in the query
+	// parameter. Maximum: 5 actions.
+	Actions []WebWebScrapeMdParamsActionUnion `query:"actions,omitzero" json:"-"`
+	// CSS selectors to remove before conversion to Markdown. Applied after
+	// includeSelectors. Exclusion takes precedence: an element matching both is
+	// removed. Examples: "nav", "footer", ".ad-banner", "[aria-hidden=true]".
+	ExcludeSelectors []string `query:"excludeSelectors,omitzero" json:"-"`
+	// CSS selectors. When provided, only matching HTML subtrees (and their
+	// descendants) are kept before conversion to Markdown. When omitted, the entire
+	// document is kept. Examples: "article.main", "#content", "[role=main]".
+	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
+	// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
+	// residential proxy exit location. Must be one of Context.dev's supported
+	// countries. When provided, Context.dev fetches the target page from that country.
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -4003,21 +4383,39 @@ type WebWebScrapeMdParams struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country WebWebScrapeMdParamsCountry `query:"country,omitzero" json:"-"`
-	// CSS selectors to remove before conversion to Markdown. Applied after
-	// includeSelectors. Exclusion takes precedence: an element matching both is
-	// removed. Examples: "nav", "footer", ".ad-banner", "[aria-hidden=true]".
-	ExcludeSelectors []string `query:"excludeSelectors,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// CSS selectors. When provided, only matching HTML subtrees (and their
-	// descendants) are kept before conversion to Markdown. When omitted, the entire
-	// document is kept. Examples: "article.main", "#content", "[role=main]".
-	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
+	// When true, the contents of iframes are rendered to Markdown.
+	IncludeFrames WebWebScrapeMdParamsIncludeFramesUnion `query:"includeFrames,omitzero" json:"-"`
+	// Include image references in Markdown output
+	IncludeImages WebWebScrapeMdParamsIncludeImagesUnion `query:"includeImages,omitzero" json:"-"`
+	// Preserve hyperlinks in Markdown output
+	IncludeLinks WebWebScrapeMdParamsIncludeLinksUnion `query:"includeLinks,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// converting to Markdown. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations WebWebScrapeMdParamsSettleAnimationsUnion `query:"settleAnimations,omitzero" json:"-"`
+	// Shorten base64-encoded image data in the Markdown output
+	ShortenBase64Images WebWebScrapeMdParamsShortenBase64ImagesUnion `query:"shortenBase64Images,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
+	// Extract only the main content of the page, excluding headers, footers, sidebars,
+	// and navigation
+	UseMainContentOnly WebWebScrapeMdParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeMdParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4029,8 +4427,64 @@ func (r WebWebScrapeMdParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Two-letter ISO 3166-1 alpha-2 country code for the website request location.
-// When provided, Context.dev fetches the target page from that country.
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsActionUnion struct {
+	OfWait    *WebWebScrapeMdParamsActionWait    `query:",omitzero,inline"`
+	OfPerform *WebWebScrapeMdParamsActionPerform `query:",omitzero,inline"`
+	paramUnion
+}
+
+func init() {
+	apijson.RegisterUnion[WebWebScrapeMdParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebWebScrapeMdParamsActionWait]("wait"),
+		apijson.Discriminator[WebWebScrapeMdParamsActionPerform]("perform"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebWebScrapeMdParamsActionWait struct {
+	TimeMs int64 `query:"timeMs" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `query:"do" json:"-" default:"wait"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeMdParamsActionWait]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeMdParamsActionWait) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebWebScrapeMdParamsActionPerform struct {
+	Action string `query:"action" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `query:"do" json:"-" default:"perform"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeMdParamsActionPerform]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeMdParamsActionPerform) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
+// residential proxy exit location. Must be one of Context.dev's supported
+// countries. When provided, Context.dev fetches the target page from that country.
 type WebWebScrapeMdParamsCountry string
 
 const (
@@ -4240,21 +4694,75 @@ const (
 	WebWebScrapeMdParamsCountryZw WebWebScrapeMdParamsCountry = "zw"
 )
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsIncludeFramesUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsIncludeFramesString)
+	OfWebWebScrapeMdsIncludeFramesString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsIncludeFramesString string
+
+const (
+	WebWebScrapeMdParamsIncludeFramesStringTrue  WebWebScrapeMdParamsIncludeFramesString = "true"
+	WebWebScrapeMdParamsIncludeFramesStringFalse WebWebScrapeMdParamsIncludeFramesString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsIncludeImagesUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsIncludeImagesString)
+	OfWebWebScrapeMdsIncludeImagesString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsIncludeImagesString string
+
+const (
+	WebWebScrapeMdParamsIncludeImagesStringTrue  WebWebScrapeMdParamsIncludeImagesString = "true"
+	WebWebScrapeMdParamsIncludeImagesStringFalse WebWebScrapeMdParamsIncludeImagesString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsIncludeLinksUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsIncludeLinksString)
+	OfWebWebScrapeMdsIncludeLinksString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsIncludeLinksString string
+
+const (
+	WebWebScrapeMdParamsIncludeLinksStringTrue  WebWebScrapeMdParamsIncludeLinksString = "true"
+	WebWebScrapeMdParamsIncludeLinksStringFalse WebWebScrapeMdParamsIncludeLinksString = "false"
+)
+
 // PDF parsing controls. Use start/end to limit text extraction and embedded-image
 // detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	// When true, detect and OCR images embedded in the selected PDF pages, inserting
 	// recognized text at each image's position in page reading order while preserving
 	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
-	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
+	Ocr WebWebScrapeMdParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 WEBSITE_ACCESS_ERROR is returned.
-	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
+	ShouldParse WebWebScrapeMdParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4267,12 +4775,116 @@ func (r WebWebScrapeMdParamsPdf) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsPdfOcrUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsPdfOcrString)
+	OfWebWebScrapeMdsPdfOcrString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsPdfOcrString string
+
+const (
+	WebWebScrapeMdParamsPdfOcrStringTrue  WebWebScrapeMdParamsPdfOcrString = "true"
+	WebWebScrapeMdParamsPdfOcrStringFalse WebWebScrapeMdParamsPdfOcrString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsPdfShouldParseUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsPdfShouldParseString)
+	OfWebWebScrapeMdsPdfShouldParseString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsPdfShouldParseString string
+
+const (
+	WebWebScrapeMdParamsPdfShouldParseStringTrue  WebWebScrapeMdParamsPdfShouldParseString = "true"
+	WebWebScrapeMdParamsPdfShouldParseStringFalse WebWebScrapeMdParamsPdfShouldParseString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsSettleAnimationsUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsSettleAnimationsString)
+	OfWebWebScrapeMdsSettleAnimationsString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsSettleAnimationsString string
+
+const (
+	WebWebScrapeMdParamsSettleAnimationsStringTrue  WebWebScrapeMdParamsSettleAnimationsString = "true"
+	WebWebScrapeMdParamsSettleAnimationsStringFalse WebWebScrapeMdParamsSettleAnimationsString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsShortenBase64ImagesUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsShortenBase64ImagesString)
+	OfWebWebScrapeMdsShortenBase64ImagesString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsShortenBase64ImagesString string
+
+const (
+	WebWebScrapeMdParamsShortenBase64ImagesStringTrue  WebWebScrapeMdParamsShortenBase64ImagesString = "true"
+	WebWebScrapeMdParamsShortenBase64ImagesStringFalse WebWebScrapeMdParamsShortenBase64ImagesString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsUseMainContentOnlyUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsUseMainContentOnlyString)
+	OfWebWebScrapeMdsUseMainContentOnlyString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsUseMainContentOnlyString string
+
+const (
+	WebWebScrapeMdParamsUseMainContentOnlyStringTrue  WebWebScrapeMdParamsUseMainContentOnlyString = "true"
+	WebWebScrapeMdParamsUseMainContentOnlyStringFalse WebWebScrapeMdParamsUseMainContentOnlyString = "false"
+)
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeMdParamsZdr string
+
+const (
+	WebWebScrapeMdParamsZdrEnabled  WebWebScrapeMdParamsZdr = "enabled"
+	WebWebScrapeMdParamsZdrDisabled WebWebScrapeMdParamsZdr = "disabled"
+)
+
 type WebWebScrapeSitemapParams struct {
 	// Domain to build a sitemap for
 	Domain string `query:"domain" api:"required" json:"-"`
 	// Maximum number of links to return from the sitemap crawl. Defaults to 10,000.
 	// Minimum is 1, maximum is 100,000.
 	MaxLinks param.Opt[int64] `query:"maxLinks,omitzero" json:"-"`
+	// Optional explicit sitemap URL. When provided, exactly this sitemap is crawled
+	// instead of discovering the domain's sitemaps.
+	SitemapURL param.Opt[string] `query:"sitemapUrl,omitzero" format:"uri" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -4284,6 +4896,17 @@ type WebWebScrapeSitemapParams struct {
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeSitemapParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4295,3 +4918,14 @@ func (r WebWebScrapeSitemapParams) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeSitemapParamsZdr string
+
+const (
+	WebWebScrapeSitemapParamsZdrEnabled  WebWebScrapeSitemapParamsZdr = "enabled"
+	WebWebScrapeSitemapParamsZdrDisabled WebWebScrapeSitemapParamsZdr = "disabled"
+)

@@ -103,6 +103,23 @@ func (r *MonitorService) Delete(ctx context.Context, monitorID string, opts ...o
 	return res, err
 }
 
+// Returns credits charged per monitor over an optional [since, until] window,
+// newest spenders first.
+func (r *MonitorService) GetCreditUsage(ctx context.Context, query MonitorGetCreditUsageParams, opts ...option.RequestOption) (res *MonitorGetCreditUsageResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "monitors/credit-usage"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	return res, err
+}
+
+// Returns how many monitors the account has and the maximum it allows.
+func (r *MonitorService) GetLimits(ctx context.Context, opts ...option.RequestOption) (res *MonitorGetLimitsResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "monitors/limits"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
+	return res, err
+}
+
 // Returns an account-wide feed of detected changes across monitors.
 func (r *MonitorService) ListAccountChanges(ctx context.Context, query MonitorListAccountChangesParams, opts ...option.RequestOption) (res *MonitorListAccountChangesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
@@ -285,6 +302,7 @@ type MonitorNewResponse struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorNewResponseWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -604,9 +622,9 @@ type MonitorNewResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -922,6 +940,7 @@ type MonitorGetResponse struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                  `json:"tags"`
 	Webhook MonitorGetResponseWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -1241,9 +1260,9 @@ type MonitorGetResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -1559,6 +1578,7 @@ type MonitorUpdateResponse struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                     `json:"tags"`
 	Webhook MonitorUpdateResponseWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -1879,9 +1899,9 @@ type MonitorUpdateResponseTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -2217,6 +2237,7 @@ type MonitorListResponseData struct {
 	// When the next scheduled run is due.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags    []string                       `json:"tags"`
 	Webhook MonitorListResponseDataWebhook `json:"webhook" api:"nullable"`
 	// Present while webhook deliveries are failing consecutively; null when deliveries
@@ -2518,9 +2539,9 @@ type MonitorListResponseDataTargetSitemap struct {
 	Type constant.Sitemap `json:"type" default:"sitemap"`
 	// Sitemap URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs int64 `json:"max_urls"`
@@ -2814,6 +2835,86 @@ func (r *MonitorDeleteResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+type MonitorGetCreditUsageResponse struct {
+	Data []MonitorGetCreditUsageResponseData `json:"data" api:"required"`
+	// Sum of credits across all monitors in the window.
+	TotalCredits int64 `json:"total_credits" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data         respjson.Field
+		TotalCredits respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetCreditUsageResponse) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetCreditUsageResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorGetCreditUsageResponseData struct {
+	// Credits charged to this monitor over the window.
+	Credits   int64  `json:"credits" api:"required"`
+	MonitorID string `json:"monitor_id" api:"required"`
+	// Monitor name (falls back to the id when the monitor was deleted).
+	Name string `json:"name" api:"required"`
+	// Number of billed runs over the window.
+	Runs int64 `json:"runs" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Credits     respjson.Field
+		MonitorID   respjson.Field
+		Name        respjson.Field
+		Runs        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetCreditUsageResponseData) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetCreditUsageResponseData) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorGetLimitsResponse struct {
+	// Maximum number of monitors allowed for the account. Defaults to the plan
+	// allowance unless a custom limit is set for the organization.
+	MonitorsLimit int64 `json:"monitors_limit" api:"required"`
+	// Number of monitors the account currently has.
+	MonitorsUsed int64 `json:"monitors_used" api:"required"`
+	// The plan tier the limit was resolved from.
+	//
+	// Any of "free", "starter", "pro", "scale".
+	Plan MonitorGetLimitsResponsePlan `json:"plan" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		MonitorsLimit respjson.Field
+		MonitorsUsed  respjson.Field
+		Plan          respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetLimitsResponse) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetLimitsResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The plan tier the limit was resolved from.
+type MonitorGetLimitsResponsePlan string
+
+const (
+	MonitorGetLimitsResponsePlanFree    MonitorGetLimitsResponsePlan = "free"
+	MonitorGetLimitsResponsePlanStarter MonitorGetLimitsResponsePlan = "starter"
+	MonitorGetLimitsResponsePlanPro     MonitorGetLimitsResponsePlan = "pro"
+	MonitorGetLimitsResponsePlanScale   MonitorGetLimitsResponsePlan = "scale"
+)
+
 type MonitorListAccountChangesResponse struct {
 	Data       []MonitorListAccountChangesResponseData `json:"data" api:"required"`
 	HasMore    bool                                    `json:"has_more" api:"required"`
@@ -2862,6 +2963,7 @@ type MonitorListAccountChangesResponseData struct {
 	MatchedURLCount int64  `json:"matched_url_count"`
 	RemovedURLCount int64  `json:"removed_url_count"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3046,6 +3148,7 @@ type MonitorListChangesResponseData struct {
 	MatchedURLCount int64  `json:"matched_url_count"`
 	RemovedURLCount int64  `json:"removed_url_count"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3202,6 +3305,7 @@ type MonitorGetChangeResponse struct {
 	RunID   string `json:"run_id" api:"required"`
 	Summary string `json:"summary" api:"required"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags" api:"required"`
 	// Any of "page", "sitemap", "extract".
 	TargetType    MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
@@ -3353,6 +3457,7 @@ type MonitorNewParams struct {
 	// Any of "web".
 	Mode MonitorNewParamsMode `json:"mode,omitzero"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -3525,9 +3630,9 @@ type MonitorNewParamsTargetSitemap struct {
 	URL string `json:"url" api:"required" format:"uri"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude,omitzero"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include,omitzero"`
 	// This field can be elided, and will marshal its zero value as "sitemap".
 	Type constant.Sitemap `json:"type" default:"sitemap"`
@@ -3625,6 +3730,7 @@ type MonitorUpdateParams struct {
 	// Any of "active", "paused".
 	Status MonitorUpdateParamsStatus `json:"status,omitzero"`
 	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
 	Tags []string `json:"tags,omitzero"`
 	// Discriminated union describing what the monitor watches.
 	Target MonitorUpdateParamsTargetUnion `json:"target,omitzero"`
@@ -3806,9 +3912,9 @@ type MonitorUpdateParamsTargetSitemap struct {
 	URL string `json:"url" api:"required" format:"uri"`
 	// Maximum number of sitemap URLs to track (capped at 10,000).
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
-	// URL path patterns to exclude.
+	// URL path patterns to exclude (max 50).
 	Exclude []string `json:"exclude,omitzero"`
-	// URL path patterns to include.
+	// URL path patterns to include (max 50).
 	Include []string `json:"include,omitzero"`
 	// This field can be elided, and will marshal its zero value as "sitemap".
 	Type constant.Sitemap `json:"type" default:"sitemap"`
@@ -3888,34 +3994,36 @@ func (r *MonitorUpdateParamsWebhook) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListParams struct {
+	// Opaque pagination cursor from a previous response.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
 	// Free-text search term, matched against the fields named in `search_by`.
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
 	// Filter to items that have this tag.
 	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
-	// Any of "exact", "semantic".
-	ChangeDetectionType MonitorListParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
 	// Comma-separated fields to search with `q`. Defaults to all of them. Note
 	// `instructions` only exists on extract monitors.
 	//
 	// Any of "name", "url", "instructions", "tags".
 	SearchBy []string `query:"search_by,omitzero" json:"-"`
+	// Comma-separated list of tags to filter by (matches monitors having any of them).
+	Tags []string `query:"tags,omitzero" json:"-"`
+	// Filter by change detection type.
+	//
+	// Any of "exact", "semantic".
+	ChangeDetectionType MonitorListParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
 	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
 	// matching.
 	//
 	// Any of "exact", "prefix".
 	SearchType MonitorListParamsSearchType `query:"search_type,omitzero" json:"-"`
-	// Monitor lifecycle status. `failed` means the most recent run failed (see the
-	// monitor's `last_error`); failed monitors keep running on schedule and flip back
-	// to `active` on the next successful run. Monitors are auto-`paused` after
-	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
-	// status to `active`.
+	// Filter monitors by lifecycle status.
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorListParamsStatus `query:"status,omitzero" json:"-"`
-	// Comma-separated list of tags to filter by (matches monitors having any of them).
-	Tags []string `query:"tags,omitzero" json:"-"`
+	// Filter by target type.
+	//
 	// Any of "page", "sitemap", "extract".
 	TargetType MonitorListParamsTargetType `query:"target_type,omitzero" json:"-"`
 	paramObj
@@ -3929,6 +4037,7 @@ func (r MonitorListParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Filter by change detection type.
 type MonitorListParamsChangeDetectionType string
 
 const (
@@ -3945,11 +4054,7 @@ const (
 	MonitorListParamsSearchTypePrefix MonitorListParamsSearchType = "prefix"
 )
 
-// Monitor lifecycle status. `failed` means the most recent run failed (see the
-// monitor's `last_error`); failed monitors keep running on schedule and flip back
-// to `active` on the next successful run. Monitors are auto-`paused` after
-// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
-// status to `active`.
+// Filter monitors by lifecycle status.
 type MonitorListParamsStatus string
 
 const (
@@ -3958,6 +4063,7 @@ const (
 	MonitorListParamsStatusFailed MonitorListParamsStatus = "failed"
 )
 
+// Filter by target type.
 type MonitorListParamsTargetType string
 
 const (
@@ -3966,16 +4072,42 @@ const (
 	MonitorListParamsTargetTypeExtract MonitorListParamsTargetType = "extract"
 )
 
-type MonitorListAccountChangesParams struct {
-	Cursor    param.Opt[string]    `query:"cursor,omitzero" json:"-"`
-	Limit     param.Opt[int64]     `query:"limit,omitzero" json:"-"`
-	MonitorID param.Opt[string]    `query:"monitor_id,omitzero" json:"-"`
-	Since     param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
-	// Filter to items that have this tag.
-	Tag   param.Opt[string]    `query:"tag,omitzero" json:"-"`
+type MonitorGetCreditUsageParams struct {
+	// Only include items at or after this ISO 8601 timestamp.
+	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
+	// Only include items before this ISO 8601 timestamp.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [MonitorGetCreditUsageParams]'s query parameters as
+// `url.Values`.
+func (r MonitorGetCreditUsageParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+type MonitorListAccountChangesParams struct {
+	// Opaque pagination cursor from a previous response.
+	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Filter changes to a single monitor.
+	MonitorID param.Opt[string] `query:"monitor_id,omitzero" json:"-"`
+	// Only include items at or after this ISO 8601 timestamp.
+	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
+	// Filter to items that have this tag.
+	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
+	// Only include items before this ISO 8601 timestamp.
+	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
+	// Filter by change detection type.
+	//
 	// Any of "exact", "semantic".
 	ChangeDetectionType MonitorListAccountChangesParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
+	// Filter by target type.
+	//
 	// Any of "page", "sitemap", "extract".
 	TargetType MonitorListAccountChangesParamsTargetType `query:"target_type,omitzero" json:"-"`
 	paramObj
@@ -3990,6 +4122,7 @@ func (r MonitorListAccountChangesParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Filter by change detection type.
 type MonitorListAccountChangesParamsChangeDetectionType string
 
 const (
@@ -3997,6 +4130,7 @@ const (
 	MonitorListAccountChangesParamsChangeDetectionTypeSemantic MonitorListAccountChangesParamsChangeDetectionType = "semantic"
 )
 
+// Filter by target type.
 type MonitorListAccountChangesParamsTargetType string
 
 const (
@@ -4006,10 +4140,11 @@ const (
 )
 
 type MonitorListAccountRunsParams struct {
+	// Opaque pagination cursor from a previous response.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
-	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Filter runs by lifecycle status.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListAccountRunsParamsStatus `query:"status,omitzero" json:"-"`
@@ -4025,8 +4160,7 @@ func (r MonitorListAccountRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-// (insufficient credits, monitor paused, or superseded by a concurrent run).
+// Filter runs by lifecycle status.
 type MonitorListAccountRunsParamsStatus string
 
 const (
@@ -4038,11 +4172,15 @@ const (
 )
 
 type MonitorListChangesParams struct {
-	Cursor param.Opt[string]    `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]     `query:"limit,omitzero" json:"-"`
-	Since  param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
+	// Opaque pagination cursor from a previous response.
+	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Only include items at or after this ISO 8601 timestamp.
+	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
 	// Filter to items that have this tag.
-	Tag   param.Opt[string]    `query:"tag,omitzero" json:"-"`
+	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
+	// Only include items before this ISO 8601 timestamp.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
 	paramObj
 }
@@ -4057,10 +4195,11 @@ func (r MonitorListChangesParams) URLQuery() (v url.Values, err error) {
 }
 
 type MonitorListRunsParams struct {
+	// Opaque pagination cursor from a previous response.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	Limit  param.Opt[int64]  `query:"limit,omitzero" json:"-"`
-	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	// Maximum number of items to return per page (1-100). Defaults to 25.
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Filter runs by lifecycle status.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListRunsParamsStatus `query:"status,omitzero" json:"-"`
@@ -4075,8 +4214,7 @@ func (r MonitorListRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-// (insufficient credits, monitor paused, or superseded by a concurrent run).
+// Filter runs by lifecycle status.
 type MonitorListRunsParamsStatus string
 
 const (

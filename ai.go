@@ -288,6 +288,8 @@ type AIExtractProductParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 
@@ -334,6 +336,8 @@ type AIExtractProductsParamsBodyByDomain struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 
@@ -360,6 +364,8 @@ type AIExtractProductsParamsBodyByDirectURL struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
 

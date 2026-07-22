@@ -148,12 +148,12 @@ func TestMonitorListWithOptionalParams(t *testing.T) {
 		ChangeDetectionType: contextdev.MonitorListParamsChangeDetectionTypeExact,
 		Cursor:              contextdev.String("cursor"),
 		Limit:               contextdev.Int(1),
-		Q:                   contextdev.String("q"),
+		Q:                   contextdev.String("pricing"),
 		SearchBy:            []string{"name"},
 		SearchType:          contextdev.MonitorListParamsSearchTypeExact,
 		Status:              contextdev.MonitorListParamsStatusActive,
-		Tag:                 contextdev.String("tag"),
-		Tags:                []string{"string"},
+		Tag:                 contextdev.String("pricing"),
+		Tags:                []string{"x"},
 		TargetType:          contextdev.MonitorListParamsTargetTypePage,
 	})
 	if err != nil {
@@ -188,6 +188,55 @@ func TestMonitorDelete(t *testing.T) {
 	}
 }
 
+func TestMonitorGetCreditUsageWithOptionalParams(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Monitors.GetCreditUsage(context.TODO(), contextdev.MonitorGetCreditUsageParams{
+		Since: contextdev.Time(time.Now()),
+		Until: contextdev.Time(time.Now()),
+	})
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
+func TestMonitorGetLimits(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Monitors.GetLimits(context.TODO())
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
 func TestMonitorListAccountChangesWithOptionalParams(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"
@@ -205,9 +254,9 @@ func TestMonitorListAccountChangesWithOptionalParams(t *testing.T) {
 		ChangeDetectionType: contextdev.MonitorListAccountChangesParamsChangeDetectionTypeExact,
 		Cursor:              contextdev.String("cursor"),
 		Limit:               contextdev.Int(1),
-		MonitorID:           contextdev.String("monitor_id"),
+		MonitorID:           contextdev.String("mon_123"),
 		Since:               contextdev.Time(time.Now()),
-		Tag:                 contextdev.String("tag"),
+		Tag:                 contextdev.String("pricing"),
 		TargetType:          contextdev.MonitorListAccountChangesParamsTargetTypePage,
 		Until:               contextdev.Time(time.Now()),
 	})
@@ -267,7 +316,7 @@ func TestMonitorListChangesWithOptionalParams(t *testing.T) {
 			Cursor: contextdev.String("cursor"),
 			Limit:  contextdev.Int(1),
 			Since:  contextdev.Time(time.Now()),
-			Tag:    contextdev.String("tag"),
+			Tag:    contextdev.String("pricing"),
 			Until:  contextdev.Time(time.Now()),
 		},
 	)

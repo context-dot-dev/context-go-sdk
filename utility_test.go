@@ -29,10 +29,11 @@ func TestUtilityPrefetchWithOptionalParams(t *testing.T) {
 	_, err := client.Utility.Prefetch(context.TODO(), contextdev.UtilityPrefetchParams{
 		Identifier: contextdev.UtilityPrefetchParamsIdentifierUnion{
 			OfByDomain: &contextdev.UtilityPrefetchParamsIdentifierByDomain{
-				Domain: "domain",
+				Domain: "xxx",
 			},
 		},
 		Type:      contextdev.UtilityPrefetchParamsTypeBrand,
+		Tags:      []string{"production", "team-alpha"},
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {

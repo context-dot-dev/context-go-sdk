@@ -46,9 +46,11 @@ func TestWebExtractWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
-		StopAfterMs: contextdev.Int(10000),
-		TimeoutMs:   contextdev.Int(1000),
-		WaitForMs:   contextdev.Int(0),
+		SettleAnimations: contextdev.Bool(true),
+		StopAfterMs:      contextdev.Int(10000),
+		Tags:             []string{"production", "team-alpha"},
+		TimeoutMs:        contextdev.Int(1000),
+		WaitForMs:        contextdev.Int(0),
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -75,6 +77,7 @@ func TestWebExtractCompetitorsWithOptionalParams(t *testing.T) {
 	_, err := client.Web.ExtractCompetitors(context.TODO(), contextdev.WebExtractCompetitorsParams{
 		Domain:         "xxx",
 		NumCompetitors: contextdev.Int(1),
+		Tags:           []string{"production", "team-alpha"},
 		TimeoutMs:      contextdev.Int(1000),
 	})
 	if err != nil {
@@ -101,8 +104,9 @@ func TestWebExtractFontsWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.ExtractFonts(context.TODO(), contextdev.WebExtractFontsParams{
 		DirectURL: contextdev.String("https://example.com"),
-		Domain:    contextdev.String("domain"),
-		MaxAgeMs:  contextdev.Int(86400000),
+		Domain:    contextdev.String("xxx"),
+		MaxAgeMs:  contextdev.Int(0),
+		Tags:      []string{"production", "team-alpha"},
 		TimeoutMs: contextdev.Int(1000),
 	})
 	if err != nil {
@@ -130,8 +134,9 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 	_, err := client.Web.ExtractStyleguide(context.TODO(), contextdev.WebExtractStyleguideParams{
 		ColorScheme: contextdev.WebExtractStyleguideParamsColorSchemeLight,
 		DirectURL:   contextdev.String("https://example.com"),
-		Domain:      contextdev.String("domain"),
-		MaxAgeMs:    contextdev.Int(86400000),
+		Domain:      contextdev.String("xxx"),
+		MaxAgeMs:    contextdev.Int(0),
+		Tags:        []string{"production", "team-alpha"},
 		TimeoutMs:   contextdev.Int(1000),
 	})
 	if err != nil {
@@ -157,21 +162,25 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.Screenshot(context.TODO(), contextdev.WebScreenshotParams{
-		ColorScheme:       contextdev.WebScreenshotParamsColorSchemeLight,
-		Country:           contextdev.WebScreenshotParamsCountryDe,
-		DirectURL:         contextdev.String("https://example.com"),
-		Domain:            contextdev.String("domain"),
-		FullScreenshot:    contextdev.WebScreenshotParamsFullScreenshotTrue,
-		HandleCookiePopup: contextdev.WebScreenshotParamsHandleCookiePopupTrue,
-		MaxAgeMs:          contextdev.Int(0),
-		Page:              contextdev.WebScreenshotParamsPageLogin,
-		ScrollOffset:      contextdev.Int(0),
-		TimeoutMs:         contextdev.Int(1000),
+		ColorScheme:    contextdev.WebScreenshotParamsColorSchemeLight,
+		Country:        contextdev.WebScreenshotParamsCountryDe,
+		DirectURL:      contextdev.String("https://example.com"),
+		Domain:         contextdev.String("xxx"),
+		FullScreenshot: contextdev.WebScreenshotParamsFullScreenshotTrue,
+		HandleCookiePopup: contextdev.WebScreenshotParamsHandleCookiePopupUnion{
+			OfWebScreenshotsHandleCookiePopupString: contextdev.String("true"),
+		},
+		MaxAgeMs:     contextdev.Int(0),
+		Page:         contextdev.WebScreenshotParamsPageLogin,
+		ScrollOffset: contextdev.Int(0),
+		Tags:         []string{"production", "team-alpha"},
+		TimeoutMs:    contextdev.Int(1),
 		Viewport: contextdev.WebScreenshotParamsViewport{
 			Height: contextdev.Int(240),
 			Width:  contextdev.Int(240),
 		},
 		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebScreenshotParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -219,6 +228,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 		},
 		NumResults:  contextdev.Int(10),
 		QueryFanout: contextdev.Bool(true),
+		Tags:        []string{"production", "team-alpha"},
 		TimeoutMs:   contextdev.Int(1000),
 	})
 	if err != nil {
@@ -264,10 +274,12 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		SettleAnimations:    contextdev.Bool(true),
 		ShortenBase64Images: contextdev.Bool(true),
 		StopAfterMs:         contextdev.Int(10000),
+		Tags:                []string{"production", "team-alpha"},
 		TimeoutMs:           contextdev.Int(1000),
 		URLRegex:            contextdev.String("^https?://[^/]+/blog/"),
 		UseMainContentOnly:  contextdev.Bool(true),
 		WaitForMs:           contextdev.Int(0),
+		Zdr:                 contextdev.WebWebCrawlMdParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -292,25 +304,42 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeHTML(context.TODO(), contextdev.WebWebScrapeHTMLParams{
-		URL:              "https://example.com",
+		URL: "https://example.com",
+		Actions: []contextdev.WebWebScrapeHTMLParamsActionUnion{{
+			OfWait: &contextdev.WebWebScrapeHTMLParamsActionWait{
+				TimeMs: 0,
+			},
+		}},
 		Country:          contextdev.WebWebScrapeHTMLParamsCountryDe,
-		ExcludeSelectors: []string{"string"},
+		ExcludeSelectors: []string{"x"},
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		IncludeFrames:    contextdev.Bool(true),
-		IncludeSelectors: []string{"string"},
+		IncludeFrames: contextdev.WebWebScrapeHTMLParamsIncludeFramesUnion{
+			OfWebWebScrapeHTMLsIncludeFramesString: contextdev.String("true"),
+		},
+		IncludeSelectors: []string{"x"},
 		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeHTMLParamsPdf{
-			End:         contextdev.Int(1),
-			Ocr:         contextdev.Bool(true),
-			ShouldParse: contextdev.Bool(true),
-			Start:       contextdev.Int(1),
+			End: contextdev.Int(1),
+			Ocr: contextdev.WebWebScrapeHTMLParamsPdfOcrUnion{
+				OfWebWebScrapeHTMLsPdfOcrString: contextdev.String("true"),
+			},
+			ShouldParse: contextdev.WebWebScrapeHTMLParamsPdfShouldParseUnion{
+				OfWebWebScrapeHTMLsPdfShouldParseString: contextdev.String("true"),
+			},
+			Start: contextdev.Int(1),
 		},
-		SettleAnimations:   contextdev.Bool(true),
-		TimeoutMs:          contextdev.Int(1000),
-		UseMainContentOnly: contextdev.Bool(true),
-		WaitForMs:          contextdev.Int(0),
+		SettleAnimations: contextdev.WebWebScrapeHTMLParamsSettleAnimationsUnion{
+			OfWebWebScrapeHTMLsSettleAnimationsString: contextdev.String("true"),
+		},
+		Tags:      []string{"production", "team-alpha"},
+		TimeoutMs: contextdev.Int(1),
+		UseMainContentOnly: contextdev.WebWebScrapeHTMLParamsUseMainContentOnlyUnion{
+			OfWebWebScrapeHTMLsUseMainContentOnlyString: contextdev.String("true"),
+		},
+		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeHTMLParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -335,19 +364,33 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeImages(context.TODO(), contextdev.WebWebScrapeImagesParams{
-		URL:    "https://example.com",
-		Dedupe: contextdev.Bool(true),
+		URL: "https://example.com",
+		Actions: []contextdev.WebWebScrapeImagesParamsActionUnion{{
+			OfWait: &contextdev.WebWebScrapeImagesParamsActionWait{
+				TimeMs: 0,
+			},
+		}},
+		Dedupe: contextdev.WebWebScrapeImagesParamsDedupeUnion{
+			OfWebWebScrapeImagessDedupeString: contextdev.String("true"),
+		},
 		Enrichment: contextdev.WebWebScrapeImagesParamsEnrichment{
-			Classification: contextdev.Bool(true),
-			HostedURL:      contextdev.Bool(true),
-			MaxTimePerMs:   contextdev.Int(1),
-			Resolution:     contextdev.Bool(true),
+			Classification: contextdev.WebWebScrapeImagesParamsEnrichmentClassificationUnion{
+				OfWebWebScrapeImagessEnrichmentClassificationString: contextdev.String("true"),
+			},
+			HostedURL: contextdev.WebWebScrapeImagesParamsEnrichmentHostedURLUnion{
+				OfWebWebScrapeImagessEnrichmentHostedURLString: contextdev.String("true"),
+			},
+			MaxTimePerMs: contextdev.Int(1),
+			Resolution: contextdev.WebWebScrapeImagesParamsEnrichmentResolutionUnion{
+				OfWebWebScrapeImagessEnrichmentResolutionString: contextdev.String("true"),
+			},
 		},
 		Headers: map[string]string{
 			"foo": "J!",
 		},
 		MaxAgeMs:  contextdev.Int(0),
-		TimeoutMs: contextdev.Int(1000),
+		Tags:      []string{"production", "team-alpha"},
+		TimeoutMs: contextdev.Int(1),
 		WaitForMs: contextdev.Int(0),
 	})
 	if err != nil {
@@ -373,28 +416,51 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeMd(context.TODO(), contextdev.WebWebScrapeMdParams{
-		URL:              "https://example.com",
+		URL: "https://example.com",
+		Actions: []contextdev.WebWebScrapeMdParamsActionUnion{{
+			OfWait: &contextdev.WebWebScrapeMdParamsActionWait{
+				TimeMs: 0,
+			},
+		}},
 		Country:          contextdev.WebWebScrapeMdParamsCountryDe,
-		ExcludeSelectors: []string{"string"},
+		ExcludeSelectors: []string{"x"},
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		IncludeFrames:    contextdev.Bool(true),
-		IncludeImages:    contextdev.Bool(true),
-		IncludeLinks:     contextdev.Bool(true),
-		IncludeSelectors: []string{"string"},
+		IncludeFrames: contextdev.WebWebScrapeMdParamsIncludeFramesUnion{
+			OfWebWebScrapeMdsIncludeFramesString: contextdev.String("true"),
+		},
+		IncludeImages: contextdev.WebWebScrapeMdParamsIncludeImagesUnion{
+			OfWebWebScrapeMdsIncludeImagesString: contextdev.String("true"),
+		},
+		IncludeLinks: contextdev.WebWebScrapeMdParamsIncludeLinksUnion{
+			OfWebWebScrapeMdsIncludeLinksString: contextdev.String("true"),
+		},
+		IncludeSelectors: []string{"x"},
 		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeMdParamsPdf{
-			End:         contextdev.Int(1),
-			Ocr:         contextdev.Bool(true),
-			ShouldParse: contextdev.Bool(true),
-			Start:       contextdev.Int(1),
+			End: contextdev.Int(1),
+			Ocr: contextdev.WebWebScrapeMdParamsPdfOcrUnion{
+				OfWebWebScrapeMdsPdfOcrString: contextdev.String("true"),
+			},
+			ShouldParse: contextdev.WebWebScrapeMdParamsPdfShouldParseUnion{
+				OfWebWebScrapeMdsPdfShouldParseString: contextdev.String("true"),
+			},
+			Start: contextdev.Int(1),
 		},
-		SettleAnimations:    contextdev.Bool(true),
-		ShortenBase64Images: contextdev.Bool(true),
-		TimeoutMs:           contextdev.Int(1000),
-		UseMainContentOnly:  contextdev.Bool(true),
-		WaitForMs:           contextdev.Int(0),
+		SettleAnimations: contextdev.WebWebScrapeMdParamsSettleAnimationsUnion{
+			OfWebWebScrapeMdsSettleAnimationsString: contextdev.String("true"),
+		},
+		ShortenBase64Images: contextdev.WebWebScrapeMdParamsShortenBase64ImagesUnion{
+			OfWebWebScrapeMdsShortenBase64ImagesString: contextdev.String("true"),
+		},
+		Tags:      []string{"production", "team-alpha"},
+		TimeoutMs: contextdev.Int(1),
+		UseMainContentOnly: contextdev.WebWebScrapeMdParamsUseMainContentOnlyUnion{
+			OfWebWebScrapeMdsUseMainContentOnlyString: contextdev.String("true"),
+		},
+		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeMdParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -419,13 +485,16 @@ func TestWebWebScrapeSitemapWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeSitemap(context.TODO(), contextdev.WebWebScrapeSitemapParams{
-		Domain: "domain",
+		Domain: "xxx",
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		MaxLinks:  contextdev.Int(1),
-		TimeoutMs: contextdev.Int(1000),
-		URLRegex:  contextdev.String("^https?://[^/]+/blog/"),
+		MaxLinks:   contextdev.Int(1),
+		SitemapURL: contextdev.String("https://example.com"),
+		Tags:       []string{"production", "team-alpha"},
+		TimeoutMs:  contextdev.Int(1),
+		URLRegex:   contextdev.String("^https?://[^/]+/blog/"),
+		Zdr:        contextdev.WebWebScrapeSitemapParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

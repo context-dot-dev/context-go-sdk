@@ -304,7 +304,12 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeHTML(context.TODO(), contextdev.WebWebScrapeHTMLParams{
-		URL:              "https://example.com",
+		URL: "https://example.com",
+		Actions: []contextdev.WebWebScrapeHTMLParamsActionUnion{{
+			OfWait: &contextdev.WebWebScrapeHTMLParamsActionWait{
+				TimeMs: 0,
+			},
+		}},
 		Country:          contextdev.WebWebScrapeHTMLParamsCountryDe,
 		ExcludeSelectors: []string{"x"},
 		Headers: map[string]string{
@@ -360,6 +365,11 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.WebScrapeImages(context.TODO(), contextdev.WebWebScrapeImagesParams{
 		URL: "https://example.com",
+		Actions: []contextdev.WebWebScrapeImagesParamsActionUnion{{
+			OfWait: &contextdev.WebWebScrapeImagesParamsActionWait{
+				TimeMs: 0,
+			},
+		}},
 		Dedupe: contextdev.WebWebScrapeImagesParamsDedupeUnion{
 			OfWebWebScrapeImagessDedupeString: contextdev.String("true"),
 		},
@@ -406,7 +416,12 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.WebScrapeMd(context.TODO(), contextdev.WebWebScrapeMdParams{
-		URL:              "https://example.com",
+		URL: "https://example.com",
+		Actions: []contextdev.WebWebScrapeMdParamsActionUnion{{
+			OfWait: &contextdev.WebWebScrapeMdParamsActionWait{
+				TimeMs: 0,
+			},
+		}},
 		Country:          contextdev.WebWebScrapeMdParamsCountryDe,
 		ExcludeSelectors: []string{"x"},
 		Headers: map[string]string{

@@ -15,6 +15,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/option"
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/param"
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
+	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
 // WebService contains methods and other services that help with interacting with
@@ -97,7 +98,8 @@ func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, o
 	return res, err
 }
 
-// Scrapes the given URL and returns the raw HTML content of the page.
+// Scrapes the given URL and returns the raw HTML content of the page. The base
+// request costs 1 credit; requests with browser actions cost 2 credits.
 func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLParams, opts ...option.RequestOption) (res *WebWebScrapeHTMLResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/html"
@@ -107,8 +109,9 @@ func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLPa
 
 // Extract image assets from a web page, including standard URLs, inline SVGs, data
 // URIs, responsive image sources, metadata, CSS backgrounds, video posters, and
-// embeds. The base request costs 1 credit. When enrichment is enabled, the entire
-// call costs 5 credits.
+// embeds. The base request costs 1 credit, or 2 credits with browser actions. When
+// enrichment is enabled, the entire call costs 5 credits, including requests that
+// also use actions.
 func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImagesParams, opts ...option.RequestOption) (res *WebWebScrapeImagesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/images"
@@ -122,16 +125,16 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 //
 // ### Billing & errors
 //
-// | HTTP status | Billed?        | Meaning                                                                                  |
-// | ----------- | -------------- | ---------------------------------------------------------------------------------------- |
-// | 200         | Yes — 1 credit | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
-// | 400         | No             | Invalid input, skipped PDF, or the page could not be scraped                             |
-// | 401 / 403   | No             | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
-// | 404         | No             | Target page returned or fingerprinted as not found                                       |
-// | 408         | No             | Request timed out                                                                        |
-// | 415         | No             | Unsupported content type                                                                 |
-// | 429         | No             | Per-minute rate limit exceeded; honor Retry-After                                        |
-// | 500         | No             | Internal error                                                                           |
+// | HTTP status | Billed?                                   | Meaning                                                                                  |
+// | ----------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
+// | 400         | No                                        | Invalid input, skipped PDF, or the page could not be scraped                             |
+// | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
+// | 404         | No                                        | Target page returned or fingerprinted as not found                                       |
+// | 408         | No                                        | Request timed out                                                                        |
+// | 415         | No                                        | Unsupported content type                                                                 |
+// | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                        |
+// | 500         | No                                        | Internal error                                                                           |
 func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams, opts ...option.RequestOption) (res *WebWebScrapeMdResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/markdown"
@@ -3670,6 +3673,10 @@ type WebWebScrapeHTMLParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional browser actions executed in array order after the page loads and before
+	// content is captured. Requires a paid plan. Send a JSON array in the query
+	// parameter. Maximum: 5 actions.
+	Actions []WebWebScrapeHTMLParamsActionUnion `query:"actions,omitzero" json:"-"`
 	// CSS selectors to remove from the result. Applied after includeSelectors.
 	// Exclusion takes precedence: an element matching both is removed. Examples:
 	// "nav", "footer", ".ad-banner", "[aria-hidden=true]".
@@ -3731,6 +3738,61 @@ type WebWebScrapeHTMLParams struct {
 
 // URLQuery serializes [WebWebScrapeHTMLParams]'s query parameters as `url.Values`.
 func (r WebWebScrapeHTMLParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsActionUnion struct {
+	OfWait    *WebWebScrapeHTMLParamsActionWait    `query:",omitzero,inline"`
+	OfPerform *WebWebScrapeHTMLParamsActionPerform `query:",omitzero,inline"`
+	paramUnion
+}
+
+func init() {
+	apijson.RegisterUnion[WebWebScrapeHTMLParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebWebScrapeHTMLParamsActionWait]("wait"),
+		apijson.Discriminator[WebWebScrapeHTMLParamsActionPerform]("perform"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebWebScrapeHTMLParamsActionWait struct {
+	TimeMs int64 `query:"timeMs" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `query:"do" json:"-" default:"wait"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsActionWait]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeHTMLParamsActionWait) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebWebScrapeHTMLParamsActionPerform struct {
+	Action string `query:"action" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `query:"do" json:"-" default:"perform"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsActionPerform]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeHTMLParamsActionPerform) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
@@ -4090,6 +4152,10 @@ type WebWebScrapeImagesParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional browser actions executed in array order after the page loads and before
+	// content is captured. Requires a paid plan. Send a JSON array in the query
+	// parameter. Maximum: 5 actions.
+	Actions []WebWebScrapeImagesParamsActionUnion `query:"actions,omitzero" json:"-"`
 	// Optional per-image processing, sent as deep-object query params such as
 	// enrichment[resolution]=true.
 	Enrichment WebWebScrapeImagesParamsEnrichment `query:"enrichment,omitzero" json:"-"`
@@ -4112,6 +4178,61 @@ type WebWebScrapeImagesParams struct {
 // URLQuery serializes [WebWebScrapeImagesParams]'s query parameters as
 // `url.Values`.
 func (r WebWebScrapeImagesParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeImagesParamsActionUnion struct {
+	OfWait    *WebWebScrapeImagesParamsActionWait    `query:",omitzero,inline"`
+	OfPerform *WebWebScrapeImagesParamsActionPerform `query:",omitzero,inline"`
+	paramUnion
+}
+
+func init() {
+	apijson.RegisterUnion[WebWebScrapeImagesParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebWebScrapeImagesParamsActionWait]("wait"),
+		apijson.Discriminator[WebWebScrapeImagesParamsActionPerform]("perform"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebWebScrapeImagesParamsActionWait struct {
+	TimeMs int64 `query:"timeMs" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `query:"do" json:"-" default:"wait"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeImagesParamsActionWait]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeImagesParamsActionWait) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebWebScrapeImagesParamsActionPerform struct {
+	Action string `query:"action" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `query:"do" json:"-" default:"perform"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeImagesParamsActionPerform]'s query parameters
+// as `url.Values`.
+func (r WebWebScrapeImagesParamsActionPerform) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
@@ -4229,6 +4350,10 @@ type WebWebScrapeMdParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Optional browser actions executed in array order after the page loads and before
+	// content is captured. Requires a paid plan. Send a JSON array in the query
+	// parameter. Maximum: 5 actions.
+	Actions []WebWebScrapeMdParamsActionUnion `query:"actions,omitzero" json:"-"`
 	// CSS selectors to remove before conversion to Markdown. Applied after
 	// includeSelectors. Exclusion takes precedence: an element matching both is
 	// removed. Examples: "nav", "footer", ".ad-banner", "[aria-hidden=true]".
@@ -4296,6 +4421,61 @@ type WebWebScrapeMdParams struct {
 
 // URLQuery serializes [WebWebScrapeMdParams]'s query parameters as `url.Values`.
 func (r WebWebScrapeMdParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsActionUnion struct {
+	OfWait    *WebWebScrapeMdParamsActionWait    `query:",omitzero,inline"`
+	OfPerform *WebWebScrapeMdParamsActionPerform `query:",omitzero,inline"`
+	paramUnion
+}
+
+func init() {
+	apijson.RegisterUnion[WebWebScrapeMdParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebWebScrapeMdParamsActionWait]("wait"),
+		apijson.Discriminator[WebWebScrapeMdParamsActionPerform]("perform"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebWebScrapeMdParamsActionWait struct {
+	TimeMs int64 `query:"timeMs" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `query:"do" json:"-" default:"wait"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeMdParamsActionWait]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeMdParamsActionWait) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebWebScrapeMdParamsActionPerform struct {
+	Action string `query:"action" api:"required" json:"-"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `query:"do" json:"-" default:"perform"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeMdParamsActionPerform]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeMdParamsActionPerform) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,

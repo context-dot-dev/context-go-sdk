@@ -28,22 +28,22 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Monitors.New(context.TODO(), contextdev.MonitorNewParams{
-		ChangeDetection: contextdev.MonitorNewParamsChangeDetectionUnion{
-			OfExact: &contextdev.MonitorNewParamsChangeDetectionExact{},
-		},
 		Name: "Acme pricing page",
-		Schedule: contextdev.MonitorNewParamsSchedule{
-			Frequency: 6,
-			Type:      "interval",
-			Unit:      "hours",
-		},
 		Target: contextdev.MonitorNewParamsTargetUnion{
 			OfPage: &contextdev.MonitorNewParamsTargetPage{
 				URL:                 "https://acme.com/pricing",
 				NormalizeWhitespace: contextdev.Bool(true),
 			},
 		},
+		ChangeDetection: contextdev.MonitorNewParamsChangeDetectionUnion{
+			OfExact: &contextdev.MonitorNewParamsChangeDetectionExact{},
+		},
 		Mode: contextdev.MonitorNewParamsModeWeb,
+		Schedule: contextdev.MonitorNewParamsSchedule{
+			Frequency: 6,
+			Type:      "interval",
+			Unit:      "hours",
+		},
 		Tags: []string{"pricing", "competitor"},
 		Webhook: contextdev.MonitorNewParamsWebhook{
 			URL:    "https://example.com/webhook",

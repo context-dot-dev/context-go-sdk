@@ -32,6 +32,7 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		Target: contextdev.MonitorNewParamsTargetUnion{
 			OfPage: &contextdev.MonitorNewParamsTargetPage{
 				URL:                 "https://acme.com/pricing",
+				Instructions:        contextdev.String("Report pricing or plan availability changes. Ignore counters, timestamps, testimonials, and navigation."),
 				NormalizeWhitespace: contextdev.Bool(true),
 			},
 		},
@@ -113,6 +114,7 @@ func TestMonitorUpdateWithOptionalParams(t *testing.T) {
 			Target: contextdev.MonitorUpdateParamsTargetUnion{
 				OfPage: &contextdev.MonitorUpdateParamsTargetPage{
 					URL:                 "https://acme.com/pricing",
+					Instructions:        contextdev.String("Report pricing or plan availability changes. Ignore counters, timestamps, testimonials, and navigation."),
 					NormalizeWhitespace: contextdev.Bool(true),
 				},
 			},

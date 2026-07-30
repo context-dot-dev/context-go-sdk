@@ -13,7 +13,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
-func TestBatchGetWithOptionalParams(t *testing.T) {
+func TestBatchGet(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"
 	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
@@ -26,13 +26,7 @@ func TestBatchGetWithOptionalParams(t *testing.T) {
 		option.WithBaseURL(baseURL),
 		option.WithAPIKey("My API Key"),
 	)
-	_, err := client.Batch.Get(
-		context.TODO(),
-		"batch_9f2c8a",
-		contextdev.BatchGetParams{
-			Tags: []string{"production", "team-alpha"},
-		},
-	)
+	_, err := client.Batch.Get(context.TODO(), "batch_9f2c8a")
 	if err != nil {
 		var apierr *contextdev.Error
 		if errors.As(err, &apierr) {
@@ -56,10 +50,12 @@ func TestBatchListWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Batch.List(context.TODO(), contextdev.BatchListParams{
-		Cursor: contextdev.String("cursor"),
-		Limit:  contextdev.Int(1),
-		Status: contextdev.BatchListParamsStatusQueued,
-		Tags:   []string{"production", "team-alpha"},
+		Cursor:     contextdev.String("cursor"),
+		Limit:      contextdev.Int(1),
+		Q:          contextdev.String("batch_1a2b"),
+		SearchType: contextdev.BatchListParamsSearchTypeExact,
+		Status:     contextdev.BatchListParamsStatusQueued,
+		Tags:       contextdev.String("docs,competitor"),
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -70,7 +66,7 @@ func TestBatchListWithOptionalParams(t *testing.T) {
 	}
 }
 
-func TestBatchCancelWithOptionalParams(t *testing.T) {
+func TestBatchCancel(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"
 	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
@@ -83,13 +79,7 @@ func TestBatchCancelWithOptionalParams(t *testing.T) {
 		option.WithBaseURL(baseURL),
 		option.WithAPIKey("My API Key"),
 	)
-	_, err := client.Batch.Cancel(
-		context.TODO(),
-		"batch_9f2c8a",
-		contextdev.BatchCancelParams{
-			Tags: []string{"production", "team-alpha"},
-		},
-	)
+	_, err := client.Batch.Cancel(context.TODO(), "batch_9f2c8a")
 	if err != nil {
 		var apierr *contextdev.Error
 		if errors.As(err, &apierr) {
@@ -118,7 +108,6 @@ func TestBatchGetResultsWithOptionalParams(t *testing.T) {
 		contextdev.BatchGetResultsParams{
 			Cursor: contextdev.String("cursor"),
 			Limit:  contextdev.Int(1),
-			Tags:   []string{"production", "team-alpha"},
 		},
 	)
 	if err != nil {

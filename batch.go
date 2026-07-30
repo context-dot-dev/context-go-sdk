@@ -42,14 +42,14 @@ func NewBatchService(opts ...option.RequestOption) (r BatchService) {
 // Check progress and get download links when the batch finishes. Also returns the
 // rejected-URL list and webhook signing secret from submission, so nothing is lost
 // if the submit response was dropped.
-func (r *BatchService) Get(ctx context.Context, batchID string, query BatchGetParams, opts ...option.RequestOption) (res *BatchGetResponse, err error) {
+func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
 		err = errors.New("missing required batch_id parameter")
 		return nil, err
 	}
 	path := fmt.Sprintf("batch/%s", url.PathEscape(batchID))
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
 	return res, err
 }
 
@@ -64,14 +64,14 @@ func (r *BatchService) List(ctx context.Context, query BatchListParams, opts ...
 
 // Stop a batch from starting new pages. In-progress pages finish, and unused
 // credits are refunded.
-func (r *BatchService) Cancel(ctx context.Context, batchID string, body BatchCancelParams, opts ...option.RequestOption) (res *BatchCancelResponse, err error) {
+func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchCancelResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
 		err = errors.New("missing required batch_id parameter")
 		return nil, err
 	}
 	path := fmt.Sprintf("batch/%s/cancel", url.PathEscape(batchID))
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, nil, &res, opts...)
 	return res, err
 }
 
@@ -123,6 +123,8 @@ type BatchGetResponse struct {
 	//
 	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
 	Status BatchGetResponseStatus `json:"status" api:"required"`
+	// Tags stored on the batch at submission.
+	Tags   []string               `json:"tags" api:"required"`
 	Timing BatchGetResponseTiming `json:"timing" api:"required"`
 	// Output format.
 	//
@@ -144,6 +146,7 @@ type BatchGetResponse struct {
 		Progress      respjson.Field
 		Results       respjson.Field
 		Status        respjson.Field
+		Tags          respjson.Field
 		Timing        respjson.Field
 		Type          respjson.Field
 		KeyMetadata   respjson.Field
@@ -441,7 +444,9 @@ type BatchListResponseData struct {
 	// Current state. `completed`, `cancelled`, and `failed` are final.
 	//
 	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
-	Status string                      `json:"status" api:"required"`
+	Status string `json:"status" api:"required"`
+	// Tags stored on the batch at submission.
+	Tags   []string                    `json:"tags" api:"required"`
 	Timing BatchListResponseDataTiming `json:"timing" api:"required"`
 	// Output format.
 	//
@@ -458,6 +463,7 @@ type BatchListResponseData struct {
 		Progress    respjson.Field
 		Results     respjson.Field
 		Status      respjson.Field
+		Tags        respjson.Field
 		Timing      respjson.Field
 		Type        respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -679,6 +685,8 @@ type BatchCancelResponse struct {
 	//
 	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
 	Status BatchCancelResponseStatus `json:"status" api:"required"`
+	// Tags stored on the batch at submission.
+	Tags   []string                  `json:"tags" api:"required"`
 	Timing BatchCancelResponseTiming `json:"timing" api:"required"`
 	// Output format.
 	//
@@ -697,6 +705,7 @@ type BatchCancelResponse struct {
 		Progress    respjson.Field
 		Results     respjson.Field
 		Status      respjson.Field
+		Tags        respjson.Field
 		Timing      respjson.Field
 		Type        respjson.Field
 		KeyMetadata respjson.Field
@@ -1777,35 +1786,25 @@ func (r *BatchSubmitResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type BatchGetParams struct {
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
-	Tags []string `query:"tags,omitzero" json:"-"`
-	paramObj
-}
-
-// URLQuery serializes [BatchGetParams]'s query parameters as `url.Values`.
-func (r BatchGetParams) URLQuery() (v url.Values, err error) {
-	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
-		ArrayFormat:  apiquery.ArrayQueryFormatComma,
-		NestedFormat: apiquery.NestedQueryFormatBrackets,
-	})
-}
-
 type BatchListParams struct {
 	// Cursor from the previous page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
 	// Batches per page. Defaults to 25.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
+	// Free-text search term, matched against the batch id, crawl source (start URL or
+	// sitemap domain), and tags.
+	Q param.Opt[string] `query:"q,omitzero" json:"-"`
+	// Comma-separated list of tags to filter by (matches batches having any of them).
+	Tags param.Opt[string] `query:"tags,omitzero" json:"-"`
+	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
+	// matching.
+	//
+	// Any of "exact", "prefix".
+	SearchType BatchListParamsSearchType `query:"search_type,omitzero" json:"-"`
 	// Filter by status.
 	//
 	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
 	Status BatchListParamsStatus `query:"status,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
-	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -1816,6 +1815,15 @@ func (r BatchListParams) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// `prefix` for as-you-type prefix matching (default), `exact` for full-token
+// matching.
+type BatchListParamsSearchType string
+
+const (
+	BatchListParamsSearchTypeExact  BatchListParamsSearchType = "exact"
+	BatchListParamsSearchTypePrefix BatchListParamsSearchType = "prefix"
+)
 
 // Filter by status.
 type BatchListParamsStatus string
@@ -1829,32 +1837,12 @@ const (
 	BatchListParamsStatusFailed     BatchListParamsStatus = "failed"
 )
 
-type BatchCancelParams struct {
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
-	Tags []string `query:"tags,omitzero" json:"-"`
-	paramObj
-}
-
-// URLQuery serializes [BatchCancelParams]'s query parameters as `url.Values`.
-func (r BatchCancelParams) URLQuery() (v url.Values, err error) {
-	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
-		ArrayFormat:  apiquery.ArrayQueryFormatComma,
-		NestedFormat: apiquery.NestedQueryFormatBrackets,
-	})
-}
-
 type BatchGetResultsParams struct {
 	// next_cursor from the previous page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
 	// Records per page. Defaults to 25. A page can close early so its payload stays
 	// under ~8 MB; rely on next_cursor rather than counting records.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
-	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 

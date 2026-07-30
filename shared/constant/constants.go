@@ -24,8 +24,10 @@ type ByEmail string       // Always "by_email"
 type ByName string        // Always "by_name"
 type ByTicker string      // Always "by_ticker"
 type ByTransaction string // Always "by_transaction"
+type Error string         // Always "error"
 type Exact string         // Always "exact"
 type Extract string       // Always "extract"
+type Ok string            // Always "ok"
 type Page string          // Always "page"
 type Perform string       // Always "perform"
 type Semantic string      // Always "semantic"
@@ -38,8 +40,10 @@ func (c ByEmail) Default() ByEmail             { return "by_email" }
 func (c ByName) Default() ByName               { return "by_name" }
 func (c ByTicker) Default() ByTicker           { return "by_ticker" }
 func (c ByTransaction) Default() ByTransaction { return "by_transaction" }
+func (c Error) Default() Error                 { return "error" }
 func (c Exact) Default() Exact                 { return "exact" }
 func (c Extract) Default() Extract             { return "extract" }
+func (c Ok) Default() Ok                       { return "ok" }
 func (c Page) Default() Page                   { return "page" }
 func (c Perform) Default() Perform             { return "perform" }
 func (c Semantic) Default() Semantic           { return "semantic" }
@@ -52,8 +56,10 @@ func (c ByEmail) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c ByName) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c ByTicker) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c ByTransaction) MarshalJSON() ([]byte, error) { return marshalString(c) }
+func (c Error) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Exact) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Extract) MarshalJSON() ([]byte, error)       { return marshalString(c) }
+func (c Ok) MarshalJSON() ([]byte, error)            { return marshalString(c) }
 func (c Page) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Perform) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c Semantic) MarshalJSON() ([]byte, error)      { return marshalString(c) }

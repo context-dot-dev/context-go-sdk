@@ -1622,19 +1622,26 @@ type WebWebScrapeHTMLResponse struct {
 	Type WebWebScrapeHTMLResponseType `json:"type" api:"required"`
 	// The URL that was scraped
 	URL string `json:"url" api:"required"`
+	// One verified outcome per requested browser action, in request order.
+	ActionsApplied []WebWebScrapeHTMLResponseActionsApplied `json:"actionsApplied"`
+	// True when an action was applied but the returned content could not be refreshed
+	// afterward.
+	ActionsHTMLStale bool `json:"actionsHtmlStale"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebWebScrapeHTMLResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		HTML        respjson.Field
-		Metadata    respjson.Field
-		Success     respjson.Field
-		Type        respjson.Field
-		URL         respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		HTML             respjson.Field
+		Metadata         respjson.Field
+		Success          respjson.Field
+		Type             respjson.Field
+		URL              respjson.Field
+		ActionsApplied   respjson.Field
+		ActionsHTMLStale respjson.Field
+		KeyMetadata      respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
 	} `json:"-"`
 }
 
@@ -1874,6 +1881,39 @@ const (
 	WebWebScrapeHTMLResponseTypePpt      WebWebScrapeHTMLResponseType = "ppt"
 )
 
+type WebWebScrapeHTMLResponseActionsApplied struct {
+	Instruction string `json:"instruction" api:"required"`
+	// Applied means the requested page state was visibly verified. Failed means it was
+	// not verified. Skipped means it was not attempted.
+	//
+	// Any of "applied", "failed", "skipped".
+	Status string `json:"status" api:"required"`
+	// Visible page evidence used to verify an applied action.
+	CompletionEvidence string  `json:"completionEvidence"`
+	DurationMs         float64 `json:"durationMs"`
+	Error              string  `json:"error"`
+	Method             string  `json:"method"`
+	TargetDescription  string  `json:"targetDescription"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Instruction        respjson.Field
+		Status             respjson.Field
+		CompletionEvidence respjson.Field
+		DurationMs         respjson.Field
+		Error              respjson.Field
+		Method             respjson.Field
+		TargetDescription  respjson.Field
+		ExtraFields        map[string]respjson.Field
+		raw                string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeHTMLResponseActionsApplied) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeHTMLResponseActionsApplied) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Metadata about the API key used for the request. Included in every response
 // whenever a valid API key is provided, even when the response status is not 200.
 type WebWebScrapeHTMLResponseKeyMetadata struct {
@@ -2029,19 +2069,26 @@ type WebWebScrapeMdResponse struct {
 	Success bool `json:"success" api:"required"`
 	// The URL that was scraped
 	URL string `json:"url" api:"required"`
+	// One verified outcome per requested browser action, in request order.
+	ActionsApplied []WebWebScrapeMdResponseActionsApplied `json:"actionsApplied"`
+	// True when an action was applied but the returned content could not be refreshed
+	// afterward.
+	ActionsHTMLStale bool `json:"actionsHtmlStale"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebWebScrapeMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		ContentLength respjson.Field
-		Markdown      respjson.Field
-		Metadata      respjson.Field
-		Success       respjson.Field
-		URL           respjson.Field
-		KeyMetadata   respjson.Field
-		ExtraFields   map[string]respjson.Field
-		raw           string
+		ContentLength    respjson.Field
+		Markdown         respjson.Field
+		Metadata         respjson.Field
+		Success          respjson.Field
+		URL              respjson.Field
+		ActionsApplied   respjson.Field
+		ActionsHTMLStale respjson.Field
+		KeyMetadata      respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
 	} `json:"-"`
 }
 
@@ -2255,6 +2302,39 @@ func (u WebWebScrapeMdResponseMetadataTwitterUnion) AsStringArray() (v []string)
 func (u WebWebScrapeMdResponseMetadataTwitterUnion) RawJSON() string { return u.JSON.raw }
 
 func (r *WebWebScrapeMdResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeMdResponseActionsApplied struct {
+	Instruction string `json:"instruction" api:"required"`
+	// Applied means the requested page state was visibly verified. Failed means it was
+	// not verified. Skipped means it was not attempted.
+	//
+	// Any of "applied", "failed", "skipped".
+	Status string `json:"status" api:"required"`
+	// Visible page evidence used to verify an applied action.
+	CompletionEvidence string  `json:"completionEvidence"`
+	DurationMs         float64 `json:"durationMs"`
+	Error              string  `json:"error"`
+	Method             string  `json:"method"`
+	TargetDescription  string  `json:"targetDescription"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Instruction        respjson.Field
+		Status             respjson.Field
+		CompletionEvidence respjson.Field
+		DurationMs         respjson.Field
+		Error              respjson.Field
+		Method             respjson.Field
+		TargetDescription  respjson.Field
+		ExtraFields        map[string]respjson.Field
+		raw                string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeMdResponseActionsApplied) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeMdResponseActionsApplied) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

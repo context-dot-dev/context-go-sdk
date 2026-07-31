@@ -40,8 +40,8 @@ func NewBatchService(opts ...option.RequestOption) (r BatchService) {
 }
 
 // Check progress and get download links when the batch finishes. Also returns the
-// rejected-URL list and webhook signing secret from submission, so nothing is lost
-// if the submit response was dropped.
+// rejected-URL list from submission. The webhook signing secret is not repeated
+// here — it is returned once, by the submit response.
 func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -98,7 +98,7 @@ func (r *BatchService) Submit(ctx context.Context, body BatchSubmitParams, opts 
 }
 
 // Page failures sharing one error code.
-type ErrorCount struct {
+type PageErrorCount struct {
 	// Error code for these failures.
 	Code string `json:"code" api:"required"`
 	// Pages that failed with this code.
@@ -113,16 +113,17 @@ type ErrorCount struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r ErrorCount) RawJSON() string { return r.JSON.raw }
-func (r *ErrorCount) UnmarshalJSON(data []byte) error {
+func (r PageErrorCount) RawJSON() string { return r.JSON.raw }
+func (r *PageErrorCount) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Why the batch failed.
-type Error struct {
-	// Batch error code.
+// A failure of the batch as a whole, distinct from the per-page failures in
+// `page_errors`.
+type Failure struct {
+	// Why the batch itself stopped.
 	Code string `json:"code" api:"required"`
-	// Batch error message.
+	// Human-readable explanation.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -134,32 +135,189 @@ type Error struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r Error) RawJSON() string { return r.JSON.raw }
-func (r *Error) UnmarshalJSON(data []byte) error {
+func (r Failure) RawJSON() string { return r.JSON.raw }
+func (r *Failure) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The crawl controls as submitted, so the limits requested can be compared against
+// what the crawl reached.
+type CrawlControls struct {
+	// Whether links to subdomains were followed. Always false for a sitemap crawl.
+	FollowSubdomains bool `json:"follow_subdomains" api:"required"`
+	// Link depth limit. Always 0 for a sitemap crawl, which never follows links off
+	// its URLs; null when a `start_url` crawl set no limit.
+	MaxDepth int64 `json:"max_depth" api:"required"`
+	// The `maxUrls` submitted with the crawl. A sitemap crawl scrapes only the URLs
+	// its sitemap actually lists, up to this many, so `input.reserved` is often lower.
+	MaxPages int64 `json:"max_pages" api:"required"`
+	// Where the crawl started.
+	Source CrawlControlsSourceUnion `json:"source" api:"required"`
+	// RE2 pattern URLs had to match to be crawled. Null when the crawl set none.
+	URLPattern string `json:"url_pattern" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		FollowSubdomains respjson.Field
+		MaxDepth         respjson.Field
+		MaxPages         respjson.Field
+		Source           respjson.Field
+		URLPattern       respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControls) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// CrawlControlsSourceUnion contains all possible properties and values from
+// [CrawlControlsSourceObject], [CrawlControlsSourceObject2].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type CrawlControlsSourceUnion struct {
+	Type string `json:"type"`
+	// This field is from variant [CrawlControlsSourceObject].
+	URL string `json:"url"`
+	// This field is from variant [CrawlControlsSourceObject2].
+	Domain string `json:"domain"`
+	JSON   struct {
+		Type   respjson.Field
+		URL    respjson.Field
+		Domain respjson.Field
+		raw    string
+	} `json:"-"`
+}
+
+func (u CrawlControlsSourceUnion) AsCrawlControlsSourceObject() (v CrawlControlsSourceObject) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CrawlControlsSourceUnion) AsCrawlControlsSourceObject2() (v CrawlControlsSourceObject2) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u CrawlControlsSourceUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *CrawlControlsSourceUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type CrawlControlsSourceObject struct {
+	// Any of "start_url".
+	Type string `json:"type" api:"required"`
+	// Page the crawl started from.
+	URL string `json:"url" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Type        respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsSourceObject) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsSourceObject) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type CrawlControlsSourceObject2 struct {
+	// Domain whose sitemap supplied the pages.
+	Domain string `json:"domain" api:"required"`
+	// Any of "sitemap".
+	Type string `json:"type" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Domain      respjson.Field
+		Type        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsSourceObject2) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsSourceObject2) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// What submission took in, and what it charged for.
+type Intake struct {
+	// URLs dropped before reserving because another entry resolved to the same page.
+	// Non-zero for sitemap crawls too, whose sitemaps routinely list a page more than
+	// once.
+	Duplicates int64 `json:"duplicates" api:"required"`
+	// URLs from your list rejected as unusable; the same ones are itemised in
+	// `invalid_urls` at submission. Null for a crawl — a crawl that resolves no usable
+	// page is rejected outright with a 400 rather than accepted with an empty list.
+	Invalid int64 `json:"invalid" api:"required"`
+	// Pages credits were reserved for. Everything else — progress, the refund, the
+	// completion percentage — is measured against this.
+	Reserved int64 `json:"reserved" api:"required"`
+	// Whether `reserved` is an upper bound the batch may finish under. True only for a
+	// crawl that follows links, whose reachable page count is unknowable until it
+	// runs. False for a scrape and for a sitemap crawl, where `reserved` is an exact
+	// page count.
+	ReservedIsCeiling bool `json:"reserved_is_ceiling" api:"required"`
+	// URLs in the list you sent, before validation and de-duplication. Null for a
+	// crawl, which is given a source rather than a list.
+	Submitted int64 `json:"submitted" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Duplicates        respjson.Field
+		Invalid           respjson.Field
+		Reserved          respjson.Field
+		ReservedIsCeiling respjson.Field
+		Submitted         respjson.Field
+		ExtraFields       map[string]respjson.Field
+		raw               string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r Intake) RawJSON() string { return r.JSON.raw }
+func (r *Intake) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 type BatchGetResponse struct {
 	// Batch ID used to retrieve or cancel the job.
 	ID string `json:"id" api:"required"`
-	// Reserved and used credits.
+	// The crawl controls as submitted, so the limits requested can be compared against
+	// what the crawl reached.
+	Crawl CrawlControls `json:"crawl" api:"required"`
+	// What this batch has done to your credit balance.
 	Credits BatchGetResponseCredits `json:"credits" api:"required"`
-	// Why the batch failed.
-	Error Error `json:"error" api:"required"`
-	// Page failures grouped by error code.
-	Errors []ErrorCount `json:"errors" api:"required"`
-	// Submission counts.
-	Input BatchGetResponseInput `json:"input" api:"required"`
+	// A failure of the batch as a whole, distinct from the per-page failures in
+	// `page_errors`.
+	Failure Failure `json:"failure" api:"required"`
+	// What each page is returned as. Matches `input.data.format` on the submit
+	// request.
+	//
+	// Any of "markdown", "html".
+	Format BatchGetResponseFormat `json:"format" api:"required"`
+	// What submission took in, and what it charged for.
+	Input Intake `json:"input" api:"required"`
 	// Rejected URLs, up to 100. These are not charged.
 	InvalidURLs []BatchGetResponseInvalidURL `json:"invalid_urls" api:"required"`
-	// How pages are selected.
+	// How pages were selected. Matches `input.mode` on the submit request.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchGetResponseMode `json:"mode" api:"required"`
-	// Current processing counts. Use `status` to check completion.
+	// Individual page failures grouped by error code, sorted by count. Unrelated to
+	// `failure`, which is the batch itself failing.
+	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
+	// Pages attempted so far. Use `status` to check completion.
 	Progress BatchGetResponseProgress `json:"progress" api:"required"`
-	// Download links available when the batch finishes. GET /batch/{batch_id}/results
-	// serves the same records as paginated JSON.
+	// Download links, available once the batch reaches a final status and null before
+	// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
 	Results BatchGetResponseResults `json:"results" api:"required"`
 	// Current state. `completed`, `cancelled`, and `failed` are final.
 	//
@@ -168,33 +326,27 @@ type BatchGetResponse struct {
 	// Tags stored on the batch at submission.
 	Tags   []string               `json:"tags" api:"required"`
 	Timing BatchGetResponseTiming `json:"timing" api:"required"`
-	// Output format.
-	//
-	// Any of "markdown", "html".
-	Type BatchGetResponseType `json:"type" api:"required"`
 	// API key usage for this request.
 	KeyMetadata BatchGetResponseKeyMetadata `json:"key_metadata"`
-	// Webhook signing secret. Also returned by GET /batch/{batch_id}.
-	WebhookSecret string `json:"webhook_secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		ID            respjson.Field
-		Credits       respjson.Field
-		Error         respjson.Field
-		Errors        respjson.Field
-		Input         respjson.Field
-		InvalidURLs   respjson.Field
-		Mode          respjson.Field
-		Progress      respjson.Field
-		Results       respjson.Field
-		Status        respjson.Field
-		Tags          respjson.Field
-		Timing        respjson.Field
-		Type          respjson.Field
-		KeyMetadata   respjson.Field
-		WebhookSecret respjson.Field
-		ExtraFields   map[string]respjson.Field
-		raw           string
+		ID          respjson.Field
+		Crawl       respjson.Field
+		Credits     respjson.Field
+		Failure     respjson.Field
+		Format      respjson.Field
+		Input       respjson.Field
+		InvalidURLs respjson.Field
+		Mode        respjson.Field
+		PageErrors  respjson.Field
+		Progress    respjson.Field
+		Results     respjson.Field
+		Status      respjson.Field
+		Tags        respjson.Field
+		Timing      respjson.Field
+		KeyMetadata respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
 	} `json:"-"`
 }
 
@@ -204,16 +356,22 @@ func (r *BatchGetResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Reserved and used credits.
+// What this batch has done to your credit balance.
 type BatchGetResponseCredits struct {
-	// Credits used by successful pages.
-	Charged int64 `json:"charged" api:"required"`
-	// Credits reserved when the batch was accepted.
-	Estimated int64 `json:"estimated" api:"required"`
+	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
+	// `reserved` until the batch settles.
+	Net int64 `json:"net" api:"required"`
+	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
+	// a final status, then settles in one movement.
+	Refunded int64 `json:"refunded" api:"required"`
+	// Credits debited from your balance the moment the batch was accepted. This is a
+	// charge, not a forecast — the whole amount leaves the balance up front.
+	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Charged     respjson.Field
-		Estimated   respjson.Field
+		Net         respjson.Field
+		Refunded    respjson.Field
+		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -225,32 +383,14 @@ func (r *BatchGetResponseCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Submission counts.
-type BatchGetResponseInput struct {
-	// Pages accepted, or the crawl page limit. Credits are reserved for this count.
-	Accepted int64 `json:"accepted" api:"required"`
-	// Duplicate URL and `itemId` pairs skipped. Always 0 for crawls.
-	Duplicates int64 `json:"duplicates" api:"required"`
-	// Pages rejected during validation.
-	Invalid int64 `json:"invalid" api:"required"`
-	// Pages submitted before validation. For a crawl, the page limit.
-	Submitted int64 `json:"submitted" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Accepted    respjson.Field
-		Duplicates  respjson.Field
-		Invalid     respjson.Field
-		Submitted   respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
+// What each page is returned as. Matches `input.data.format` on the submit
+// request.
+type BatchGetResponseFormat string
 
-// Returns the unmodified JSON received from the API
-func (r BatchGetResponseInput) RawJSON() string { return r.JSON.raw }
-func (r *BatchGetResponseInput) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
+const (
+	BatchGetResponseFormatMarkdown BatchGetResponseFormat = "markdown"
+	BatchGetResponseFormatHTML     BatchGetResponseFormat = "html"
+)
 
 type BatchGetResponseInvalidURL struct {
 	// Why it was rejected.
@@ -272,7 +412,7 @@ func (r *BatchGetResponseInvalidURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How pages are selected.
+// How pages were selected. Matches `input.mode` on the submit request.
 type BatchGetResponseMode string
 
 const (
@@ -280,12 +420,13 @@ const (
 	BatchGetResponseModeCrawl  BatchGetResponseMode = "crawl"
 )
 
-// Current processing counts. Use `status` to check completion.
+// Pages attempted so far. Use `status` to check completion.
 type BatchGetResponseProgress struct {
 	// Pages that could not be scraped.
 	Failed int64 `json:"failed" api:"required"`
-	// Accepted pages not yet attempted. Always 0 once the batch completes; a crawl can
-	// finish under its page limit when the site has no more reachable pages.
+	// Reserved pages not yet attempted. A cancelled batch keeps reporting the URLs it
+	// never reached; a crawl whose `input.reserved_is_ceiling` is true reports 0 once
+	// final, because its unspent budget was never real pages.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -305,8 +446,8 @@ func (r *BatchGetResponseProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Download links available when the batch finishes. GET /batch/{batch_id}/results
-// serves the same records as paginated JSON.
+// Download links, available once the batch reaches a final status and null before
+// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
 type BatchGetResponseResults struct {
 	// When the download URLs expire.
 	ExpiresAt string `json:"expires_at" api:"required"`
@@ -385,14 +526,6 @@ func (r *BatchGetResponseTiming) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Output format.
-type BatchGetResponseType string
-
-const (
-	BatchGetResponseTypeMarkdown BatchGetResponseType = "markdown"
-	BatchGetResponseTypeHTML     BatchGetResponseType = "html"
-)
-
 // API key usage for this request.
 type BatchGetResponseKeyMetadata struct {
 	// The number of credits consumed by this request.
@@ -445,22 +578,32 @@ func (r *BatchListResponse) UnmarshalJSON(data []byte) error {
 type BatchListResponseData struct {
 	// Batch ID used to retrieve or cancel the job.
 	ID string `json:"id" api:"required"`
-	// Reserved and used credits.
+	// The crawl controls as submitted, so the limits requested can be compared against
+	// what the crawl reached.
+	Crawl CrawlControls `json:"crawl" api:"required"`
+	// What this batch has done to your credit balance.
 	Credits BatchListResponseDataCredits `json:"credits" api:"required"`
-	// Why the batch failed.
-	Error Error `json:"error" api:"required"`
-	// Page failures grouped by error code.
-	Errors []ErrorCount `json:"errors" api:"required"`
-	// Submission counts.
-	Input BatchListResponseDataInput `json:"input" api:"required"`
-	// How pages are selected.
+	// A failure of the batch as a whole, distinct from the per-page failures in
+	// `page_errors`.
+	Failure Failure `json:"failure" api:"required"`
+	// What each page is returned as. Matches `input.data.format` on the submit
+	// request.
+	//
+	// Any of "markdown", "html".
+	Format string `json:"format" api:"required"`
+	// What submission took in, and what it charged for.
+	Input Intake `json:"input" api:"required"`
+	// How pages were selected. Matches `input.mode` on the submit request.
 	//
 	// Any of "scrape", "crawl".
 	Mode string `json:"mode" api:"required"`
-	// Current processing counts. Use `status` to check completion.
+	// Individual page failures grouped by error code, sorted by count. Unrelated to
+	// `failure`, which is the batch itself failing.
+	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
+	// Pages attempted so far. Use `status` to check completion.
 	Progress BatchListResponseDataProgress `json:"progress" api:"required"`
-	// Download links available when the batch finishes. GET /batch/{batch_id}/results
-	// serves the same records as paginated JSON.
+	// Download links, available once the batch reaches a final status and null before
+	// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
 	Results BatchListResponseDataResults `json:"results" api:"required"`
 	// Current state. `completed`, `cancelled`, and `failed` are final.
 	//
@@ -469,24 +612,21 @@ type BatchListResponseData struct {
 	// Tags stored on the batch at submission.
 	Tags   []string                    `json:"tags" api:"required"`
 	Timing BatchListResponseDataTiming `json:"timing" api:"required"`
-	// Output format.
-	//
-	// Any of "markdown", "html".
-	Type string `json:"type" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
+		Crawl       respjson.Field
 		Credits     respjson.Field
-		Error       respjson.Field
-		Errors      respjson.Field
+		Failure     respjson.Field
+		Format      respjson.Field
 		Input       respjson.Field
 		Mode        respjson.Field
+		PageErrors  respjson.Field
 		Progress    respjson.Field
 		Results     respjson.Field
 		Status      respjson.Field
 		Tags        respjson.Field
 		Timing      respjson.Field
-		Type        respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -498,16 +638,22 @@ func (r *BatchListResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Reserved and used credits.
+// What this batch has done to your credit balance.
 type BatchListResponseDataCredits struct {
-	// Credits used by successful pages.
-	Charged int64 `json:"charged" api:"required"`
-	// Credits reserved when the batch was accepted.
-	Estimated int64 `json:"estimated" api:"required"`
+	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
+	// `reserved` until the batch settles.
+	Net int64 `json:"net" api:"required"`
+	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
+	// a final status, then settles in one movement.
+	Refunded int64 `json:"refunded" api:"required"`
+	// Credits debited from your balance the moment the batch was accepted. This is a
+	// charge, not a forecast — the whole amount leaves the balance up front.
+	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Charged     respjson.Field
-		Estimated   respjson.Field
+		Net         respjson.Field
+		Refunded    respjson.Field
+		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -519,39 +665,13 @@ func (r *BatchListResponseDataCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Submission counts.
-type BatchListResponseDataInput struct {
-	// Pages accepted, or the crawl page limit. Credits are reserved for this count.
-	Accepted int64 `json:"accepted" api:"required"`
-	// Duplicate URL and `itemId` pairs skipped. Always 0 for crawls.
-	Duplicates int64 `json:"duplicates" api:"required"`
-	// Pages rejected during validation.
-	Invalid int64 `json:"invalid" api:"required"`
-	// Pages submitted before validation. For a crawl, the page limit.
-	Submitted int64 `json:"submitted" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Accepted    respjson.Field
-		Duplicates  respjson.Field
-		Invalid     respjson.Field
-		Submitted   respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchListResponseDataInput) RawJSON() string { return r.JSON.raw }
-func (r *BatchListResponseDataInput) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Current processing counts. Use `status` to check completion.
+// Pages attempted so far. Use `status` to check completion.
 type BatchListResponseDataProgress struct {
 	// Pages that could not be scraped.
 	Failed int64 `json:"failed" api:"required"`
-	// Accepted pages not yet attempted. Always 0 once the batch completes; a crawl can
-	// finish under its page limit when the site has no more reachable pages.
+	// Reserved pages not yet attempted. A cancelled batch keeps reporting the URLs it
+	// never reached; a crawl whose `input.reserved_is_ceiling` is true reports 0 once
+	// final, because its unspent budget was never real pages.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -571,8 +691,8 @@ func (r *BatchListResponseDataProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Download links available when the batch finishes. GET /batch/{batch_id}/results
-// serves the same records as paginated JSON.
+// Download links, available once the batch reaches a final status and null before
+// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
 type BatchListResponseDataResults struct {
 	// When the download URLs expire.
 	ExpiresAt string `json:"expires_at" api:"required"`
@@ -664,22 +784,32 @@ func (r *BatchListResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 type BatchCancelResponse struct {
 	// Batch ID used to retrieve or cancel the job.
 	ID string `json:"id" api:"required"`
-	// Reserved and used credits.
+	// The crawl controls as submitted, so the limits requested can be compared against
+	// what the crawl reached.
+	Crawl CrawlControls `json:"crawl" api:"required"`
+	// What this batch has done to your credit balance.
 	Credits BatchCancelResponseCredits `json:"credits" api:"required"`
-	// Why the batch failed.
-	Error Error `json:"error" api:"required"`
-	// Page failures grouped by error code.
-	Errors []ErrorCount `json:"errors" api:"required"`
-	// Submission counts.
-	Input BatchCancelResponseInput `json:"input" api:"required"`
-	// How pages are selected.
+	// A failure of the batch as a whole, distinct from the per-page failures in
+	// `page_errors`.
+	Failure Failure `json:"failure" api:"required"`
+	// What each page is returned as. Matches `input.data.format` on the submit
+	// request.
+	//
+	// Any of "markdown", "html".
+	Format BatchCancelResponseFormat `json:"format" api:"required"`
+	// What submission took in, and what it charged for.
+	Input Intake `json:"input" api:"required"`
+	// How pages were selected. Matches `input.mode` on the submit request.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchCancelResponseMode `json:"mode" api:"required"`
-	// Current processing counts. Use `status` to check completion.
+	// Individual page failures grouped by error code, sorted by count. Unrelated to
+	// `failure`, which is the batch itself failing.
+	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
+	// Pages attempted so far. Use `status` to check completion.
 	Progress BatchCancelResponseProgress `json:"progress" api:"required"`
-	// Download links available when the batch finishes. GET /batch/{batch_id}/results
-	// serves the same records as paginated JSON.
+	// Download links, available once the batch reaches a final status and null before
+	// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
 	Results BatchCancelResponseResults `json:"results" api:"required"`
 	// Current state. `completed`, `cancelled`, and `failed` are final.
 	//
@@ -688,26 +818,23 @@ type BatchCancelResponse struct {
 	// Tags stored on the batch at submission.
 	Tags   []string                  `json:"tags" api:"required"`
 	Timing BatchCancelResponseTiming `json:"timing" api:"required"`
-	// Output format.
-	//
-	// Any of "markdown", "html".
-	Type BatchCancelResponseType `json:"type" api:"required"`
 	// API key usage for this request.
 	KeyMetadata BatchCancelResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
+		Crawl       respjson.Field
 		Credits     respjson.Field
-		Error       respjson.Field
-		Errors      respjson.Field
+		Failure     respjson.Field
+		Format      respjson.Field
 		Input       respjson.Field
 		Mode        respjson.Field
+		PageErrors  respjson.Field
 		Progress    respjson.Field
 		Results     respjson.Field
 		Status      respjson.Field
 		Tags        respjson.Field
 		Timing      respjson.Field
-		Type        respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -720,16 +847,22 @@ func (r *BatchCancelResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Reserved and used credits.
+// What this batch has done to your credit balance.
 type BatchCancelResponseCredits struct {
-	// Credits used by successful pages.
-	Charged int64 `json:"charged" api:"required"`
-	// Credits reserved when the batch was accepted.
-	Estimated int64 `json:"estimated" api:"required"`
+	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
+	// `reserved` until the batch settles.
+	Net int64 `json:"net" api:"required"`
+	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
+	// a final status, then settles in one movement.
+	Refunded int64 `json:"refunded" api:"required"`
+	// Credits debited from your balance the moment the batch was accepted. This is a
+	// charge, not a forecast — the whole amount leaves the balance up front.
+	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Charged     respjson.Field
-		Estimated   respjson.Field
+		Net         respjson.Field
+		Refunded    respjson.Field
+		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -741,34 +874,16 @@ func (r *BatchCancelResponseCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Submission counts.
-type BatchCancelResponseInput struct {
-	// Pages accepted, or the crawl page limit. Credits are reserved for this count.
-	Accepted int64 `json:"accepted" api:"required"`
-	// Duplicate URL and `itemId` pairs skipped. Always 0 for crawls.
-	Duplicates int64 `json:"duplicates" api:"required"`
-	// Pages rejected during validation.
-	Invalid int64 `json:"invalid" api:"required"`
-	// Pages submitted before validation. For a crawl, the page limit.
-	Submitted int64 `json:"submitted" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Accepted    respjson.Field
-		Duplicates  respjson.Field
-		Invalid     respjson.Field
-		Submitted   respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
+// What each page is returned as. Matches `input.data.format` on the submit
+// request.
+type BatchCancelResponseFormat string
 
-// Returns the unmodified JSON received from the API
-func (r BatchCancelResponseInput) RawJSON() string { return r.JSON.raw }
-func (r *BatchCancelResponseInput) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
+const (
+	BatchCancelResponseFormatMarkdown BatchCancelResponseFormat = "markdown"
+	BatchCancelResponseFormatHTML     BatchCancelResponseFormat = "html"
+)
 
-// How pages are selected.
+// How pages were selected. Matches `input.mode` on the submit request.
 type BatchCancelResponseMode string
 
 const (
@@ -776,12 +891,13 @@ const (
 	BatchCancelResponseModeCrawl  BatchCancelResponseMode = "crawl"
 )
 
-// Current processing counts. Use `status` to check completion.
+// Pages attempted so far. Use `status` to check completion.
 type BatchCancelResponseProgress struct {
 	// Pages that could not be scraped.
 	Failed int64 `json:"failed" api:"required"`
-	// Accepted pages not yet attempted. Always 0 once the batch completes; a crawl can
-	// finish under its page limit when the site has no more reachable pages.
+	// Reserved pages not yet attempted. A cancelled batch keeps reporting the URLs it
+	// never reached; a crawl whose `input.reserved_is_ceiling` is true reports 0 once
+	// final, because its unspent budget was never real pages.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -801,8 +917,8 @@ func (r *BatchCancelResponseProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Download links available when the batch finishes. GET /batch/{batch_id}/results
-// serves the same records as paginated JSON.
+// Download links, available once the batch reaches a final status and null before
+// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
 type BatchCancelResponseResults struct {
 	// When the download URLs expire.
 	ExpiresAt string `json:"expires_at" api:"required"`
@@ -880,14 +996,6 @@ func (r BatchCancelResponseTiming) RawJSON() string { return r.JSON.raw }
 func (r *BatchCancelResponseTiming) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
-
-// Output format.
-type BatchCancelResponseType string
-
-const (
-	BatchCancelResponseTypeMarkdown BatchCancelResponseType = "markdown"
-	BatchCancelResponseTypeHTML     BatchCancelResponseType = "html"
-)
 
 // API key usage for this request.
 type BatchCancelResponseKeyMetadata struct {

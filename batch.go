@@ -97,15 +97,57 @@ func (r *BatchService) Submit(ctx context.Context, body BatchSubmitParams, opts 
 	return res, err
 }
 
+// Page failures sharing one error code.
+type ErrorCount struct {
+	// Error code for these failures.
+	Code string `json:"code" api:"required"`
+	// Pages that failed with this code.
+	Count int64 `json:"count" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Count       respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r ErrorCount) RawJSON() string { return r.JSON.raw }
+func (r *ErrorCount) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Why the batch failed.
+type Error struct {
+	// Batch error code.
+	Code string `json:"code" api:"required"`
+	// Batch error message.
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r Error) RawJSON() string { return r.JSON.raw }
+func (r *Error) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BatchGetResponse struct {
 	// Batch ID used to retrieve or cancel the job.
 	ID string `json:"id" api:"required"`
 	// Reserved and used credits.
 	Credits BatchGetResponseCredits `json:"credits" api:"required"`
-	// Batch-level error. Null unless `status` is `failed`.
-	Error BatchGetResponseError `json:"error" api:"required"`
+	// Why the batch failed.
+	Error Error `json:"error" api:"required"`
 	// Page failures grouped by error code.
-	Errors []BatchGetResponseError `json:"errors" api:"required"`
+	Errors []ErrorCount `json:"errors" api:"required"`
 	// Submission counts.
 	Input BatchGetResponseInput `json:"input" api:"required"`
 	// Rejected URLs, up to 100. These are not charged.
@@ -180,27 +222,6 @@ type BatchGetResponseCredits struct {
 // Returns the unmodified JSON received from the API
 func (r BatchGetResponseCredits) RawJSON() string { return r.JSON.raw }
 func (r *BatchGetResponseCredits) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Batch-level error. Null unless `status` is `failed`.
-type BatchGetResponseError struct {
-	// Batch error code.
-	Code string `json:"code" api:"required"`
-	// Batch error message.
-	Message string `json:"message" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Code        respjson.Field
-		Message     respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchGetResponseError) RawJSON() string { return r.JSON.raw }
-func (r *BatchGetResponseError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -426,10 +447,10 @@ type BatchListResponseData struct {
 	ID string `json:"id" api:"required"`
 	// Reserved and used credits.
 	Credits BatchListResponseDataCredits `json:"credits" api:"required"`
-	// Batch-level error. Null unless `status` is `failed`.
-	Error BatchListResponseDataError `json:"error" api:"required"`
+	// Why the batch failed.
+	Error Error `json:"error" api:"required"`
 	// Page failures grouped by error code.
-	Errors []BatchListResponseDataError `json:"errors" api:"required"`
+	Errors []ErrorCount `json:"errors" api:"required"`
 	// Submission counts.
 	Input BatchListResponseDataInput `json:"input" api:"required"`
 	// How pages are selected.
@@ -495,27 +516,6 @@ type BatchListResponseDataCredits struct {
 // Returns the unmodified JSON received from the API
 func (r BatchListResponseDataCredits) RawJSON() string { return r.JSON.raw }
 func (r *BatchListResponseDataCredits) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Batch-level error. Null unless `status` is `failed`.
-type BatchListResponseDataError struct {
-	// Batch error code.
-	Code string `json:"code" api:"required"`
-	// Batch error message.
-	Message string `json:"message" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Code        respjson.Field
-		Message     respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchListResponseDataError) RawJSON() string { return r.JSON.raw }
-func (r *BatchListResponseDataError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -666,10 +666,10 @@ type BatchCancelResponse struct {
 	ID string `json:"id" api:"required"`
 	// Reserved and used credits.
 	Credits BatchCancelResponseCredits `json:"credits" api:"required"`
-	// Batch-level error. Null unless `status` is `failed`.
-	Error BatchCancelResponseError `json:"error" api:"required"`
+	// Why the batch failed.
+	Error Error `json:"error" api:"required"`
 	// Page failures grouped by error code.
-	Errors []BatchCancelResponseError `json:"errors" api:"required"`
+	Errors []ErrorCount `json:"errors" api:"required"`
 	// Submission counts.
 	Input BatchCancelResponseInput `json:"input" api:"required"`
 	// How pages are selected.
@@ -738,27 +738,6 @@ type BatchCancelResponseCredits struct {
 // Returns the unmodified JSON received from the API
 func (r BatchCancelResponseCredits) RawJSON() string { return r.JSON.raw }
 func (r *BatchCancelResponseCredits) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Batch-level error. Null unless `status` is `failed`.
-type BatchCancelResponseError struct {
-	// Batch error code.
-	Code string `json:"code" api:"required"`
-	// Batch error message.
-	Message string `json:"message" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Code        respjson.Field
-		Message     respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchCancelResponseError) RawJSON() string { return r.JSON.raw }
-func (r *BatchCancelResponseError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

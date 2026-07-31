@@ -262,13 +262,17 @@ const (
 	WebhookDeliveryStatusSkippedUnsafeURL WebhookDeliveryStatus = "skipped_unsafe_url"
 )
 
-// A web monitor. `mode` is the constant `web`; behavior is described by `target`
-// (page/sitemap/extract) and `change_detection` (exact/semantic).
+// A newly created monitor plus `initial_run_id`, the id of the baseline run queued
+// at creation.
 type MonitorNewResponse struct {
 	ID string `json:"id" api:"required"`
 	// Discriminated union describing how changes are detected.
 	ChangeDetection MonitorNewResponseChangeDetectionUnion `json:"change_detection" api:"required"`
 	CreatedAt       time.Time                              `json:"created_at" api:"required" format:"date-time"`
+	// The baseline run queued by this create call, or null if it could not be queued
+	// immediately (in which case the baseline runs on the next scheduled tick). Poll
+	// GET /monitors/{monitor_id}/runs/{run_id}.
+	InitialRunID string `json:"initial_run_id" api:"required"`
 	// Top-level monitor category. Always `web` today; the concrete behavior is
 	// described by `target` and `change_detection`.
 	//
@@ -314,6 +318,7 @@ type MonitorNewResponse struct {
 		ID              respjson.Field
 		ChangeDetection respjson.Field
 		CreatedAt       respjson.Field
+		InitialRunID    respjson.Field
 		Mode            respjson.Field
 		Name            respjson.Field
 		Schedule        respjson.Field
@@ -422,9 +427,10 @@ func (r *MonitorNewResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to tracked page content, ignoring cosmetic or
-// paraphrase-only differences. Which changes are meaningful is judged against the
-// extract target's `instructions` (and `schema`, when provided).
+// Detect meaning-level changes to page content, ignoring cosmetic or
+// instruction-irrelevant differences. Which changes are meaningful is judged
+// against the page or extract target's `instructions` (and an extract target's
+// `schema`, when provided).
 type MonitorNewResponseChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -501,8 +507,9 @@ const (
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorNewResponseTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	Type         string `json:"type"`
+	URL          string `json:"url"`
+	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorNewResponseTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorNewResponseTargetSitemap].
@@ -511,8 +518,6 @@ type MonitorNewResponseTargetUnion struct {
 	Include []string `json:"include"`
 	// This field is from variant [MonitorNewResponseTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
-	// This field is from variant [MonitorNewResponseTargetExtract].
-	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorNewResponseTargetExtract].
 	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorNewResponseTargetExtract].
@@ -524,11 +529,11 @@ type MonitorNewResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		Instructions        respjson.Field
 		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
@@ -591,16 +596,21 @@ func (r *MonitorNewResponseTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page.
+// Watch a single web page. Exact detection reports visible-text diffs; semantic
+// detection judges confirmed stable diffs against `instructions`.
 type MonitorNewResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// Plain-language goal describing which page changes matter. When provided without
+	// change_detection, semantic detection is inferred.
+	Instructions string `json:"instructions"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
@@ -1060,9 +1070,10 @@ func (r *MonitorGetResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to tracked page content, ignoring cosmetic or
-// paraphrase-only differences. Which changes are meaningful is judged against the
-// extract target's `instructions` (and `schema`, when provided).
+// Detect meaning-level changes to page content, ignoring cosmetic or
+// instruction-irrelevant differences. Which changes are meaningful is judged
+// against the page or extract target's `instructions` (and an extract target's
+// `schema`, when provided).
 type MonitorGetResponseChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -1139,8 +1150,9 @@ const (
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorGetResponseTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	Type         string `json:"type"`
+	URL          string `json:"url"`
+	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorGetResponseTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorGetResponseTargetSitemap].
@@ -1149,8 +1161,6 @@ type MonitorGetResponseTargetUnion struct {
 	Include []string `json:"include"`
 	// This field is from variant [MonitorGetResponseTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
-	// This field is from variant [MonitorGetResponseTargetExtract].
-	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorGetResponseTargetExtract].
 	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorGetResponseTargetExtract].
@@ -1162,11 +1172,11 @@ type MonitorGetResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		Instructions        respjson.Field
 		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
@@ -1229,16 +1239,21 @@ func (r *MonitorGetResponseTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page.
+// Watch a single web page. Exact detection reports visible-text diffs; semantic
+// detection judges confirmed stable diffs against `instructions`.
 type MonitorGetResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// Plain-language goal describing which page changes matter. When provided without
+	// change_detection, semantic detection is inferred.
+	Instructions string `json:"instructions"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
@@ -1698,9 +1713,10 @@ func (r *MonitorUpdateResponseChangeDetectionExact) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to tracked page content, ignoring cosmetic or
-// paraphrase-only differences. Which changes are meaningful is judged against the
-// extract target's `instructions` (and `schema`, when provided).
+// Detect meaning-level changes to page content, ignoring cosmetic or
+// instruction-irrelevant differences. Which changes are meaningful is judged
+// against the page or extract target's `instructions` (and an extract target's
+// `schema`, when provided).
 type MonitorUpdateResponseChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -1778,8 +1794,9 @@ const (
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorUpdateResponseTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	Type         string `json:"type"`
+	URL          string `json:"url"`
+	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorUpdateResponseTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorUpdateResponseTargetSitemap].
@@ -1788,8 +1805,6 @@ type MonitorUpdateResponseTargetUnion struct {
 	Include []string `json:"include"`
 	// This field is from variant [MonitorUpdateResponseTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
-	// This field is from variant [MonitorUpdateResponseTargetExtract].
-	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorUpdateResponseTargetExtract].
 	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorUpdateResponseTargetExtract].
@@ -1801,11 +1816,11 @@ type MonitorUpdateResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		Instructions        respjson.Field
 		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
@@ -1868,16 +1883,21 @@ func (r *MonitorUpdateResponseTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page.
+// Watch a single web page. Exact detection reports visible-text diffs; semantic
+// detection judges confirmed stable diffs against `instructions`.
 type MonitorUpdateResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// Plain-language goal describing which page changes matter. When provided without
+	// change_detection, semantic detection is inferred.
+	Instructions string `json:"instructions"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
@@ -2359,9 +2379,10 @@ func (r *MonitorListResponseDataChangeDetectionExact) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to tracked page content, ignoring cosmetic or
-// paraphrase-only differences. Which changes are meaningful is judged against the
-// extract target's `instructions` (and `schema`, when provided).
+// Detect meaning-level changes to page content, ignoring cosmetic or
+// instruction-irrelevant differences. Which changes are meaningful is judged
+// against the page or extract target's `instructions` (and an extract target's
+// `schema`, when provided).
 type MonitorListResponseDataChangeDetectionSemantic struct {
 	Type                constant.Semantic `json:"type" default:"semantic"`
 	ConfidenceThreshold float64           `json:"confidence_threshold"`
@@ -2418,8 +2439,9 @@ func (r *MonitorListResponseDataSchedule) UnmarshalJSON(data []byte) error {
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorListResponseDataTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	Type         string `json:"type"`
+	URL          string `json:"url"`
+	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorListResponseDataTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorListResponseDataTargetSitemap].
@@ -2428,8 +2450,6 @@ type MonitorListResponseDataTargetUnion struct {
 	Include []string `json:"include"`
 	// This field is from variant [MonitorListResponseDataTargetSitemap].
 	MaxURLs int64 `json:"max_urls"`
-	// This field is from variant [MonitorListResponseDataTargetExtract].
-	Instructions string `json:"instructions"`
 	// This field is from variant [MonitorListResponseDataTargetExtract].
 	FollowSubdomains bool `json:"follow_subdomains"`
 	// This field is from variant [MonitorListResponseDataTargetExtract].
@@ -2441,11 +2461,11 @@ type MonitorListResponseDataTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
 		Include             respjson.Field
 		MaxURLs             respjson.Field
-		Instructions        respjson.Field
 		FollowSubdomains    respjson.Field
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
@@ -2508,16 +2528,21 @@ func (r *MonitorListResponseDataTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page.
+// Watch a single web page. Exact detection reports visible-text diffs; semantic
+// detection judges confirmed stable diffs against `instructions`.
 type MonitorListResponseDataTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// Plain-language goal describing which page changes matter. When provided without
+	// change_detection, semantic detection is inferred.
+	Instructions string `json:"instructions"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
@@ -3441,21 +3466,21 @@ func (r *MonitorRunResponse) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorNewParams struct {
-	// Discriminated union describing how changes are detected.
-	ChangeDetection MonitorNewParamsChangeDetectionUnion `json:"change_detection,omitzero" api:"required"`
-	Name            string                               `json:"name" api:"required"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
-	Schedule MonitorNewParamsSchedule `json:"schedule,omitzero" api:"required"`
+	Name string `json:"name" api:"required"`
 	// Discriminated union describing what the monitor watches.
 	Target  MonitorNewParamsTargetUnion `json:"target,omitzero" api:"required"`
 	Webhook MonitorNewParamsWebhook     `json:"webhook,omitzero"`
+	// Discriminated union describing how changes are detected.
+	ChangeDetection MonitorNewParamsChangeDetectionUnion `json:"change_detection,omitzero"`
 	// Top-level monitor category. Always `web` today; the concrete behavior is
 	// described by `target` and `change_detection`.
 	//
 	// Any of "web".
 	Mode MonitorNewParamsMode `json:"mode,omitzero"`
+	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
+	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
+	// between 10 minutes and 1 year.
+	Schedule MonitorNewParamsSchedule `json:"schedule,omitzero"`
 	// User-defined tags for grouping and filtering monitors and their changes.
 	// Duplicates are removed.
 	Tags []string `json:"tags,omitzero"`
@@ -3468,108 +3493,6 @@ func (r MonitorNewParams) MarshalJSON() (data []byte, err error) {
 }
 func (r *MonitorNewParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type MonitorNewParamsChangeDetectionUnion struct {
-	OfExact    *MonitorNewParamsChangeDetectionExact    `json:",omitzero,inline"`
-	OfSemantic *MonitorNewParamsChangeDetectionSemantic `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u MonitorNewParamsChangeDetectionUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfExact, u.OfSemantic)
-}
-func (u *MonitorNewParamsChangeDetectionUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[MonitorNewParamsChangeDetectionUnion](
-		"type",
-		apijson.Discriminator[MonitorNewParamsChangeDetectionExact]("exact"),
-		apijson.Discriminator[MonitorNewParamsChangeDetectionSemantic]("semantic"),
-	)
-}
-
-func NewMonitorNewParamsChangeDetectionExact() MonitorNewParamsChangeDetectionExact {
-	return MonitorNewParamsChangeDetectionExact{
-		Type: "exact",
-	}
-}
-
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
-//
-// This struct has a constant value, construct it with
-// [NewMonitorNewParamsChangeDetectionExact].
-type MonitorNewParamsChangeDetectionExact struct {
-	Type constant.Exact `json:"type" default:"exact"`
-	paramObj
-}
-
-func (r MonitorNewParamsChangeDetectionExact) MarshalJSON() (data []byte, err error) {
-	type shadow MonitorNewParamsChangeDetectionExact
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *MonitorNewParamsChangeDetectionExact) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Detect meaning-level changes to tracked page content, ignoring cosmetic or
-// paraphrase-only differences. Which changes are meaningful is judged against the
-// extract target's `instructions` (and `schema`, when provided).
-//
-// The property Type is required.
-type MonitorNewParamsChangeDetectionSemantic struct {
-	ConfidenceThreshold param.Opt[float64] `json:"confidence_threshold,omitzero"`
-	// This field can be elided, and will marshal its zero value as "semantic".
-	Type constant.Semantic `json:"type" default:"semantic"`
-	paramObj
-}
-
-func (r MonitorNewParamsChangeDetectionSemantic) MarshalJSON() (data []byte, err error) {
-	type shadow MonitorNewParamsChangeDetectionSemantic
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *MonitorNewParamsChangeDetectionSemantic) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
-//
-// The properties Frequency, Type, Unit are required.
-type MonitorNewParamsSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
-	Frequency int64 `json:"frequency" api:"required"`
-	// Any of "interval".
-	Type string `json:"type,omitzero" api:"required"`
-	// Any of "minutes", "hours", "days".
-	Unit string `json:"unit,omitzero" api:"required"`
-	paramObj
-}
-
-func (r MonitorNewParamsSchedule) MarshalJSON() (data []byte, err error) {
-	type shadow MonitorNewParamsSchedule
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *MonitorNewParamsSchedule) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func init() {
-	apijson.RegisterFieldValidator[MonitorNewParamsSchedule](
-		"type", "interval",
-	)
-	apijson.RegisterFieldValidator[MonitorNewParamsSchedule](
-		"unit", "minutes", "hours", "days",
-	)
 }
 
 // Only one field can be non-zero.
@@ -3598,11 +3521,15 @@ func init() {
 	)
 }
 
-// Watch a single web page.
+// Watch a single web page. Exact detection reports visible-text diffs; semantic
+// detection judges confirmed stable diffs against `instructions`.
 //
 // The properties Type, URL are required.
 type MonitorNewParamsTargetPage struct {
 	URL string `json:"url" api:"required" format:"uri"`
+	// Plain-language goal describing which page changes matter. When provided without
+	// change_detection, semantic detection is inferred.
+	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
 	// This field can be elided, and will marshal its zero value as "page".
@@ -3687,6 +3614,75 @@ func (r *MonitorNewParamsTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type MonitorNewParamsChangeDetectionUnion struct {
+	OfExact    *MonitorNewParamsChangeDetectionExact    `json:",omitzero,inline"`
+	OfSemantic *MonitorNewParamsChangeDetectionSemantic `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u MonitorNewParamsChangeDetectionUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfExact, u.OfSemantic)
+}
+func (u *MonitorNewParamsChangeDetectionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[MonitorNewParamsChangeDetectionUnion](
+		"type",
+		apijson.Discriminator[MonitorNewParamsChangeDetectionExact]("exact"),
+		apijson.Discriminator[MonitorNewParamsChangeDetectionSemantic]("semantic"),
+	)
+}
+
+func NewMonitorNewParamsChangeDetectionExact() MonitorNewParamsChangeDetectionExact {
+	return MonitorNewParamsChangeDetectionExact{
+		Type: "exact",
+	}
+}
+
+// Detect exact changes. For page targets, this means visible text diffs. For
+// sitemap targets, this means URL additions and removals.
+//
+// This struct has a constant value, construct it with
+// [NewMonitorNewParamsChangeDetectionExact].
+type MonitorNewParamsChangeDetectionExact struct {
+	Type constant.Exact `json:"type" default:"exact"`
+	paramObj
+}
+
+func (r MonitorNewParamsChangeDetectionExact) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorNewParamsChangeDetectionExact
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorNewParamsChangeDetectionExact) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Detect meaning-level changes to page content, ignoring cosmetic or
+// instruction-irrelevant differences. Which changes are meaningful is judged
+// against the page or extract target's `instructions` (and an extract target's
+// `schema`, when provided).
+//
+// The property Type is required.
+type MonitorNewParamsChangeDetectionSemantic struct {
+	ConfidenceThreshold param.Opt[float64] `json:"confidence_threshold,omitzero"`
+	// This field can be elided, and will marshal its zero value as "semantic".
+	Type constant.Semantic `json:"type" default:"semantic"`
+	paramObj
+}
+
+func (r MonitorNewParamsChangeDetectionSemantic) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorNewParamsChangeDetectionSemantic
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorNewParamsChangeDetectionSemantic) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Top-level monitor category. Always `web` today; the concrete behavior is
 // described by `target` and `change_detection`.
 type MonitorNewParamsMode string
@@ -3694,6 +3690,40 @@ type MonitorNewParamsMode string
 const (
 	MonitorNewParamsModeWeb MonitorNewParamsMode = "web"
 )
+
+// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
+// every 6 hours or every 2 days. The total interval (frequency × unit) must be
+// between 10 minutes and 1 year.
+//
+// The properties Frequency, Type, Unit are required.
+type MonitorNewParamsSchedule struct {
+	// Number of units between runs. The resulting interval (frequency × unit) must be
+	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
+	// maximum 365 when unit is days).
+	Frequency int64 `json:"frequency" api:"required"`
+	// Any of "interval".
+	Type string `json:"type,omitzero" api:"required"`
+	// Any of "minutes", "hours", "days".
+	Unit string `json:"unit,omitzero" api:"required"`
+	paramObj
+}
+
+func (r MonitorNewParamsSchedule) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorNewParamsSchedule
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorNewParamsSchedule) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[MonitorNewParamsSchedule](
+		"type", "interval",
+	)
+	apijson.RegisterFieldValidator[MonitorNewParamsSchedule](
+		"unit", "minutes", "hours", "days",
+	)
+}
 
 // The property URL is required.
 type MonitorNewParamsWebhook struct {
@@ -3793,9 +3823,10 @@ func (r *MonitorUpdateParamsChangeDetectionExact) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaning-level changes to tracked page content, ignoring cosmetic or
-// paraphrase-only differences. Which changes are meaningful is judged against the
-// extract target's `instructions` (and `schema`, when provided).
+// Detect meaning-level changes to page content, ignoring cosmetic or
+// instruction-irrelevant differences. Which changes are meaningful is judged
+// against the page or extract target's `instructions` (and an extract target's
+// `schema`, when provided).
 //
 // The property Type is required.
 type MonitorUpdateParamsChangeDetectionSemantic struct {
@@ -3880,11 +3911,15 @@ func init() {
 	)
 }
 
-// Watch a single web page.
+// Watch a single web page. Exact detection reports visible-text diffs; semantic
+// detection judges confirmed stable diffs against `instructions`.
 //
 // The properties Type, URL are required.
 type MonitorUpdateParamsTargetPage struct {
 	URL string `json:"url" api:"required" format:"uri"`
+	// Plain-language goal describing which page changes matter. When provided without
+	// change_detection, semantic detection is inferred.
+	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
 	// This field can be elided, and will marshal its zero value as "page".

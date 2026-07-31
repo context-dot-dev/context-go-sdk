@@ -29,6 +29,7 @@ type Client struct {
 	// MonitorsChangeDetectedWebhookPayload and MonitorsRunCompletedWebhookPayload
 	// schemas.
 	Monitors MonitorService
+	Batch    BatchService
 }
 
 // DefaultClientOptions read from the environment (CONTEXT_DEV_API_KEY,
@@ -68,6 +69,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Industry = NewIndustryService(opts...)
 	r.Utility = NewUtilityService(opts...)
 	r.Monitors = NewMonitorService(opts...)
+	r.Batch = NewBatchService(opts...)
 
 	return
 }

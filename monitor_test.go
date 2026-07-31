@@ -28,22 +28,23 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Monitors.New(context.TODO(), contextdev.MonitorNewParams{
+		Name: "Acme pricing page",
+		Target: contextdev.MonitorNewParamsTargetUnion{
+			OfPage: &contextdev.MonitorNewParamsTargetPage{
+				URL:                 "https://acme.com/pricing",
+				Instructions:        contextdev.String("Report pricing or plan availability changes. Ignore counters, timestamps, testimonials, and navigation."),
+				NormalizeWhitespace: contextdev.Bool(true),
+			},
+		},
 		ChangeDetection: contextdev.MonitorNewParamsChangeDetectionUnion{
 			OfExact: &contextdev.MonitorNewParamsChangeDetectionExact{},
 		},
-		Name: "Acme pricing page",
+		Mode: contextdev.MonitorNewParamsModeWeb,
 		Schedule: contextdev.MonitorNewParamsSchedule{
 			Frequency: 6,
 			Type:      "interval",
 			Unit:      "hours",
 		},
-		Target: contextdev.MonitorNewParamsTargetUnion{
-			OfPage: &contextdev.MonitorNewParamsTargetPage{
-				URL:                 "https://acme.com/pricing",
-				NormalizeWhitespace: contextdev.Bool(true),
-			},
-		},
-		Mode: contextdev.MonitorNewParamsModeWeb,
 		Tags: []string{"pricing", "competitor"},
 		Webhook: contextdev.MonitorNewParamsWebhook{
 			URL:    "https://example.com/webhook",
@@ -113,6 +114,7 @@ func TestMonitorUpdateWithOptionalParams(t *testing.T) {
 			Target: contextdev.MonitorUpdateParamsTargetUnion{
 				OfPage: &contextdev.MonitorUpdateParamsTargetPage{
 					URL:                 "https://acme.com/pricing",
+					Instructions:        contextdev.String("Report pricing or plan availability changes. Ignore counters, timestamps, testimonials, and navigation."),
 					NormalizeWhitespace: contextdev.Bool(true),
 				},
 			},

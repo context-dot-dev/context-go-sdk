@@ -782,41 +782,35 @@ func (r *BatchListResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchCancelResponse struct {
-	// Batch ID used to retrieve or cancel the job.
+	// Batch ID.
 	ID string `json:"id" api:"required"`
 	// The crawl controls as submitted, so the limits requested can be compared against
 	// what the crawl reached.
 	Crawl CrawlControls `json:"crawl" api:"required"`
-	// What this batch has done to your credit balance.
+	// What this batch cost so far.
 	Credits BatchCancelResponseCredits `json:"credits" api:"required"`
-	// A failure of the batch as a whole, distinct from the per-page failures in
-	// `page_errors`.
-	Failure Failure `json:"failure" api:"required"`
-	// What each page is returned as. Matches `input.data.format` on the submit
-	// request.
+	// What each page is returned as.
 	//
 	// Any of "markdown", "html".
 	Format BatchCancelResponseFormat `json:"format" api:"required"`
 	// What submission took in, and what it charged for.
 	Input Intake `json:"input" api:"required"`
-	// How pages were selected. Matches `input.mode` on the submit request.
+	// How pages were selected.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchCancelResponseMode `json:"mode" api:"required"`
-	// Individual page failures grouped by error code, sorted by count. Unrelated to
-	// `failure`, which is the batch itself failing.
+	// Page failures so far, grouped by error code and sorted by count.
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
-	// Pages attempted so far. Use `status` to check completion.
+	// How far the batch got before cancellation.
 	Progress BatchCancelResponseProgress `json:"progress" api:"required"`
-	// Download links, available once the batch reaches a final status and null before
-	// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
-	Results BatchCancelResponseResults `json:"results" api:"required"`
-	// Current state. `completed`, `cancelled`, and `failed` are final.
+	// Always `cancelling`. Work already in flight finishes; the batch reaches
+	// `cancelled` shortly after.
 	//
-	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
+	// Any of "cancelling".
 	Status BatchCancelResponseStatus `json:"status" api:"required"`
 	// Tags stored on the batch at submission.
-	Tags   []string                  `json:"tags" api:"required"`
+	Tags []string `json:"tags" api:"required"`
+	// There is no finish time yet — the batch is still winding down.
 	Timing BatchCancelResponseTiming `json:"timing" api:"required"`
 	// API key usage for this request.
 	KeyMetadata BatchCancelResponseKeyMetadata `json:"key_metadata"`
@@ -825,13 +819,11 @@ type BatchCancelResponse struct {
 		ID          respjson.Field
 		Crawl       respjson.Field
 		Credits     respjson.Field
-		Failure     respjson.Field
 		Format      respjson.Field
 		Input       respjson.Field
 		Mode        respjson.Field
 		PageErrors  respjson.Field
 		Progress    respjson.Field
-		Results     respjson.Field
 		Status      respjson.Field
 		Tags        respjson.Field
 		Timing      respjson.Field
@@ -847,21 +839,13 @@ func (r *BatchCancelResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What this batch has done to your credit balance.
+// What this batch cost so far.
 type BatchCancelResponseCredits struct {
-	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
-	// `reserved` until the batch settles.
-	Net int64 `json:"net" api:"required"`
-	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
-	// a final status, then settles in one movement.
-	Refunded int64 `json:"refunded" api:"required"`
-	// Credits debited from your balance the moment the batch was accepted. This is a
-	// charge, not a forecast — the whole amount leaves the balance up front.
+	// Credits debited at submission. The unspent remainder is refunded once the batch
+	// settles — read `credits.refunded` from GET /batch/{batch_id} then.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Net         respjson.Field
-		Refunded    respjson.Field
 		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -874,8 +858,7 @@ func (r *BatchCancelResponseCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What each page is returned as. Matches `input.data.format` on the submit
-// request.
+// What each page is returned as.
 type BatchCancelResponseFormat string
 
 const (
@@ -883,7 +866,7 @@ const (
 	BatchCancelResponseFormatHTML     BatchCancelResponseFormat = "html"
 )
 
-// How pages were selected. Matches `input.mode` on the submit request.
+// How pages were selected.
 type BatchCancelResponseMode string
 
 const (
@@ -891,15 +874,13 @@ const (
 	BatchCancelResponseModeCrawl  BatchCancelResponseMode = "crawl"
 )
 
-// Pages attempted so far. Use `status` to check completion.
+// How far the batch got before cancellation.
 type BatchCancelResponseProgress struct {
-	// Pages that could not be scraped.
+	// Pages that could not be scraped before the request landed.
 	Failed int64 `json:"failed" api:"required"`
-	// Reserved pages not yet attempted. A cancelled batch keeps reporting the URLs it
-	// never reached; a crawl whose `input.reserved_is_ceiling` is true reports 0 once
-	// final, because its unspent budget was never real pages.
+	// Reserved pages that will now be skipped, and refunded when the batch settles.
 	Pending int64 `json:"pending" api:"required"`
-	// Pages scraped successfully.
+	// Pages scraped successfully before the request landed.
 	Succeeded int64 `json:"succeeded" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -917,73 +898,22 @@ func (r *BatchCancelResponseProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Download links, available once the batch reaches a final status and null before
-// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
-type BatchCancelResponseResults struct {
-	// When the download URLs expire.
-	ExpiresAt string `json:"expires_at" api:"required"`
-	// Result files. Order is not guaranteed.
-	Files []BatchCancelResponseResultsFile `json:"files" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		ExpiresAt   respjson.Field
-		Files       respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchCancelResponseResults) RawJSON() string { return r.JSON.raw }
-func (r *BatchCancelResponseResults) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type BatchCancelResponseResultsFile struct {
-	// Compressed file size in bytes.
-	Bytes int64 `json:"bytes" api:"required"`
-	// Results in this file.
-	Items int64 `json:"items" api:"required"`
-	// Temporary URL for a gzipped NDJSON file.
-	URL string `json:"url" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Bytes       respjson.Field
-		Items       respjson.Field
-		URL         respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchCancelResponseResultsFile) RawJSON() string { return r.JSON.raw }
-func (r *BatchCancelResponseResultsFile) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Current state. `completed`, `cancelled`, and `failed` are final.
+// Always `cancelling`. Work already in flight finishes; the batch reaches
+// `cancelled` shortly after.
 type BatchCancelResponseStatus string
 
 const (
-	BatchCancelResponseStatusQueued     BatchCancelResponseStatus = "queued"
-	BatchCancelResponseStatusRunning    BatchCancelResponseStatus = "running"
 	BatchCancelResponseStatusCancelling BatchCancelResponseStatus = "cancelling"
-	BatchCancelResponseStatusCompleted  BatchCancelResponseStatus = "completed"
-	BatchCancelResponseStatusCancelled  BatchCancelResponseStatus = "cancelled"
-	BatchCancelResponseStatusFailed     BatchCancelResponseStatus = "failed"
 )
 
+// There is no finish time yet — the batch is still winding down.
 type BatchCancelResponseTiming struct {
-	// When processing finished. Null while active.
-	CompletedAt string `json:"completed_at" api:"required"`
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
-	// When processing started. Null while queued.
+	// When processing started. Null if it was cancelled while still queued.
 	StartedAt string `json:"started_at" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		CompletedAt respjson.Field
 		CreatedAt   respjson.Field
 		StartedAt   respjson.Field
 		ExtraFields map[string]respjson.Field

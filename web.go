@@ -2659,9 +2659,8 @@ type WebScreenshotParams struct {
 	//
 	// Any of "light", "dark".
 	ColorScheme WebScreenshotParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
-	// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-	// residential proxy exit location. Must be one of Context.dev's supported
-	// countries. When provided, Context.dev fetches the target page from that country.
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -2732,9 +2731,8 @@ const (
 	WebScreenshotParamsColorSchemeDark  WebScreenshotParamsColorScheme = "dark"
 )
 
-// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-// residential proxy exit location. Must be one of Context.dev's supported
-// countries. When provided, Context.dev fetches the target page from that country.
+// Fetch the target page through a residential proxy in this country (ISO 3166-1
+// alpha-2).
 type WebScreenshotParamsCountry string
 
 const (
@@ -3437,9 +3435,8 @@ type WebWebCrawlMdParams struct {
 	// Optional browser wait time in milliseconds after initial page load for each
 	// crawled page. Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
-	// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-	// residential proxy exit location. Must be one of Context.dev's supported
-	// countries. When provided, Context.dev fetches the target page from that country.
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -3490,9 +3487,8 @@ func (r *WebWebCrawlMdParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-// residential proxy exit location. Must be one of Context.dev's supported
-// countries. When provided, Context.dev fetches the target page from that country.
+// Fetch the target page through a residential proxy in this country (ISO 3166-1
+// alpha-2).
 type WebWebCrawlMdParamsCountry string
 
 const (
@@ -3765,9 +3761,8 @@ type WebWebScrapeHTMLParams struct {
 	// kept and everything else is dropped. When omitted, the entire document is kept.
 	// Examples: "article.main", "#content", "[role=main]".
 	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
-	// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-	// residential proxy exit location. Must be one of Context.dev's supported
-	// countries. When provided, Context.dev fetches the target page from that country.
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -3879,9 +3874,8 @@ func (r WebWebScrapeHTMLParamsActionPerform) URLQuery() (v url.Values, err error
 	})
 }
 
-// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-// residential proxy exit location. Must be one of Context.dev's supported
-// countries. When provided, Context.dev fetches the target page from that country.
+// Fetch the target page through a residential proxy in this country (ISO 3166-1
+// alpha-2).
 type WebWebScrapeHTMLParamsCountry string
 
 const (
@@ -4442,9 +4436,8 @@ type WebWebScrapeMdParams struct {
 	// descendants) are kept before conversion to Markdown. When omitted, the entire
 	// document is kept. Examples: "article.main", "#content", "[role=main]".
 	IncludeSelectors []string `query:"includeSelectors,omitzero" json:"-"`
-	// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-	// residential proxy exit location. Must be one of Context.dev's supported
-	// countries. When provided, Context.dev fetches the target page from that country.
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -4562,9 +4555,8 @@ func (r WebWebScrapeMdParamsActionPerform) URLQuery() (v url.Values, err error) 
 	})
 }
 
-// Two-letter ISO 3166-1 alpha-2 country code identifying a supported Context.dev
-// residential proxy exit location. Must be one of Context.dev's supported
-// countries. When provided, Context.dev fetches the target page from that country.
+// Fetch the target page through a residential proxy in this country (ISO 3166-1
+// alpha-2).
 type WebWebScrapeMdParamsCountry string
 
 const (

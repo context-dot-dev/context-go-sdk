@@ -39,9 +39,7 @@ func NewBatchService(opts ...option.RequestOption) (r BatchService) {
 	return
 }
 
-// Check progress and get download links when the batch finishes. Also returns the
-// rejected-URL list from submission. The webhook signing secret is not repeated
-// here — it is returned once, by the submit response.
+// Check progress, and get download links once the batch finishes.
 func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -75,9 +73,8 @@ func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...optio
 	return res, err
 }
 
-// Page through the result records of a finished batch as JSON, in the same order
-// as the downloadable result files. Use this instead of downloading and parsing
-// the NDJSON files yourself.
+// Page through a finished batch's results as JSON instead of downloading the
+// NDJSON files.
 func (r *BatchService) GetResults(ctx context.Context, batchID string, query BatchGetResultsParams, opts ...option.RequestOption) (res *BatchGetResultsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {

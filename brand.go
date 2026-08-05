@@ -58,6 +58,20 @@ func (r *BrandService) GetSimplified(ctx context.Context, query BrandGetSimplifi
 	return res, err
 }
 
+// Search brands by name or domain and get back up to 10 lightweight matches
+// (domain, name, logo), most popular first: by Tranco rank, then market cap for
+// brands outside the Tranco list, with text relevance breaking ties. Matching is
+// prefix-based with no typo tolerance, so it is suited to autocomplete. Only
+// brands already in the Context.dev index are returned — use /brand/retrieve to
+// fetch (and index) a specific domain. Free on Pro and Scale plans; costs 1 credit
+// per request on the Free and Starter plans.
+func (r *BrandService) Search(ctx context.Context, query BrandSearchParams, opts ...option.RequestOption) (res *BrandSearchResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "brand/search"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	return res, err
+}
+
 type BrandGetResponse struct {
 	// Detailed brand information
 	Brand BrandGetResponseBrand `json:"brand"`
@@ -861,6 +875,73 @@ func (r *BrandGetSimplifiedResponseKeyMetadata) UnmarshalJSON(data []byte) error
 	return apijson.UnmarshalRoot(data, r)
 }
 
+type BrandSearchResponse struct {
+	// Up to 10 matching brands, most popular first. Empty when nothing matches.
+	Results []BrandSearchResponseResult `json:"results" api:"required"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BrandSearchResponseKeyMetadata `json:"key_metadata"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Results     respjson.Field
+		KeyMetadata respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandSearchResponse) RawJSON() string { return r.JSON.raw }
+func (r *BrandSearchResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type BrandSearchResponseResult struct {
+	// The brand's domain.
+	Domain string `json:"domain" api:"required"`
+	// Logo link URL that serves the brand's logo, generated per request for the
+	// calling organization.
+	Logo string `json:"logo" api:"required"`
+	// The brand's name. Empty string when unknown.
+	Name string `json:"name" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Domain      respjson.Field
+		Logo        respjson.Field
+		Name        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandSearchResponseResult) RawJSON() string { return r.JSON.raw }
+func (r *BrandSearchResponseResult) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BrandSearchResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandSearchResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type BrandGetParams struct {
 
 	//
@@ -1337,3 +1418,22 @@ const (
 	BrandGetSimplifiedParamsThemeLight BrandGetSimplifiedParamsTheme = "light"
 	BrandGetSimplifiedParamsThemeDark  BrandGetSimplifiedParamsTheme = "dark"
 )
+
+type BrandSearchParams struct {
+	// Search term, matched against brand names and domains by prefix (e.g. 'nike',
+	// 'nike.com', 'nik').
+	Query string `query:"query" api:"required" json:"-"`
+	// Optional comma-separated caller-defined tags for tracking this request. Tags are
+	// recorded on the request's usage log and can be used to filter usage on the
+	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [BrandSearchParams]'s query parameters as `url.Values`.
+func (r BrandSearchParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}

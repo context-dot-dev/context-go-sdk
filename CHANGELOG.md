@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.8.0 (2026-08-05)
+
+Full Changelog: [v2.7.0...v2.8.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.7.0...v2.8.0)
+
+### Features
+
+* **api:** manual updates ([bbf6510](https://github.com/context-dot-dev/context-go-sdk/commit/bbf6510a615c1bb20ef80fe594b62e9faa1c3cd6))
+
 ## 2.7.0 (2026-08-01)
 
 Full Changelog: [v2.6.0...v2.7.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.6.0...v2.7.0)

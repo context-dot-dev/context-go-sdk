@@ -3710,9 +3710,10 @@ type WebWebCrawlMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// When true, detect and OCR images embedded in the selected PDF pages, inserting
-	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF pages are fetched and parsed. When false, PDF pages are skipped
 	// entirely (not included in results and not counted as failures).
@@ -4117,9 +4118,10 @@ type WebWebScrapeHTMLParamsPdf struct {
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
-	// When true, detect and OCR images embedded in the selected PDF pages, inserting
-	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. When false, no OCR runs.
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
 	Ocr WebWebScrapeHTMLParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
@@ -4834,9 +4836,10 @@ type WebWebScrapeMdParamsPdf struct {
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
-	// When true, detect and OCR images embedded in the selected PDF pages, inserting
-	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. When false, no OCR runs.
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
 	Ocr WebWebScrapeMdParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.

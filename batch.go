@@ -355,9 +355,12 @@ func (r *BatchGetResponse) UnmarshalJSON(data []byte) error {
 
 // What this batch has done to your credit balance.
 type BatchGetResponseCredits struct {
-	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
-	// `reserved` until the batch settles.
+	// `reserved` minus `refunded` plus `ocr_charged` — what the batch has cost so far.
+	// Equal to `reserved` until the batch settles.
 	Net int64 `json:"net" api:"required"`
+	// Credits charged for PDF pages recovered by OCR (pdf.ocr=true), 1 per recovered
+	// page, on top of `reserved`. Stays 0 until the batch settles.
+	OcrCharged int64 `json:"ocr_charged" api:"required"`
 	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
 	// a final status, then settles in one movement.
 	Refunded int64 `json:"refunded" api:"required"`
@@ -367,6 +370,7 @@ type BatchGetResponseCredits struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Net         respjson.Field
+		OcrCharged  respjson.Field
 		Refunded    respjson.Field
 		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -637,9 +641,12 @@ func (r *BatchListResponseData) UnmarshalJSON(data []byte) error {
 
 // What this batch has done to your credit balance.
 type BatchListResponseDataCredits struct {
-	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
-	// `reserved` until the batch settles.
+	// `reserved` minus `refunded` plus `ocr_charged` — what the batch has cost so far.
+	// Equal to `reserved` until the batch settles.
 	Net int64 `json:"net" api:"required"`
+	// Credits charged for PDF pages recovered by OCR (pdf.ocr=true), 1 per recovered
+	// page, on top of `reserved`. Stays 0 until the batch settles.
+	OcrCharged int64 `json:"ocr_charged" api:"required"`
 	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
 	// a final status, then settles in one movement.
 	Refunded int64 `json:"refunded" api:"required"`
@@ -649,6 +656,7 @@ type BatchListResponseDataCredits struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Net         respjson.Field
+		OcrCharged  respjson.Field
 		Refunded    respjson.Field
 		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -995,6 +1003,8 @@ type BatchGetResultsResponseDataUnion struct {
 	// This field is from variant [BatchGetResultsResponseDataOk].
 	Markdown string `json:"markdown"`
 	Meta     any    `json:"meta"`
+	// This field is from variant [BatchGetResultsResponseDataOk].
+	OcrPages int64 `json:"ocr_pages"`
 	// This field is from variant [BatchGetResultsResponseDataError].
 	ErrorCode string `json:"error_code"`
 	// This field is from variant [BatchGetResultsResponseDataError].
@@ -1009,6 +1019,7 @@ type BatchGetResultsResponseDataUnion struct {
 		ItemID     respjson.Field
 		Markdown   respjson.Field
 		Meta       respjson.Field
+		OcrPages   respjson.Field
 		ErrorCode  respjson.Field
 		Message    respjson.Field
 		raw        string
@@ -1080,6 +1091,9 @@ type BatchGetResultsResponseDataOk struct {
 	Markdown string `json:"markdown"`
 	// Caller-supplied metadata echoed from submission.
 	Meta map[string]any `json:"meta"`
+	// PDF pages of this document recovered by OCR (pdf.ocr=true). Each recovered page
+	// bills 1 credit on top of the page base credit; absent when no OCR ran.
+	OcrPages int64 `json:"ocr_pages"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		FinalURL    respjson.Field
@@ -1091,6 +1105,7 @@ type BatchGetResultsResponseDataOk struct {
 		ItemID      respjson.Field
 		Markdown    respjson.Field
 		Meta        respjson.Field
+		OcrPages    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`

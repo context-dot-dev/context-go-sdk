@@ -59,7 +59,8 @@ func (r *BrandService) GetSimplified(ctx context.Context, query BrandGetSimplifi
 }
 
 // Search brands by name or domain and get back up to 10 lightweight matches
-// (domain, name, logo), most popular first: by Tranco rank, then market cap for
+// (domain, name, logo). Name matches rank ahead of domain matches; within each
+// group the most popular brands come first: by Tranco rank, then market cap for
 // brands outside the Tranco list, with text relevance breaking ties. Matching is
 // prefix-based with no typo tolerance, so it is suited to autocomplete. Only
 // brands already in the Context.dev index are returned — use /brand/retrieve to
@@ -113,6 +114,8 @@ type BrandGetResponseBrand struct {
 	Domain string `json:"domain"`
 	// Company email address
 	Email string `json:"email"`
+	// Employee headcount information for the brand (will be null if unknown)
+	Employees BrandGetResponseBrandEmployees `json:"employees"`
 	// Industry classification information for the brand
 	Industries BrandGetResponseBrandIndustries `json:"industries"`
 	// Indicates whether the brand content is not safe for work (NSFW)
@@ -161,6 +164,7 @@ type BrandGetResponseBrand struct {
 		Description     respjson.Field
 		Domain          respjson.Field
 		Email           respjson.Field
+		Employees       respjson.Field
 		Industries      respjson.Field
 		IsNsfw          respjson.Field
 		Links           respjson.Field
@@ -302,6 +306,30 @@ type BrandGetResponseBrandColor struct {
 // Returns the unmodified JSON received from the API
 func (r BrandGetResponseBrandColor) RawJSON() string { return r.JSON.raw }
 func (r *BrandGetResponseBrandColor) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Employee headcount information for the brand (will be null if unknown)
+type BrandGetResponseBrandEmployees struct {
+	// Exact employee count when a precise headcount is known
+	Exact int64 `json:"exact"`
+	// Employee count range for the brand (e.g. '11 to 50')
+	//
+	// Any of "1 to 10", "11 to 50", "51 to 200", "201 to 500", "501 to 1000", "1001 to
+	// 5000", "5001 to 10000", "10001+".
+	Range string `json:"range"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Exact       respjson.Field
+		Range       respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetResponseBrandEmployees) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetResponseBrandEmployees) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -876,7 +904,8 @@ func (r *BrandGetSimplifiedResponseKeyMetadata) UnmarshalJSON(data []byte) error
 }
 
 type BrandSearchResponse struct {
-	// Up to 10 matching brands, most popular first. Empty when nothing matches.
+	// Up to 10 matching brands, name matches first, then domain matches, most popular
+	// first within each group. Empty when nothing matches.
 	Results []BrandSearchResponseResult `json:"results" api:"required"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.

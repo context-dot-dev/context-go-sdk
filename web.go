@@ -4114,7 +4114,7 @@ type WebWebScrapeHTMLParamsPdf struct {
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	// When true, detect and OCR images embedded in the selected PDF pages, inserting
 	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	// the PDF text layer. When false, no OCR runs.
 	Ocr WebWebScrapeHTMLParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
@@ -4831,7 +4831,7 @@ type WebWebScrapeMdParamsPdf struct {
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	// When true, detect and OCR images embedded in the selected PDF pages, inserting
 	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	// the PDF text layer. When false, no OCR runs.
 	Ocr WebWebScrapeMdParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.

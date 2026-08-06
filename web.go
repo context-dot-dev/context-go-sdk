@@ -123,6 +123,18 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 // responses from a recognized API key; use error_code to distinguish stable
 // failure categories.
 //
+// ### YouTube
+//
+// YouTube URLs return the video or channel itself rather than the surrounding
+// player and navigation chrome. A URL addressing a single video (`/watch`,
+// `youtu.be`, `/shorts`, `/embed`, `/live`) returns its title, channel, duration,
+// view count, keywords, full description, and the transcript when the video has
+// captions that can be retrieved; videos without captions return everything except
+// the transcript. A channel URL (`/channel/UC…`, `/@handle`, `/c/…`, `/user/…`)
+// returns its name, handle, subscriber count, video count, and full description.
+// When `includeImages=true`, video responses also include the thumbnail and
+// channel responses include the avatar. Costs the same as any other scrape.
+//
 // ### Billing & errors
 //
 // | HTTP status | Billed?                                   | Meaning                                                                                  |
@@ -1253,7 +1265,8 @@ func (r *WebSearchResponseResult) UnmarshalJSON(data []byte) error {
 type WebSearchResponseResultMarkdown struct {
 	// Per-result scrape outcome. Inspect this before reading `markdown`.
 	//
-	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "WEBSITE_ACCESS_ERROR", "ERROR".
+	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "CONTENT_TOO_LARGE",
+	// "WEBSITE_ACCESS_ERROR", "ERROR".
 	Code string `json:"code" api:"required"`
 	// GFM Markdown of the page. Null unless markdownOptions.enabled is true and
 	// scraping succeeded.

@@ -4117,7 +4117,7 @@ type WebWebScrapeHTMLParamsPdf struct {
 	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
 	Ocr WebWebScrapeHTMLParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 WEBSITE_ACCESS_ERROR is returned.
+	// a 400 PDF_SKIPPED is returned.
 	ShouldParse WebWebScrapeHTMLParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
 	paramObj
 }
@@ -4834,7 +4834,7 @@ type WebWebScrapeMdParamsPdf struct {
 	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
 	Ocr WebWebScrapeMdParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 WEBSITE_ACCESS_ERROR is returned.
+	// a 400 PDF_SKIPPED is returned.
 	ShouldParse WebWebScrapeMdParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
 	paramObj
 }

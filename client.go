@@ -29,7 +29,9 @@ type Client struct {
 	// MonitorsChangeDetectedWebhookPayload and MonitorsRunCompletedWebhookPayload
 	// schemas.
 	Monitors MonitorService
-	Batch    BatchService
+	// Scrape many pages or crawl a site asynchronously.
+	Batch  BatchService
+	People PersonService
 }
 
 // DefaultClientOptions read from the environment (CONTEXT_DEV_API_KEY,
@@ -70,6 +72,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Utility = NewUtilityService(opts...)
 	r.Monitors = NewMonitorService(opts...)
 	r.Batch = NewBatchService(opts...)
+	r.People = NewPersonService(opts...)
 
 	return
 }

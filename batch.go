@@ -20,6 +20,8 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
+// Scrape many pages or crawl a site asynchronously.
+//
 // BatchService contains methods and other services that help with interacting with
 // the context.dev API.
 //
@@ -60,6 +62,19 @@ func (r *BatchService) List(ctx context.Context, query BatchListParams, opts ...
 	return res, err
 }
 
+// Permanently delete a finished batch and its stored results. Active batches must
+// settle first.
+func (r *BatchService) Delete(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchDeleteResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	if batchID == "" {
+		err = errors.New("missing required batch_id parameter")
+		return nil, err
+	}
+	path := fmt.Sprintf("batch/%s", url.PathEscape(batchID))
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodDelete, path, nil, &res, opts...)
+	return res, err
+}
+
 // Stop a batch from starting new pages. In-progress pages finish, and unused
 // credits are refunded.
 func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchCancelResponse, err error) {
@@ -86,11 +101,14 @@ func (r *BatchService) GetResults(ctx context.Context, batchID string, query Bat
 	return res, err
 }
 
-// Retrieve and normalize a person profile from identifiers.
-func (r *BatchService) Submit(ctx context.Context, body BatchSubmitParams, opts ...option.RequestOption) (res *BatchSubmitResponse, err error) {
+// Scrape 25K URLs or crawl large websites asynchronously.
+func (r *BatchService) Submit(ctx context.Context, params BatchSubmitParams, opts ...option.RequestOption) (res *BatchSubmitResponse, err error) {
+	if !param.IsOmitted(params.IdempotencyKey) {
+		opts = append(opts, option.WithHeader("Idempotency-Key", fmt.Sprintf("%v", params.IdempotencyKey.Value)))
+	}
 	opts = slices.Concat(r.options, opts)
-	path := "people/retrieve"
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	path := "batch/submit"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, params, &res, opts...)
 	return res, err
 }
 
@@ -171,14 +189,14 @@ func (r *CrawlControls) UnmarshalJSON(data []byte) error {
 }
 
 // CrawlControlsSourceUnion contains all possible properties and values from
-// [CrawlControlsSourceObject], [CrawlControlsSourceObject2].
+// [CrawlControlsSourceStartURL], [CrawlControlsSourceSitemap].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type CrawlControlsSourceUnion struct {
 	Type string `json:"type"`
-	// This field is from variant [CrawlControlsSourceObject].
+	// This field is from variant [CrawlControlsSourceStartURL].
 	URL string `json:"url"`
-	// This field is from variant [CrawlControlsSourceObject2].
+	// This field is from variant [CrawlControlsSourceSitemap].
 	Domain string `json:"domain"`
 	JSON   struct {
 		Type   respjson.Field
@@ -188,12 +206,12 @@ type CrawlControlsSourceUnion struct {
 	} `json:"-"`
 }
 
-func (u CrawlControlsSourceUnion) AsCrawlControlsSourceObject() (v CrawlControlsSourceObject) {
+func (u CrawlControlsSourceUnion) AsStartURL() (v CrawlControlsSourceStartURL) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
 
-func (u CrawlControlsSourceUnion) AsCrawlControlsSourceObject2() (v CrawlControlsSourceObject2) {
+func (u CrawlControlsSourceUnion) AsSitemap() (v CrawlControlsSourceSitemap) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -205,7 +223,8 @@ func (r *CrawlControlsSourceUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type CrawlControlsSourceObject struct {
+// The crawl discovered pages by following links from one URL.
+type CrawlControlsSourceStartURL struct {
 	// Any of "start_url".
 	Type string `json:"type" api:"required"`
 	// Page the crawl started from.
@@ -220,12 +239,13 @@ type CrawlControlsSourceObject struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r CrawlControlsSourceObject) RawJSON() string { return r.JSON.raw }
-func (r *CrawlControlsSourceObject) UnmarshalJSON(data []byte) error {
+func (r CrawlControlsSourceStartURL) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsSourceStartURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type CrawlControlsSourceObject2 struct {
+// The crawl scraped the pages listed in the domain's sitemap.
+type CrawlControlsSourceSitemap struct {
 	// Domain whose sitemap supplied the pages.
 	Domain string `json:"domain" api:"required"`
 	// Any of "sitemap".
@@ -240,8 +260,8 @@ type CrawlControlsSourceObject2 struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r CrawlControlsSourceObject2) RawJSON() string { return r.JSON.raw }
-func (r *CrawlControlsSourceObject2) UnmarshalJSON(data []byte) error {
+func (r CrawlControlsSourceSitemap) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsSourceSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -355,9 +375,12 @@ func (r *BatchGetResponse) UnmarshalJSON(data []byte) error {
 
 // What this batch has done to your credit balance.
 type BatchGetResponseCredits struct {
-	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
-	// `reserved` until the batch settles.
+	// `reserved` minus `refunded` plus `ocr_charged` — what the batch has cost so far.
+	// Equal to `reserved` until the batch settles.
 	Net int64 `json:"net" api:"required"`
+	// Credits charged for PDF pages recovered by OCR (pdf.ocr=true), 1 per recovered
+	// page, on top of `reserved`. Stays 0 until the batch settles.
+	OcrCharged int64 `json:"ocr_charged" api:"required"`
 	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
 	// a final status, then settles in one movement.
 	Refunded int64 `json:"refunded" api:"required"`
@@ -367,6 +390,7 @@ type BatchGetResponseCredits struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Net         respjson.Field
+		OcrCharged  respjson.Field
 		Refunded    respjson.Field
 		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -637,9 +661,12 @@ func (r *BatchListResponseData) UnmarshalJSON(data []byte) error {
 
 // What this batch has done to your credit balance.
 type BatchListResponseDataCredits struct {
-	// `reserved` minus `refunded` — what the batch has cost so far. Equal to
-	// `reserved` until the batch settles.
+	// `reserved` minus `refunded` plus `ocr_charged` — what the batch has cost so far.
+	// Equal to `reserved` until the batch settles.
 	Net int64 `json:"net" api:"required"`
+	// Credits charged for PDF pages recovered by OCR (pdf.ocr=true), 1 per recovered
+	// page, on top of `reserved`. Stays 0 until the batch settles.
+	OcrCharged int64 `json:"ocr_charged" api:"required"`
 	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
 	// a final status, then settles in one movement.
 	Refunded int64 `json:"refunded" api:"required"`
@@ -649,6 +676,7 @@ type BatchListResponseDataCredits struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Net         respjson.Field
+		OcrCharged  respjson.Field
 		Refunded    respjson.Field
 		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -775,6 +803,52 @@ type BatchListResponseKeyMetadata struct {
 // Returns the unmodified JSON received from the API
 func (r BatchListResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
 func (r *BatchListResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type BatchDeleteResponse struct {
+	// ID of the deleted batch.
+	ID string `json:"id"`
+	// Always true on success.
+	Deleted bool `json:"deleted"`
+	// Metadata about the API key used for the request. Included in every response
+	// whenever a valid API key is provided, even when the response status is not 200.
+	KeyMetadata BatchDeleteResponseKeyMetadata `json:"key_metadata"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ID          respjson.Field
+		Deleted     respjson.Field
+		KeyMetadata respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BatchDeleteResponse) RawJSON() string { return r.JSON.raw }
+func (r *BatchDeleteResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Metadata about the API key used for the request. Included in every response
+// whenever a valid API key is provided, even when the response status is not 200.
+type BatchDeleteResponseKeyMetadata struct {
+	// The number of credits consumed by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// The number of credits remaining for your organization after this request.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BatchDeleteResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BatchDeleteResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -995,6 +1069,8 @@ type BatchGetResultsResponseDataUnion struct {
 	// This field is from variant [BatchGetResultsResponseDataOk].
 	Markdown string `json:"markdown"`
 	Meta     any    `json:"meta"`
+	// This field is from variant [BatchGetResultsResponseDataOk].
+	OcrPages int64 `json:"ocr_pages"`
 	// This field is from variant [BatchGetResultsResponseDataError].
 	ErrorCode string `json:"error_code"`
 	// This field is from variant [BatchGetResultsResponseDataError].
@@ -1009,6 +1085,7 @@ type BatchGetResultsResponseDataUnion struct {
 		ItemID     respjson.Field
 		Markdown   respjson.Field
 		Meta       respjson.Field
+		OcrPages   respjson.Field
 		ErrorCode  respjson.Field
 		Message    respjson.Field
 		raw        string
@@ -1080,6 +1157,9 @@ type BatchGetResultsResponseDataOk struct {
 	Markdown string `json:"markdown"`
 	// Caller-supplied metadata echoed from submission.
 	Meta map[string]any `json:"meta"`
+	// PDF pages of this document recovered by OCR (pdf.ocr=true). Each recovered page
+	// bills 1 credit on top of the page base credit; absent when no OCR ran.
+	OcrPages int64 `json:"ocr_pages"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		FinalURL    respjson.Field
@@ -1091,6 +1171,7 @@ type BatchGetResultsResponseDataOk struct {
 		ItemID      respjson.Field
 		Markdown    respjson.Field
 		Meta        respjson.Field
+		OcrPages    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1365,30 +1446,54 @@ func (r *BatchGetResultsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchSubmitResponse struct {
-	// HTTP status code.
+	// Batch ID. Poll GET /batch/{batch_id} with it.
+	ID string `json:"id" api:"required"`
+	// The crawl controls as submitted, so the limits requested can be compared against
+	// what the crawl reached.
+	Crawl CrawlControls `json:"crawl" api:"required"`
+	// When the batch was created.
+	CreatedAt string `json:"created_at" api:"required"`
+	// What accepting this batch cost.
+	Credits BatchSubmitResponseCredits `json:"credits" api:"required"`
+	// What each page will be returned as.
 	//
-	// Any of 200.
-	Code int64 `json:"code" api:"required"`
-	// Additional response details.
-	Metadata BatchSubmitResponseMetadata `json:"metadata" api:"required"`
-	// Retrieved person profile.
-	Person BatchSubmitResponsePerson `json:"person" api:"required"`
-	// Response status.
+	// Any of "markdown", "html".
+	Format BatchSubmitResponseFormat `json:"format" api:"required"`
+	// What submission took in, and what it charged for.
+	Input Intake `json:"input" api:"required"`
+	// Rejected URLs, up to 100. These are not charged.
+	InvalidURLs []BatchSubmitResponseInvalidURL `json:"invalid_urls" api:"required"`
+	// How pages will be selected.
 	//
-	// Any of "ok".
+	// Any of "scrape", "crawl".
+	Mode BatchSubmitResponseMode `json:"mode" api:"required"`
+	// Always `queued`. An accepted batch has not started yet.
+	//
+	// Any of "queued".
 	Status BatchSubmitResponseStatus `json:"status" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Tags stored on the batch.
+	Tags []string `json:"tags" api:"required"`
+	// API key usage for this request.
 	KeyMetadata BatchSubmitResponseKeyMetadata `json:"key_metadata"`
+	// Signing secret for the completion webhook, returned only here and never again.
+	// Store it now; it is not repeated by GET /batch/{batch_id}.
+	WebhookSecret string `json:"webhook_secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Code        respjson.Field
-		Metadata    respjson.Field
-		Person      respjson.Field
-		Status      respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		ID            respjson.Field
+		Crawl         respjson.Field
+		CreatedAt     respjson.Field
+		Credits       respjson.Field
+		Format        respjson.Field
+		Input         respjson.Field
+		InvalidURLs   respjson.Field
+		Mode          respjson.Field
+		Status        respjson.Field
+		Tags          respjson.Field
+		KeyMetadata   respjson.Field
+		WebhookSecret respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
@@ -1398,388 +1503,69 @@ func (r *BatchSubmitResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Additional response details.
-type BatchSubmitResponseMetadata struct {
-	// Identifiers returned for the person.
-	Identifiers BatchSubmitResponseMetadataIdentifiers `json:"identifiers" api:"required"`
-	// Source categories checked.
-	//
-	// Any of "linkedin", "cv", "manual", "github", "other".
-	SourcesAttempted []string `json:"sourcesAttempted" api:"required"`
-	// Source categories with data.
-	//
-	// Any of "linkedin", "cv", "manual", "github", "other".
-	SourcesSucceeded []string `json:"sourcesSucceeded" api:"required"`
-	// URLs reviewed for this profile.
-	URLsAnalyzed []string `json:"urlsAnalyzed" api:"required" format:"uri"`
-	// Personal website URL, when found.
-	PersonalWebsiteURL string `json:"personalWebsiteUrl" format:"uri"`
+// What accepting this batch cost.
+type BatchSubmitResponseCredits struct {
+	// Credits just debited from your balance. Whatever the batch does not spend is
+	// refunded when it settles.
+	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Identifiers        respjson.Field
-		SourcesAttempted   respjson.Field
-		SourcesSucceeded   respjson.Field
-		URLsAnalyzed       respjson.Field
-		PersonalWebsiteURL respjson.Field
-		ExtraFields        map[string]respjson.Field
-		raw                string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponseMetadata) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponseMetadata) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Identifiers returned for the person.
-type BatchSubmitResponseMetadataIdentifiers struct {
-	// LinkedIn profile URL.
-	LinkedinURL string `json:"linkedinUrl" format:"uri"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		LinkedinURL respjson.Field
+		Reserved    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
-func (r BatchSubmitResponseMetadataIdentifiers) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponseMetadataIdentifiers) UnmarshalJSON(data []byte) error {
+func (r BatchSubmitResponseCredits) RawJSON() string { return r.JSON.raw }
+func (r *BatchSubmitResponseCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Retrieved person profile.
-type BatchSubmitResponsePerson struct {
-	// Education history.
-	Education []BatchSubmitResponsePersonEducation `json:"education" api:"required"`
-	// Work history.
-	Experience []BatchSubmitResponsePersonExperience `json:"experience" api:"required"`
-	// Core profile details.
-	Profile BatchSubmitResponsePersonProfile `json:"profile" api:"required"`
-	// Listed skills.
-	Skills []BatchSubmitResponsePersonSkill `json:"skills" api:"required"`
+// What each page will be returned as.
+type BatchSubmitResponseFormat string
+
+const (
+	BatchSubmitResponseFormatMarkdown BatchSubmitResponseFormat = "markdown"
+	BatchSubmitResponseFormatHTML     BatchSubmitResponseFormat = "html"
+)
+
+type BatchSubmitResponseInvalidURL struct {
+	// Why it was rejected.
+	Reason string `json:"reason" api:"required"`
+	// Rejected URL.
+	URL string `json:"url" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Education   respjson.Field
-		Experience  respjson.Field
-		Profile     respjson.Field
-		Skills      respjson.Field
+		Reason      respjson.Field
+		URL         respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePerson) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePerson) UnmarshalJSON(data []byte) error {
+func (r BatchSubmitResponseInvalidURL) RawJSON() string { return r.JSON.raw }
+func (r *BatchSubmitResponseInvalidURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type BatchSubmitResponsePersonEducation struct {
-	// School or institution name.
-	Institution BatchSubmitResponsePersonEducationInstitution `json:"institution" api:"required"`
-	// Education dates.
-	Dates BatchSubmitResponsePersonEducationDates `json:"dates"`
-	// Additional education details.
-	Description string `json:"description"`
-	// Area of study.
-	FieldOfStudy string `json:"fieldOfStudy"`
-	// Degree, certificate, or credential.
-	Qualification string `json:"qualification"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Institution   respjson.Field
-		Dates         respjson.Field
-		Description   respjson.Field
-		FieldOfStudy  respjson.Field
-		Qualification respjson.Field
-		ExtraFields   map[string]respjson.Field
-		raw           string
-	} `json:"-"`
-}
+// How pages will be selected.
+type BatchSubmitResponseMode string
 
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonEducation) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonEducation) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
+const (
+	BatchSubmitResponseModeScrape BatchSubmitResponseMode = "scrape"
+	BatchSubmitResponseModeCrawl  BatchSubmitResponseMode = "crawl"
+)
 
-// School or institution name.
-type BatchSubmitResponsePersonEducationInstitution struct {
-	// Display name.
-	Display string `json:"display" api:"required"`
-	// Standardized name, when available.
-	Normalized string `json:"normalized"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Display     respjson.Field
-		Normalized  respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonEducationInstitution) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonEducationInstitution) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Education dates.
-type BatchSubmitResponsePersonEducationDates struct {
-	// End date, when known.
-	EndDate BatchSubmitResponsePersonEducationDatesEndDate `json:"endDate"`
-	// Whether the entry is current.
-	IsCurrent bool `json:"isCurrent"`
-	// Start date, when known.
-	StartDate BatchSubmitResponsePersonEducationDatesStartDate `json:"startDate"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		EndDate     respjson.Field
-		IsCurrent   respjson.Field
-		StartDate   respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonEducationDates) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonEducationDates) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// End date, when known.
-type BatchSubmitResponsePersonEducationDatesEndDate struct {
-	// Year value.
-	Year int64 `json:"year" api:"required"`
-	// Day value, when known.
-	Day int64 `json:"day"`
-	// Month value, when known.
-	Month int64 `json:"month"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Year        respjson.Field
-		Day         respjson.Field
-		Month       respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonEducationDatesEndDate) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonEducationDatesEndDate) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Start date, when known.
-type BatchSubmitResponsePersonEducationDatesStartDate struct {
-	// Year value.
-	Year int64 `json:"year" api:"required"`
-	// Day value, when known.
-	Day int64 `json:"day"`
-	// Month value, when known.
-	Month int64 `json:"month"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Year        respjson.Field
-		Day         respjson.Field
-		Month       respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonEducationDatesStartDate) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonEducationDatesStartDate) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type BatchSubmitResponsePersonExperience struct {
-	// Company or organization name.
-	Company BatchSubmitResponsePersonExperienceCompany `json:"company" api:"required"`
-	// Role or job title.
-	Title string `json:"title" api:"required"`
-	// Role dates.
-	Dates BatchSubmitResponsePersonExperienceDates `json:"dates"`
-	// Role description.
-	Description string `json:"description"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Company     respjson.Field
-		Title       respjson.Field
-		Dates       respjson.Field
-		Description respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonExperience) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonExperience) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Company or organization name.
-type BatchSubmitResponsePersonExperienceCompany struct {
-	// Display name.
-	Display string `json:"display" api:"required"`
-	// Standardized name, when available.
-	Normalized string `json:"normalized"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Display     respjson.Field
-		Normalized  respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonExperienceCompany) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonExperienceCompany) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Role dates.
-type BatchSubmitResponsePersonExperienceDates struct {
-	// End date, when known.
-	EndDate BatchSubmitResponsePersonExperienceDatesEndDate `json:"endDate"`
-	// Whether the entry is current.
-	IsCurrent bool `json:"isCurrent"`
-	// Start date, when known.
-	StartDate BatchSubmitResponsePersonExperienceDatesStartDate `json:"startDate"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		EndDate     respjson.Field
-		IsCurrent   respjson.Field
-		StartDate   respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonExperienceDates) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonExperienceDates) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// End date, when known.
-type BatchSubmitResponsePersonExperienceDatesEndDate struct {
-	// Year value.
-	Year int64 `json:"year" api:"required"`
-	// Day value, when known.
-	Day int64 `json:"day"`
-	// Month value, when known.
-	Month int64 `json:"month"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Year        respjson.Field
-		Day         respjson.Field
-		Month       respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonExperienceDatesEndDate) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonExperienceDatesEndDate) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Start date, when known.
-type BatchSubmitResponsePersonExperienceDatesStartDate struct {
-	// Year value.
-	Year int64 `json:"year" api:"required"`
-	// Day value, when known.
-	Day int64 `json:"day"`
-	// Month value, when known.
-	Month int64 `json:"month"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Year        respjson.Field
-		Day         respjson.Field
-		Month       respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonExperienceDatesStartDate) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonExperienceDatesStartDate) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Core profile details.
-type BatchSubmitResponsePersonProfile struct {
-	// Person's full name.
-	FullName string `json:"fullName"`
-	// Short professional headline.
-	Headline string `json:"headline"`
-	// Person's listed location.
-	Location string `json:"location"`
-	// Profile image URL.
-	ProfilePictureURL string `json:"profilePictureUrl" format:"uri"`
-	// Brief profile summary.
-	Summary string `json:"summary"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		FullName          respjson.Field
-		Headline          respjson.Field
-		Location          respjson.Field
-		ProfilePictureURL respjson.Field
-		Summary           respjson.Field
-		ExtraFields       map[string]respjson.Field
-		raw               string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonProfile) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonProfile) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type BatchSubmitResponsePersonSkill struct {
-	// Skill name.
-	Name string `json:"name" api:"required"`
-	// Standardized skill name, when available.
-	Normalized string `json:"normalized"`
-	// Skill proficiency, when available.
-	Proficiency string `json:"proficiency"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Name        respjson.Field
-		Normalized  respjson.Field
-		Proficiency respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r BatchSubmitResponsePersonSkill) RawJSON() string { return r.JSON.raw }
-func (r *BatchSubmitResponsePersonSkill) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Response status.
+// Always `queued`. An accepted batch has not started yet.
 type BatchSubmitResponseStatus string
 
 const (
-	BatchSubmitResponseStatusOk BatchSubmitResponseStatus = "ok"
+	BatchSubmitResponseStatusQueued BatchSubmitResponseStatus = "queued"
 )
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// API key usage for this request.
 type BatchSubmitResponseKeyMetadata struct {
 	// The number of credits consumed by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
@@ -1869,13 +1655,14 @@ func (r BatchGetResultsParams) URLQuery() (v url.Values, err error) {
 }
 
 type BatchSubmitParams struct {
-	// Known identifiers for the person. At least one identifier is required.
-	Identifiers BatchSubmitParamsIdentifiers `json:"identifiers,omitzero" api:"required"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Choose a URL list or a site crawl.
+	Input BatchSubmitParamsInputUnion `json:"input,omitzero" api:"required"`
+	// URL notified when the batch finishes.
+	WebhookURL param.Opt[string] `json:"webhookUrl,omitzero"`
+	// Any string unique to this submission. Retries with the same key return the
+	// original batch.
+	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
+	// Tags stored on the batch. Filter the batch list by them later.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -1888,17 +1675,1032 @@ func (r *BatchSubmitParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Known identifiers for the person. At least one identifier is required.
-type BatchSubmitParamsIdentifiers struct {
-	// LinkedIn profile URL, e.g. https://www.linkedin.com/in/yahia-bakour/.
-	LinkedinURL param.Opt[string] `json:"linkedinUrl,omitzero" format:"uri"`
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputUnion struct {
+	OfScrape *BatchSubmitParamsInputScrape `json:",omitzero,inline"`
+	OfCrawl  *BatchSubmitParamsInputCrawl  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfScrape, u.OfCrawl)
+}
+func (u *BatchSubmitParamsInputUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputUnion](
+		"mode",
+		apijson.Discriminator[BatchSubmitParamsInputScrape]("scrape"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawl]("crawl"),
+	)
+}
+
+// Scrape up to 25K URLs in one batch.
+//
+// The properties Data, Mode are required.
+type BatchSubmitParamsInputScrape struct {
+	// Pages to scrape and their output format.
+	Data BatchSubmitParamsInputScrapeDataUnion `json:"data,omitzero" api:"required"`
+	// Scrape the pages in `data.urls`.
+	//
+	// This field can be elided, and will marshal its zero value as "scrape".
+	Mode constant.Scrape `json:"mode" default:"scrape"`
 	paramObj
 }
 
-func (r BatchSubmitParamsIdentifiers) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsIdentifiers
+func (r BatchSubmitParamsInputScrape) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrape
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsIdentifiers) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrape) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputScrapeDataUnion struct {
+	OfMarkdown *BatchSubmitParamsInputScrapeDataMarkdown `json:",omitzero,inline"`
+	OfHTML     *BatchSubmitParamsInputScrapeDataHTML     `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputScrapeDataUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfMarkdown, u.OfHTML)
+}
+func (u *BatchSubmitParamsInputScrapeDataUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputScrapeDataUnion](
+		"format",
+		apijson.Discriminator[BatchSubmitParamsInputScrapeDataMarkdown]("markdown"),
+		apijson.Discriminator[BatchSubmitParamsInputScrapeDataHTML]("html"),
+	)
+}
+
+// Scrape the listed pages as Markdown.
+//
+// The properties Format, URLs are required.
+type BatchSubmitParamsInputScrapeDataMarkdown struct {
+	// Pages to scrape. Maximum 25000.
+	URLs []BatchSubmitParamsInputScrapeDataMarkdownURL `json:"urls,omitzero" api:"required"`
+	// Options for Markdown output.
+	Options BatchSubmitParamsInputScrapeDataMarkdownOptions `json:"options,omitzero"`
+	// Return page content as Markdown.
+	//
+	// This field can be elided, and will marshal its zero value as "markdown".
+	Format constant.Markdown `json:"format" default:"markdown"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataMarkdown) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdown
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataMarkdown) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// A page to scrape, with optional data for matching results.
+//
+// The property URL is required.
+type BatchSubmitParamsInputScrapeDataMarkdownURL struct {
+	// Page URL to scrape.
+	URL string `json:"url" api:"required"`
+	// Your ID for this page, returned with its result. The same URL can use different
+	// IDs.
+	ItemID param.Opt[string] `json:"itemId,omitzero"`
+	// Custom JSON returned unchanged with this page result.
+	Meta map[string]any `json:"meta,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataMarkdownURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdownURL
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataMarkdownURL) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Options for Markdown output.
+type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
+	// Return a cached result if a prior scrape for the same parameters exists and is
+	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
+	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Include image references in the Markdown.
+	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
+	// Include links in the Markdown.
+	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
+	// Wait briefly for CSS and transition animations to settle before extraction, on
+	// pages that render in a browser.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
+	// Shorten inline base64 image data.
+	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
+	// Return the main content without navigation or footers.
+	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
+	// so an element matching both is removed.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
+	// fetched fresh, ignoring `maxAgeMs`.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country string `json:"country,omitzero"`
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
+	Pdf BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataMarkdownOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdownOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataMarkdownOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataMarkdownOptions](
+		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
+	)
+}
+
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
+type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf struct {
+	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
+	// Must be greater than or equal to start when both are provided.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
+	Ocr BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
+	// a 400 PDF_SKIPPED is returned.
+	ShouldParse BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString)
+	OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString)
+}
+func (u *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrString string
+
+const (
+	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrStringTrue  BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrString = "true"
+	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrStringFalse BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString)
+	OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString)
+}
+func (u *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseString string
+
+const (
+	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseString = "true"
+	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseStringFalse BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseString = "false"
+)
+
+// Scrape the listed pages as HTML.
+//
+// The properties Format, URLs are required.
+type BatchSubmitParamsInputScrapeDataHTML struct {
+	// Pages to scrape. Maximum 25000.
+	URLs []BatchSubmitParamsInputScrapeDataHTMLURL `json:"urls,omitzero" api:"required"`
+	// Options for HTML output.
+	Options BatchSubmitParamsInputScrapeDataHTMLOptions `json:"options,omitzero"`
+	// Return page content as HTML.
+	//
+	// This field can be elided, and will marshal its zero value as "html".
+	Format constant.HTML `json:"format" default:"html"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataHTML) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTML
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataHTML) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// A page to scrape, with optional data for matching results.
+//
+// The property URL is required.
+type BatchSubmitParamsInputScrapeDataHTMLURL struct {
+	// Page URL to scrape.
+	URL string `json:"url" api:"required"`
+	// Your ID for this page, returned with its result. The same URL can use different
+	// IDs.
+	ItemID param.Opt[string] `json:"itemId,omitzero"`
+	// Custom JSON returned unchanged with this page result.
+	Meta map[string]any `json:"meta,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataHTMLURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTMLURL
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataHTMLURL) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Options for HTML output.
+type BatchSubmitParamsInputScrapeDataHTMLOptions struct {
+	// Return a cached result if a prior scrape for the same parameters exists and is
+	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
+	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Wait briefly for CSS and transition animations to settle before extraction, on
+	// pages that render in a browser.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
+	// Return the main content without navigation or footers.
+	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
+	// so an element matching both is removed.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
+	// fetched fresh, ignoring `maxAgeMs`.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country string `json:"country,omitzero"`
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
+	Pdf BatchSubmitParamsInputScrapeDataHTMLOptionsPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataHTMLOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTMLOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataHTMLOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataHTMLOptions](
+		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
+	)
+}
+
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
+type BatchSubmitParamsInputScrapeDataHTMLOptionsPdf struct {
+	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
+	// Must be greater than or equal to start when both are provided.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
+	Ocr BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
+	// a 400 PDF_SKIPPED is returned.
+	ShouldParse BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTMLOptionsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfOcrString)
+	OfBatchSubmitsInputScrapeDataHTMLOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfOcrString)
+}
+func (u *BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrString string
+
+const (
+	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrStringTrue  BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrString = "true"
+	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrStringFalse BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfShouldParseString)
+	OfBatchSubmitsInputScrapeDataHTMLOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfShouldParseString)
+}
+func (u *BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseString string
+
+const (
+	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseString = "true"
+	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseStringFalse BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseString = "false"
+)
+
+// Crawl pages starting from a URL or from a domain's sitemap.
+//
+// The properties Data, Mode are required.
+type BatchSubmitParamsInputCrawl struct {
+	// Crawl source and output format.
+	Data BatchSubmitParamsInputCrawlDataUnion `json:"data,omitzero" api:"required"`
+	// Discover and scrape pages from `data.source`.
+	//
+	// This field can be elided, and will marshal its zero value as "crawl".
+	Mode constant.Crawl `json:"mode" default:"crawl"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawl) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawl
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawl) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataUnion struct {
+	OfMarkdown *BatchSubmitParamsInputCrawlDataMarkdown `json:",omitzero,inline"`
+	OfHTML     *BatchSubmitParamsInputCrawlDataHTML     `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfMarkdown, u.OfHTML)
+}
+func (u *BatchSubmitParamsInputCrawlDataUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataUnion](
+		"format",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdown]("markdown"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTML]("html"),
+	)
+}
+
+// Crawl pages and return Markdown.
+//
+// The properties Format, Source are required.
+type BatchSubmitParamsInputCrawlDataMarkdown struct {
+	// How to find pages to crawl.
+	Source BatchSubmitParamsInputCrawlDataMarkdownSourceUnion `json:"source,omitzero" api:"required"`
+	// Options for Markdown output.
+	Options BatchSubmitParamsInputCrawlDataMarkdownOptions `json:"options,omitzero"`
+	// Return page content as Markdown.
+	//
+	// This field can be elided, and will marshal its zero value as "markdown".
+	Format constant.Markdown `json:"format" default:"markdown"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdown) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdown
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdown) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceUnion struct {
+	OfStartURL *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL `json:",omitzero,inline"`
+	OfSitemap  *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfStartURL, u.OfSitemap)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceUnion](
+		"type",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL]("start_url"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap]("sitemap"),
+	)
+}
+
+// Discover pages by following links from one URL.
+//
+// The properties Type, URL are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL struct {
+	// Page where crawling begins. A URL without a scheme is read as https://.
+	URL string `json:"url" api:"required"`
+	// Limits and filters for page discovery.
+	Controls BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls `json:"controls,omitzero"`
+	// Start from one page.
+	//
+	// This field can be elided, and will marshal its zero value as "start_url".
+	Type constant.StartURL `json:"type" default:"start_url"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for page discovery.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls struct {
+	// Follow links to subdomains.
+	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
+	// Maximum link depth. Source pages are depth 0. No limit when omitted.
+	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
+	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 25000.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// RE2 pattern for URLs to include. The `start_url` itself is always included.
+	Regex param.Opt[string] `json:"regex,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scrape the pages listed in a domain's sitemap. Links on those pages are not
+// followed.
+//
+// The properties Domain, Type are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap struct {
+	// Domain whose sitemap lists the pages to scrape. A full URL is reduced to its
+	// domain.
+	Domain string `json:"domain" api:"required"`
+	// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
+	// URLs and never follows links off them, so there is no crawl depth here.
+	Controls BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls `json:"controls,omitzero"`
+	// Scrape the URLs in the domain's sitemap.
+	//
+	// This field can be elided, and will marshal its zero value as "sitemap".
+	Type constant.Sitemap `json:"type" default:"sitemap"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
+// URLs and never follows links off them, so there is no crawl depth here.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls struct {
+	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 25000.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// RE2 pattern; only sitemap URLs matching it are scraped.
+	Regex param.Opt[string] `json:"regex,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Options for Markdown output.
+type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
+	// Return a cached result if a prior scrape for the same parameters exists and is
+	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
+	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Include image references in the Markdown.
+	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
+	// Include links in the Markdown.
+	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
+	// Wait briefly for CSS and transition animations to settle before extraction, on
+	// pages that render in a browser.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
+	// Shorten inline base64 image data.
+	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
+	// Return the main content without navigation or footers.
+	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
+	// so an element matching both is removed.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
+	// fetched fresh, ignoring `maxAgeMs`.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country string `json:"country,omitzero"`
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
+	Pdf BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataMarkdownOptions](
+		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
+	)
+}
+
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
+type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf struct {
+	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
+	// Must be greater than or equal to start when both are provided.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
+	Ocr BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
+	// a 400 PDF_SKIPPED is returned.
+	ShouldParse BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfOcrString)
+	OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfOcrString)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrString string
+
+const (
+	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrStringTrue  BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrString = "true"
+	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrStringFalse BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfShouldParseString)
+	OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfShouldParseString)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseString string
+
+const (
+	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseString = "true"
+	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseStringFalse BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseString = "false"
+)
+
+// Crawl pages and return HTML.
+//
+// The properties Format, Source are required.
+type BatchSubmitParamsInputCrawlDataHTML struct {
+	// How to find pages to crawl.
+	Source BatchSubmitParamsInputCrawlDataHTMLSourceUnion `json:"source,omitzero" api:"required"`
+	// Options for HTML output.
+	Options BatchSubmitParamsInputCrawlDataHTMLOptions `json:"options,omitzero"`
+	// Return page content as HTML.
+	//
+	// This field can be elided, and will marshal its zero value as "html".
+	Format constant.HTML `json:"format" default:"html"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTML) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTML
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTML) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceUnion struct {
+	OfStartURL *BatchSubmitParamsInputCrawlDataHTMLSourceStartURL `json:",omitzero,inline"`
+	OfSitemap  *BatchSubmitParamsInputCrawlDataHTMLSourceSitemap  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfStartURL, u.OfSitemap)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceUnion](
+		"type",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURL]("start_url"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemap]("sitemap"),
+	)
+}
+
+// Discover pages by following links from one URL.
+//
+// The properties Type, URL are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURL struct {
+	// Page where crawling begins. A URL without a scheme is read as https://.
+	URL string `json:"url" api:"required"`
+	// Limits and filters for page discovery.
+	Controls BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls `json:"controls,omitzero"`
+	// Start from one page.
+	//
+	// This field can be elided, and will marshal its zero value as "start_url".
+	Type constant.StartURL `json:"type" default:"start_url"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURL
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURL) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for page discovery.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls struct {
+	// Follow links to subdomains.
+	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
+	// Maximum link depth. Source pages are depth 0. No limit when omitted.
+	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
+	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 25000.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// RE2 pattern for URLs to include. The `start_url` itself is always included.
+	Regex param.Opt[string] `json:"regex,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scrape the pages listed in a domain's sitemap. Links on those pages are not
+// followed.
+//
+// The properties Domain, Type are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemap struct {
+	// Domain whose sitemap lists the pages to scrape. A full URL is reduced to its
+	// domain.
+	Domain string `json:"domain" api:"required"`
+	// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
+	// URLs and never follows links off them, so there is no crawl depth here.
+	Controls BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls `json:"controls,omitzero"`
+	// Scrape the URLs in the domain's sitemap.
+	//
+	// This field can be elided, and will marshal its zero value as "sitemap".
+	Type constant.Sitemap `json:"type" default:"sitemap"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemap) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemap
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemap) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
+// URLs and never follows links off them, so there is no crawl depth here.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls struct {
+	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 25000.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// RE2 pattern; only sitemap URLs matching it are scraped.
+	Regex param.Opt[string] `json:"regex,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Options for HTML output.
+type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
+	// Return a cached result if a prior scrape for the same parameters exists and is
+	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
+	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Wait briefly for CSS and transition animations to settle before extraction, on
+	// pages that render in a browser.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
+	// Return the main content without navigation or footers.
+	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
+	// so an element matching both is removed.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
+	// fetched fresh, ignoring `maxAgeMs`.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country string `json:"country,omitzero"`
+	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+	// detection/OCR to an inclusive 1-based page range.
+	Pdf BatchSubmitParamsInputCrawlDataHTMLOptionsPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataHTMLOptions](
+		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
+	)
+}
+
+// PDF parsing controls. Use start/end to limit text extraction and embedded-image
+// detection/OCR to an inclusive 1-based page range.
+type BatchSubmitParamsInputCrawlDataHTMLOptionsPdf struct {
+	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
+	// Must be greater than or equal to start when both are provided.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
+	Ocr BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
+	// a 400 PDF_SKIPPED is returned.
+	ShouldParse BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLOptionsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfOcrString)
+	OfBatchSubmitsInputCrawlDataHTMLOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfOcrString)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrString string
+
+const (
+	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrStringTrue  BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrString = "true"
+	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrStringFalse BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfShouldParseString)
+	OfBatchSubmitsInputCrawlDataHTMLOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfShouldParseString)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseString string
+
+const (
+	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseString = "true"
+	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseStringFalse BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseString = "false"
+)

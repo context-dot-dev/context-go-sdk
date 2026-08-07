@@ -123,6 +123,18 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 // responses from a recognized API key; use error_code to distinguish stable
 // failure categories.
 //
+// ### YouTube
+//
+// YouTube URLs return the video or channel itself rather than the surrounding
+// player and navigation chrome. A URL addressing a single video (`/watch`,
+// `youtu.be`, `/shorts`, `/embed`, `/live`) returns its title, channel, duration,
+// view count, keywords, full description, and the transcript when the video has
+// captions that can be retrieved; videos without captions return everything except
+// the transcript. A channel URL (`/channel/UC…`, `/@handle`, `/c/…`, `/user/…`)
+// returns its name, handle, subscriber count, video count, and full description.
+// When `includeImages=true`, video responses also include the thumbnail and
+// channel responses include the avatar. Costs the same as any other scrape.
+//
 // ### Billing & errors
 //
 // | HTTP status | Billed?                                   | Meaning                                                                                  |
@@ -132,6 +144,7 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 // | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
 // | 404         | No                                        | Target page returned or fingerprinted as not found                                       |
 // | 408         | No                                        | Request timed out                                                                        |
+// | 413         | No                                        | Target content exceeds the maximum supported size (20 MB)                                |
 // | 415         | No                                        | Unsupported content type                                                                 |
 // | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                        |
 // | 500         | No                                        | Internal error                                                                           |
@@ -142,7 +155,11 @@ func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams
 	return res, err
 }
 
-// Crawl an entire website's sitemap and return all discovered page URLs.
+// Crawl an entire website's sitemap and return all discovered page URLs. Pass
+// `search` to have the crawled sitemap filtered down to the pages about a phrase
+// (for example `pricing and plans` or `api authentication docs`), most relevant
+// first — a searched crawl scans the whole sitemap and costs 2 credits instead
+// of 1.
 func (r *WebService) WebScrapeSitemap(ctx context.Context, query WebWebScrapeSitemapParams, opts ...option.RequestOption) (res *WebWebScrapeSitemapResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/sitemap"
@@ -1248,7 +1265,8 @@ func (r *WebSearchResponseResult) UnmarshalJSON(data []byte) error {
 type WebSearchResponseResultMarkdown struct {
 	// Per-result scrape outcome. Inspect this before reading `markdown`.
 	//
-	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "WEBSITE_ACCESS_ERROR", "ERROR".
+	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "CONTENT_TOO_LARGE",
+	// "WEBSITE_ACCESS_ERROR", "ERROR".
 	Code string `json:"code" api:"required"`
 	// GFM Markdown of the page. Null unless markdownOptions.enabled is true and
 	// scraping succeeded.
@@ -2369,7 +2387,8 @@ type WebWebScrapeSitemapResponse struct {
 	//
 	// Any of true.
 	Success bool `json:"success" api:"required"`
-	// Array of discovered page URLs from the sitemap (max 500)
+	// Discovered page URLs from the sitemap, up to `maxLinks`. When `search` is set
+	// these are only the matching pages, most relevant first.
 	URLs []string `json:"urls" api:"required"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
@@ -3704,9 +3723,10 @@ type WebWebCrawlMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// When true, detect and OCR images embedded in the selected PDF pages, inserting
-	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF pages are fetched and parsed. When false, PDF pages are skipped
 	// entirely (not included in results and not counted as failures).
@@ -4111,12 +4131,13 @@ type WebWebScrapeHTMLParamsPdf struct {
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
-	// When true, detect and OCR images embedded in the selected PDF pages, inserting
-	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
 	Ocr WebWebScrapeHTMLParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 WEBSITE_ACCESS_ERROR is returned.
+	// a 400 PDF_SKIPPED is returned.
 	ShouldParse WebWebScrapeHTMLParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
 	paramObj
 }
@@ -4828,12 +4849,13 @@ type WebWebScrapeMdParamsPdf struct {
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
-	// When true, detect and OCR images embedded in the selected PDF pages, inserting
-	// recognized text at each image's position in page reading order while preserving
-	// the PDF text layer. This is separate from automatic scanned-PDF OCR fallback.
+	// When true, OCR the selected PDF pages that have no usable text layer (scans),
+	// replacing each recovered page's text with the OCR result while pages with a real
+	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
+	// of the base request cost. When false, no OCR runs.
 	Ocr WebWebScrapeMdParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 WEBSITE_ACCESS_ERROR is returned.
+	// a 400 PDF_SKIPPED is returned.
 	ShouldParse WebWebScrapeMdParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
 	paramObj
 }
@@ -4954,6 +4976,10 @@ type WebWebScrapeSitemapParams struct {
 	// Maximum number of links to return from the sitemap crawl. Defaults to 10,000.
 	// Minimum is 1, maximum is 100,000.
 	MaxLinks param.Opt[int64] `query:"maxLinks,omitzero" json:"-"`
+	// Optional search phrase. When provided, the crawled sitemap is filtered to the
+	// pages whose URLs are about that phrase, most relevant first, and the request
+	// costs 2 credits instead of 1.
+	Search param.Opt[string] `query:"search,omitzero" json:"-"`
 	// Optional explicit sitemap URL. When provided, exactly this sitemap is crawled
 	// instead of discovering the domain's sitemaps.
 	SitemapURL param.Opt[string] `query:"sitemapUrl,omitzero" format:"uri" json:"-"`

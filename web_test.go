@@ -490,6 +490,7 @@ func TestWebWebScrapeSitemapWithOptionalParams(t *testing.T) {
 			"foo": "J!",
 		},
 		MaxLinks:   contextdev.Int(1),
+		Search:     contextdev.String("help center and troubleshooting articles"),
 		SitemapURL: contextdev.String("https://example.com"),
 		Tags:       []string{"production", "team-alpha"},
 		TimeoutMs:  contextdev.Int(1),

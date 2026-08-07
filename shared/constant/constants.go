@@ -24,14 +24,21 @@ type ByEmail string       // Always "by_email"
 type ByName string        // Always "by_name"
 type ByTicker string      // Always "by_ticker"
 type ByTransaction string // Always "by_transaction"
+type Candidate string     // Always "candidate"
+type Crawl string         // Always "crawl"
 type Error string         // Always "error"
 type Exact string         // Always "exact"
 type Extract string       // Always "extract"
+type HTML string          // Always "html"
+type Markdown string      // Always "markdown"
+type NotFound string      // Always "not_found"
 type Ok string            // Always "ok"
 type Page string          // Always "page"
 type Perform string       // Always "perform"
+type Scrape string        // Always "scrape"
 type Semantic string      // Always "semantic"
 type Sitemap string       // Always "sitemap"
+type StartURL string      // Always "start_url"
 type Wait string          // Always "wait"
 
 func (c ByDirectURL) Default() ByDirectURL     { return "by_direct_url" }
@@ -40,14 +47,21 @@ func (c ByEmail) Default() ByEmail             { return "by_email" }
 func (c ByName) Default() ByName               { return "by_name" }
 func (c ByTicker) Default() ByTicker           { return "by_ticker" }
 func (c ByTransaction) Default() ByTransaction { return "by_transaction" }
+func (c Candidate) Default() Candidate         { return "candidate" }
+func (c Crawl) Default() Crawl                 { return "crawl" }
 func (c Error) Default() Error                 { return "error" }
 func (c Exact) Default() Exact                 { return "exact" }
 func (c Extract) Default() Extract             { return "extract" }
+func (c HTML) Default() HTML                   { return "html" }
+func (c Markdown) Default() Markdown           { return "markdown" }
+func (c NotFound) Default() NotFound           { return "not_found" }
 func (c Ok) Default() Ok                       { return "ok" }
 func (c Page) Default() Page                   { return "page" }
 func (c Perform) Default() Perform             { return "perform" }
+func (c Scrape) Default() Scrape               { return "scrape" }
 func (c Semantic) Default() Semantic           { return "semantic" }
 func (c Sitemap) Default() Sitemap             { return "sitemap" }
+func (c StartURL) Default() StartURL           { return "start_url" }
 func (c Wait) Default() Wait                   { return "wait" }
 
 func (c ByDirectURL) MarshalJSON() ([]byte, error)   { return marshalString(c) }
@@ -56,14 +70,21 @@ func (c ByEmail) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c ByName) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c ByTicker) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c ByTransaction) MarshalJSON() ([]byte, error) { return marshalString(c) }
+func (c Candidate) MarshalJSON() ([]byte, error)     { return marshalString(c) }
+func (c Crawl) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Error) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Exact) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Extract) MarshalJSON() ([]byte, error)       { return marshalString(c) }
+func (c HTML) MarshalJSON() ([]byte, error)          { return marshalString(c) }
+func (c Markdown) MarshalJSON() ([]byte, error)      { return marshalString(c) }
+func (c NotFound) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Ok) MarshalJSON() ([]byte, error)            { return marshalString(c) }
 func (c Page) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Perform) MarshalJSON() ([]byte, error)       { return marshalString(c) }
+func (c Scrape) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c Semantic) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Sitemap) MarshalJSON() ([]byte, error)       { return marshalString(c) }
+func (c StartURL) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Wait) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 
 type constant[T any] interface {

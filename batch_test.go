@@ -66,6 +66,29 @@ func TestBatchListWithOptionalParams(t *testing.T) {
 	}
 }
 
+func TestBatchDelete(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Batch.Delete(context.TODO(), "batch_9f2c8a")
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
 func TestBatchCancel(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"
@@ -133,11 +156,52 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Batch.Submit(context.TODO(), contextdev.BatchSubmitParams{
-		Identifiers: contextdev.BatchSubmitParamsIdentifiers{
-			LinkedinURL: contextdev.String("https://www.linkedin.com/in/yahia-bakour/"),
+		Input: contextdev.BatchSubmitParamsInputUnion{
+			OfScrape: &contextdev.BatchSubmitParamsInputScrape{
+				Data: contextdev.BatchSubmitParamsInputScrapeDataUnion{
+					OfMarkdown: &contextdev.BatchSubmitParamsInputScrapeDataMarkdown{
+						URLs: []contextdev.BatchSubmitParamsInputScrapeDataMarkdownURL{{
+							URL:    "https://example.com/products/anvil",
+							ItemID: contextdev.String("sku-1"),
+							Meta: map[string]any{
+								"category": "bar",
+							},
+						}, {
+							URL:    "https://example.com/products/hammer",
+							ItemID: contextdev.String("sku-2"),
+							Meta: map[string]any{
+								"foo": "bar",
+							},
+						}},
+						Options: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptions{
+							Country:          "de",
+							ExcludeSelectors: []string{"x"},
+							IncludeImages:    contextdev.Bool(true),
+							IncludeLinks:     contextdev.Bool(true),
+							IncludeSelectors: []string{"x"},
+							MaxAgeMs:         contextdev.Int(0),
+							Pdf: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf{
+								End: contextdev.Int(1),
+								Ocr: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion{
+									OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString: contextdev.String("true"),
+								},
+								ShouldParse: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion{
+									OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString: contextdev.String("true"),
+								},
+								Start: contextdev.Int(1),
+							},
+							SettleAnimations:    contextdev.Bool(true),
+							ShortenBase64Images: contextdev.Bool(true),
+							UseMainContentOnly:  contextdev.Bool(true),
+							WaitForMs:           contextdev.Int(0),
+						},
+					},
+				},
+			},
 		},
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1000),
+		Tags:           []string{"docs", "competitor"},
+		WebhookURL:     contextdev.String("webhookUrl"),
+		IdempotencyKey: contextdev.String("Idempotency-Key"),
 	})
 	if err != nil {
 		var apierr *contextdev.Error

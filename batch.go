@@ -189,14 +189,14 @@ func (r *CrawlControls) UnmarshalJSON(data []byte) error {
 }
 
 // CrawlControlsSourceUnion contains all possible properties and values from
-// [CrawlControlsSourceObject], [CrawlControlsSourceObject2].
+// [CrawlControlsSourceStartURL], [CrawlControlsSourceSitemap].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type CrawlControlsSourceUnion struct {
 	Type string `json:"type"`
-	// This field is from variant [CrawlControlsSourceObject].
+	// This field is from variant [CrawlControlsSourceStartURL].
 	URL string `json:"url"`
-	// This field is from variant [CrawlControlsSourceObject2].
+	// This field is from variant [CrawlControlsSourceSitemap].
 	Domain string `json:"domain"`
 	JSON   struct {
 		Type   respjson.Field
@@ -206,12 +206,12 @@ type CrawlControlsSourceUnion struct {
 	} `json:"-"`
 }
 
-func (u CrawlControlsSourceUnion) AsCrawlControlsSourceObject() (v CrawlControlsSourceObject) {
+func (u CrawlControlsSourceUnion) AsStartURL() (v CrawlControlsSourceStartURL) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
 
-func (u CrawlControlsSourceUnion) AsCrawlControlsSourceObject2() (v CrawlControlsSourceObject2) {
+func (u CrawlControlsSourceUnion) AsSitemap() (v CrawlControlsSourceSitemap) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -223,7 +223,8 @@ func (r *CrawlControlsSourceUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type CrawlControlsSourceObject struct {
+// The crawl discovered pages by following links from one URL.
+type CrawlControlsSourceStartURL struct {
 	// Any of "start_url".
 	Type string `json:"type" api:"required"`
 	// Page the crawl started from.
@@ -238,12 +239,13 @@ type CrawlControlsSourceObject struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r CrawlControlsSourceObject) RawJSON() string { return r.JSON.raw }
-func (r *CrawlControlsSourceObject) UnmarshalJSON(data []byte) error {
+func (r CrawlControlsSourceStartURL) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsSourceStartURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type CrawlControlsSourceObject2 struct {
+// The crawl scraped the pages listed in the domain's sitemap.
+type CrawlControlsSourceSitemap struct {
 	// Domain whose sitemap supplied the pages.
 	Domain string `json:"domain" api:"required"`
 	// Any of "sitemap".
@@ -258,8 +260,8 @@ type CrawlControlsSourceObject2 struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r CrawlControlsSourceObject2) RawJSON() string { return r.JSON.raw }
-func (r *CrawlControlsSourceObject2) UnmarshalJSON(data []byte) error {
+func (r CrawlControlsSourceSitemap) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsSourceSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

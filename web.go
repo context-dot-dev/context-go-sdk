@@ -137,17 +137,17 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 //
 // ### Billing & errors
 //
-// | HTTP status | Billed?                                   | Meaning                                                                                  |
-// | ----------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
-// | 400         | No                                        | Invalid input, skipped PDF, or the page could not be scraped                             |
-// | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
-// | 404         | No                                        | Target page returned or fingerprinted as not found                                       |
-// | 408         | No                                        | Request timed out                                                                        |
-// | 413         | No                                        | Target content exceeds the maximum supported size (20 MB)                                |
-// | 415         | No                                        | Unsupported content type                                                                 |
-// | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                        |
-// | 500         | No                                        | Internal error                                                                           |
+// | HTTP status | Billed?                                   | Meaning                                                                                                                                                                                                                                                                                                       |
+// | ----------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing                                                                                                                                                                                                                       |
+// | 400         | No                                        | Invalid input, skipped PDF, or the page could not be scraped. error_code WEBSITE_BLOCKED specifically means the site answered with an anti-bot challenge, CAPTCHA wall, or login shell instead of the page (even when the site returned HTTP 200) — retrying later or from another country sometimes succeeds |
+// | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code                                                                                                                                                                                                                      |
+// | 404         | No                                        | Target page returned or fingerprinted as not found                                                                                                                                                                                                                                                            |
+// | 408         | No                                        | Request timed out                                                                                                                                                                                                                                                                                             |
+// | 413         | No                                        | Target content exceeds the maximum supported size (20 MB)                                                                                                                                                                                                                                                     |
+// | 415         | No                                        | Unsupported content type                                                                                                                                                                                                                                                                                      |
+// | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                                                                                                                                                                                                                                             |
+// | 500         | No                                        | Internal error                                                                                                                                                                                                                                                                                                |
 func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams, opts ...option.RequestOption) (res *WebWebScrapeMdResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/markdown"
@@ -1407,6 +1407,9 @@ type WebWebCrawlMdResponseResultMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []WebWebCrawlMdResponseResultMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -1442,6 +1445,7 @@ type WebWebCrawlMdResponseResultMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -1522,6 +1526,26 @@ type WebWebCrawlMdResponseResultMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebCrawlMdResponseResultMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *WebWebCrawlMdResponseResultMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebCrawlMdResponseResultMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebCrawlMdResponseResultMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *WebWebCrawlMdResponseResultMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1688,6 +1712,9 @@ type WebWebScrapeHTMLResponseMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []WebWebScrapeHTMLResponseMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -1720,6 +1747,7 @@ type WebWebScrapeHTMLResponseMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -1801,6 +1829,26 @@ type WebWebScrapeHTMLResponseMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeHTMLResponseMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeHTMLResponseMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeHTMLResponseMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeHTMLResponseMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeHTMLResponseMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2135,6 +2183,9 @@ type WebWebScrapeMdResponseMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []WebWebScrapeMdResponseMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -2167,6 +2218,7 @@ type WebWebScrapeMdResponseMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -2248,6 +2300,26 @@ type WebWebScrapeMdResponseMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeMdResponseMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeMdResponseMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeMdResponseMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeMdResponseMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeMdResponseMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

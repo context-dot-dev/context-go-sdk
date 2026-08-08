@@ -1202,6 +1202,9 @@ type BatchGetResultsResponseDataOkMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []BatchGetResultsResponseDataOkMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -1234,6 +1237,7 @@ type BatchGetResultsResponseDataOkMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -1315,6 +1319,26 @@ type BatchGetResultsResponseDataOkMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r BatchGetResultsResponseDataOkMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *BatchGetResultsResponseDataOkMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type BatchGetResultsResponseDataOkMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BatchGetResultsResponseDataOkMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *BatchGetResultsResponseDataOkMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

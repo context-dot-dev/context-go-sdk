@@ -430,6 +430,9 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		IncludeFrames: contextdev.WebWebScrapeMdParamsIncludeFramesUnion{
 			OfWebWebScrapeMdsIncludeFramesString: contextdev.String("true"),
 		},
+		IncludeHTML: contextdev.WebWebScrapeMdParamsIncludeHTMLUnion{
+			OfWebWebScrapeMdsIncludeHTMLString: contextdev.String("true"),
+		},
 		IncludeImages: contextdev.WebWebScrapeMdParamsIncludeImagesUnion{
 			OfWebWebScrapeMdsIncludeImagesString: contextdev.String("true"),
 		},

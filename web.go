@@ -2140,6 +2140,10 @@ type WebWebScrapeMdResponse struct {
 	// True when an action was applied but the returned content could not be refreshed
 	// afterward.
 	ActionsHTMLStale bool `json:"actionsHtmlStale"`
+	// Only present when includeHTML=true: the page HTML the Markdown was converted
+	// from — the same body the Scrape HTML endpoint returns for the equivalent
+	// request.
+	HTML string `json:"html"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebWebScrapeMdResponseKeyMetadata `json:"key_metadata"`
@@ -2152,6 +2156,7 @@ type WebWebScrapeMdResponse struct {
 		URL              respjson.Field
 		ActionsApplied   respjson.Field
 		ActionsHTMLStale respjson.Field
+		HTML             respjson.Field
 		KeyMetadata      respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string
@@ -4555,6 +4560,10 @@ type WebWebScrapeMdParams struct {
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// When true, the contents of iframes are rendered to Markdown.
 	IncludeFrames WebWebScrapeMdParamsIncludeFramesUnion `query:"includeFrames,omitzero" json:"-"`
+	// When true, the response also includes an `html` field with the page HTML the
+	// Markdown was converted from — the same body the Scrape HTML endpoint returns for
+	// the equivalent request.
+	IncludeHTML WebWebScrapeMdParamsIncludeHTMLUnion `query:"includeHTML,omitzero" json:"-"`
 	// Include image references in Markdown output
 	IncludeImages WebWebScrapeMdParamsIncludeImagesUnion `query:"includeImages,omitzero" json:"-"`
 	// Preserve hyperlinks in Markdown output
@@ -4875,6 +4884,24 @@ type WebWebScrapeMdParamsIncludeFramesString string
 const (
 	WebWebScrapeMdParamsIncludeFramesStringTrue  WebWebScrapeMdParamsIncludeFramesString = "true"
 	WebWebScrapeMdParamsIncludeFramesStringFalse WebWebScrapeMdParamsIncludeFramesString = "false"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsIncludeHTMLUnion struct {
+	OfBool param.Opt[bool] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsIncludeHTMLString)
+	OfWebWebScrapeMdsIncludeHTMLString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsIncludeHTMLString string
+
+const (
+	WebWebScrapeMdParamsIncludeHTMLStringTrue  WebWebScrapeMdParamsIncludeHTMLString = "true"
+	WebWebScrapeMdParamsIncludeHTMLStringFalse WebWebScrapeMdParamsIncludeHTMLString = "false"
 )
 
 // Only one field can be non-zero.

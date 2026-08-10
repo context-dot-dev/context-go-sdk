@@ -176,6 +176,7 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 						Options: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptions{
 							Country:          "de",
 							ExcludeSelectors: []string{"x"},
+							IncludeHTML:      contextdev.Bool(true),
 							IncludeImages:    contextdev.Bool(true),
 							IncludeLinks:     contextdev.Bool(true),
 							IncludeSelectors: []string{"x"},

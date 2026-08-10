@@ -1149,7 +1149,8 @@ type BatchGetResultsResponseDataOk struct {
 	Status constant.Ok `json:"status" default:"ok"`
 	// URL as submitted, or as discovered by the crawl.
 	URL string `json:"url" api:"required"`
-	// Raw page HTML. Present on html batches.
+	// Page HTML. Present on html batches, and on markdown batches submitted with
+	// `options.includeHTML`.
 	HTML string `json:"html"`
 	// Caller-supplied identifier echoed from submission.
 	ItemID string `json:"itemId"`
@@ -1819,6 +1820,9 @@ type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Also include each page's HTML in its result record, as an `html` field alongside
+	// the Markdown.
+	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
 	// Include image references in the Markdown.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Include links in the Markdown.
@@ -2322,6 +2326,9 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Also include each page's HTML in its result record, as an `html` field alongside
+	// the Markdown.
+	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
 	// Include image references in the Markdown.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Include links in the Markdown.

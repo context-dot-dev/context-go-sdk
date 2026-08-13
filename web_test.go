@@ -162,19 +162,17 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.Screenshot(context.TODO(), contextdev.WebScreenshotParams{
-		ColorScheme:    contextdev.WebScreenshotParamsColorSchemeLight,
-		Country:        contextdev.WebScreenshotParamsCountryDe,
-		DirectURL:      contextdev.String("https://example.com"),
-		Domain:         contextdev.String("xxx"),
-		FullScreenshot: contextdev.WebScreenshotParamsFullScreenshotTrue,
-		HandleCookiePopup: contextdev.WebScreenshotParamsHandleCookiePopupUnion{
-			OfWebScreenshotsHandleCookiePopupString: contextdev.String("true"),
-		},
-		MaxAgeMs:     contextdev.Int(0),
-		Page:         contextdev.WebScreenshotParamsPageLogin,
-		ScrollOffset: contextdev.Int(0),
-		Tags:         []string{"production", "team-alpha"},
-		TimeoutMs:    contextdev.Int(1),
+		ColorScheme:       contextdev.WebScreenshotParamsColorSchemeLight,
+		Country:           contextdev.WebScreenshotParamsCountryDe,
+		DirectURL:         contextdev.String("https://example.com"),
+		Domain:            contextdev.String("xxx"),
+		FullScreenshot:    contextdev.WebScreenshotParamsFullScreenshotTrue,
+		HandleCookiePopup: contextdev.Bool(true),
+		MaxAgeMs:          contextdev.Int(0),
+		Page:              contextdev.WebScreenshotParamsPageLogin,
+		ScrollOffset:      contextdev.Int(0),
+		Tags:              []string{"production", "team-alpha"},
+		TimeoutMs:         contextdev.Int(1),
 		Viewport: contextdev.WebScreenshotParamsViewport{
 			Height: contextdev.Int(240),
 			Width:  contextdev.Int(240),
@@ -315,31 +313,21 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		IncludeFrames: contextdev.WebWebScrapeHTMLParamsIncludeFramesUnion{
-			OfWebWebScrapeHTMLsIncludeFramesString: contextdev.String("true"),
-		},
+		IncludeFrames:    contextdev.Bool(true),
 		IncludeSelectors: []string{"x"},
 		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeHTMLParamsPdf{
-			End: contextdev.Int(1),
-			Ocr: contextdev.WebWebScrapeHTMLParamsPdfOcrUnion{
-				OfWebWebScrapeHTMLsPdfOcrString: contextdev.String("true"),
-			},
-			ShouldParse: contextdev.WebWebScrapeHTMLParamsPdfShouldParseUnion{
-				OfWebWebScrapeHTMLsPdfShouldParseString: contextdev.String("true"),
-			},
-			Start: contextdev.Int(1),
+			End:         contextdev.Int(1),
+			Ocr:         contextdev.Bool(true),
+			ShouldParse: contextdev.Bool(true),
+			Start:       contextdev.Int(1),
 		},
-		SettleAnimations: contextdev.WebWebScrapeHTMLParamsSettleAnimationsUnion{
-			OfWebWebScrapeHTMLsSettleAnimationsString: contextdev.String("true"),
-		},
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1),
-		UseMainContentOnly: contextdev.WebWebScrapeHTMLParamsUseMainContentOnlyUnion{
-			OfWebWebScrapeHTMLsUseMainContentOnlyString: contextdev.String("true"),
-		},
-		WaitForMs: contextdev.Int(0),
-		Zdr:       contextdev.WebWebScrapeHTMLParamsZdrEnabled,
+		SettleAnimations:   contextdev.Bool(true),
+		Tags:               []string{"production", "team-alpha"},
+		TimeoutMs:          contextdev.Int(1),
+		UseMainContentOnly: contextdev.Bool(true),
+		WaitForMs:          contextdev.Int(0),
+		Zdr:                contextdev.WebWebScrapeHTMLParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -370,20 +358,12 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 				TimeMs: 0,
 			},
 		}},
-		Dedupe: contextdev.WebWebScrapeImagesParamsDedupeUnion{
-			OfWebWebScrapeImagessDedupeString: contextdev.String("true"),
-		},
+		Dedupe: contextdev.Bool(true),
 		Enrichment: contextdev.WebWebScrapeImagesParamsEnrichment{
-			Classification: contextdev.WebWebScrapeImagesParamsEnrichmentClassificationUnion{
-				OfWebWebScrapeImagessEnrichmentClassificationString: contextdev.String("true"),
-			},
-			HostedURL: contextdev.WebWebScrapeImagesParamsEnrichmentHostedURLUnion{
-				OfWebWebScrapeImagessEnrichmentHostedURLString: contextdev.String("true"),
-			},
-			MaxTimePerMs: contextdev.Int(1),
-			Resolution: contextdev.WebWebScrapeImagesParamsEnrichmentResolutionUnion{
-				OfWebWebScrapeImagessEnrichmentResolutionString: contextdev.String("true"),
-			},
+			Classification: contextdev.Bool(true),
+			HostedURL:      contextdev.Bool(true),
+			MaxTimePerMs:   contextdev.Int(1),
+			Resolution:     contextdev.Bool(true),
 		},
 		Headers: map[string]string{
 			"foo": "J!",
@@ -427,43 +407,25 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		IncludeFrames: contextdev.WebWebScrapeMdParamsIncludeFramesUnion{
-			OfWebWebScrapeMdsIncludeFramesString: contextdev.String("true"),
-		},
-		IncludeHTML: contextdev.WebWebScrapeMdParamsIncludeHTMLUnion{
-			OfWebWebScrapeMdsIncludeHTMLString: contextdev.String("true"),
-		},
-		IncludeImages: contextdev.WebWebScrapeMdParamsIncludeImagesUnion{
-			OfWebWebScrapeMdsIncludeImagesString: contextdev.String("true"),
-		},
-		IncludeLinks: contextdev.WebWebScrapeMdParamsIncludeLinksUnion{
-			OfWebWebScrapeMdsIncludeLinksString: contextdev.String("true"),
-		},
+		IncludeFrames:    contextdev.Bool(true),
+		IncludeHTML:      contextdev.Bool(true),
+		IncludeImages:    contextdev.Bool(true),
+		IncludeLinks:     contextdev.Bool(true),
 		IncludeSelectors: []string{"x"},
 		MaxAgeMs:         contextdev.Int(0),
 		Pdf: contextdev.WebWebScrapeMdParamsPdf{
-			End: contextdev.Int(1),
-			Ocr: contextdev.WebWebScrapeMdParamsPdfOcrUnion{
-				OfWebWebScrapeMdsPdfOcrString: contextdev.String("true"),
-			},
-			ShouldParse: contextdev.WebWebScrapeMdParamsPdfShouldParseUnion{
-				OfWebWebScrapeMdsPdfShouldParseString: contextdev.String("true"),
-			},
-			Start: contextdev.Int(1),
+			End:         contextdev.Int(1),
+			Ocr:         contextdev.Bool(true),
+			ShouldParse: contextdev.Bool(true),
+			Start:       contextdev.Int(1),
 		},
-		SettleAnimations: contextdev.WebWebScrapeMdParamsSettleAnimationsUnion{
-			OfWebWebScrapeMdsSettleAnimationsString: contextdev.String("true"),
-		},
-		ShortenBase64Images: contextdev.WebWebScrapeMdParamsShortenBase64ImagesUnion{
-			OfWebWebScrapeMdsShortenBase64ImagesString: contextdev.String("true"),
-		},
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1),
-		UseMainContentOnly: contextdev.WebWebScrapeMdParamsUseMainContentOnlyUnion{
-			OfWebWebScrapeMdsUseMainContentOnlyString: contextdev.String("true"),
-		},
-		WaitForMs: contextdev.Int(0),
-		Zdr:       contextdev.WebWebScrapeMdParamsZdrEnabled,
+		SettleAnimations:    contextdev.Bool(true),
+		ShortenBase64Images: contextdev.Bool(true),
+		Tags:                []string{"production", "team-alpha"},
+		TimeoutMs:           contextdev.Int(1),
+		UseMainContentOnly:  contextdev.Bool(true),
+		WaitForMs:           contextdev.Int(0),
+		Zdr:                 contextdev.WebWebScrapeMdParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

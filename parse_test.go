@@ -32,29 +32,19 @@ func TestParseHandleWithOptionalParams(t *testing.T) {
 		context.TODO(),
 		io.Reader(bytes.NewBuffer([]byte("Example data"))),
 		contextdev.ParseHandleParams{
-			Client:    contextdev.String("x"),
-			Extension: contextdev.ParseHandleParamsExtensionTxt,
-			IncludeImages: contextdev.ParseHandleParamsIncludeImagesUnion{
-				OfParseHandlesIncludeImagesString: contextdev.String("true"),
-			},
-			IncludeLinks: contextdev.ParseHandleParamsIncludeLinksUnion{
-				OfParseHandlesIncludeLinksString: contextdev.String("true"),
-			},
-			Ocr: contextdev.ParseHandleParamsOcrUnion{
-				OfParseHandlesOcrString: contextdev.String("true"),
-			},
+			Client:        contextdev.String("x"),
+			Extension:     contextdev.ParseHandleParamsExtensionTxt,
+			IncludeImages: contextdev.Bool(true),
+			IncludeLinks:  contextdev.Bool(true),
+			Ocr:           contextdev.Bool(true),
 			Pdf: contextdev.ParseHandleParamsPdf{
 				End:   contextdev.Int(1),
 				Start: contextdev.Int(1),
 			},
-			ShortenBase64Images: contextdev.ParseHandleParamsShortenBase64ImagesUnion{
-				OfParseHandlesShortenBase64ImagesString: contextdev.String("true"),
-			},
-			Tags: []string{"production", "team-alpha"},
-			UseMainContentOnly: contextdev.ParseHandleParamsUseMainContentOnlyUnion{
-				OfParseHandlesUseMainContentOnlyString: contextdev.String("true"),
-			},
-			Zdr: contextdev.ParseHandleParamsZdrEnabled,
+			ShortenBase64Images: contextdev.Bool(true),
+			Tags:                []string{"production", "team-alpha"},
+			UseMainContentOnly:  contextdev.Bool(true),
+			Zdr:                 contextdev.ParseHandleParamsZdrEnabled,
 		},
 	)
 	if err != nil {

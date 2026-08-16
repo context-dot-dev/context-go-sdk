@@ -146,6 +146,8 @@ type PersonEnrichResponseMatchUnionPerson struct {
 	// This field will be present if the value is a [any] instead of an object.
 	OfPersonEnrichResponseMatchNotFoundPerson any `json:",inline"`
 	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
+	CurrentRoleStatus string `json:"current_role_status"`
+	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
 	Education []PersonEnrichResponseMatchCandidatePersonEducation `json:"education"`
 	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
 	Experience []PersonEnrichResponseMatchCandidatePersonExperience `json:"experience"`
@@ -160,15 +162,20 @@ type PersonEnrichResponseMatchUnionPerson struct {
 	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
 	Bio string `json:"bio"`
 	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
+	CheckedAt string `json:"checked_at"`
+	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
 	CurrentRole PersonEnrichResponseMatchCandidatePersonCurrentRole `json:"current_role"`
 	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
 	Email string `json:"email"`
+	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
+	LastUpdated string `json:"last_updated"`
 	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
 	Location PersonEnrichResponseMatchCandidatePersonLocation `json:"location"`
 	// This field is from variant [PersonEnrichResponseMatchCandidatePerson].
 	Name PersonEnrichResponseMatchCandidatePersonName `json:"name"`
 	JSON struct {
 		OfPersonEnrichResponseMatchNotFoundPerson respjson.Field
+		CurrentRoleStatus                         respjson.Field
 		Education                                 respjson.Field
 		Experience                                respjson.Field
 		Skills                                    respjson.Field
@@ -176,8 +183,10 @@ type PersonEnrichResponseMatchUnionPerson struct {
 		WebsiteURLs                               respjson.Field
 		AvatarURL                                 respjson.Field
 		Bio                                       respjson.Field
+		CheckedAt                                 respjson.Field
 		CurrentRole                               respjson.Field
 		Email                                     respjson.Field
+		LastUpdated                               respjson.Field
 		Location                                  respjson.Field
 		Name                                      respjson.Field
 		raw                                       string
@@ -235,32 +244,47 @@ func (r *PersonEnrichResponseMatchCandidate) UnmarshalJSON(data []byte) error {
 }
 
 type PersonEnrichResponseMatchCandidatePerson struct {
-	Education   []PersonEnrichResponseMatchCandidatePersonEducation  `json:"education" api:"required"`
-	Experience  []PersonEnrichResponseMatchCandidatePersonExperience `json:"experience" api:"required"`
-	Skills      []string                                             `json:"skills" api:"required"`
-	SocialURLs  []string                                             `json:"social_urls" api:"required" format:"uri"`
-	WebsiteURLs []string                                             `json:"website_urls" api:"required" format:"uri"`
-	AvatarURL   string                                               `json:"avatar_url"`
-	Bio         string                                               `json:"bio"`
-	CurrentRole PersonEnrichResponseMatchCandidatePersonCurrentRole  `json:"current_role"`
-	Email       string                                               `json:"email" format:"email"`
-	Location    PersonEnrichResponseMatchCandidatePersonLocation     `json:"location"`
-	Name        PersonEnrichResponseMatchCandidatePersonName         `json:"name"`
+	// Whether the person's current role is known. `present` — current_role is
+	// populated. `none` — the work history explicitly shows every role has ended.
+	// `unknown` — our data sources could not confirm either way; treat a missing
+	// current_role as unverified rather than vacant.
+	//
+	// Any of "present", "none", "unknown".
+	CurrentRoleStatus string                                               `json:"current_role_status" api:"required"`
+	Education         []PersonEnrichResponseMatchCandidatePersonEducation  `json:"education" api:"required"`
+	Experience        []PersonEnrichResponseMatchCandidatePersonExperience `json:"experience" api:"required"`
+	Skills            []string                                             `json:"skills" api:"required"`
+	SocialURLs        []string                                             `json:"social_urls" api:"required" format:"uri"`
+	WebsiteURLs       []string                                             `json:"website_urls" api:"required" format:"uri"`
+	AvatarURL         string                                               `json:"avatar_url"`
+	Bio               string                                               `json:"bio"`
+	// When we last refreshed this profile from our data sources (ISO 8601).
+	CheckedAt   string                                              `json:"checked_at"`
+	CurrentRole PersonEnrichResponseMatchCandidatePersonCurrentRole `json:"current_role"`
+	Email       string                                              `json:"email" format:"email"`
+	// When the underlying profile data last changed in our data sources (ISO 8601).
+	// Omitted when unknown.
+	LastUpdated string                                           `json:"last_updated"`
+	Location    PersonEnrichResponseMatchCandidatePersonLocation `json:"location"`
+	Name        PersonEnrichResponseMatchCandidatePersonName     `json:"name"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Education   respjson.Field
-		Experience  respjson.Field
-		Skills      respjson.Field
-		SocialURLs  respjson.Field
-		WebsiteURLs respjson.Field
-		AvatarURL   respjson.Field
-		Bio         respjson.Field
-		CurrentRole respjson.Field
-		Email       respjson.Field
-		Location    respjson.Field
-		Name        respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CurrentRoleStatus respjson.Field
+		Education         respjson.Field
+		Experience        respjson.Field
+		Skills            respjson.Field
+		SocialURLs        respjson.Field
+		WebsiteURLs       respjson.Field
+		AvatarURL         respjson.Field
+		Bio               respjson.Field
+		CheckedAt         respjson.Field
+		CurrentRole       respjson.Field
+		Email             respjson.Field
+		LastUpdated       respjson.Field
+		Location          respjson.Field
+		Name              respjson.Field
+		ExtraFields       map[string]respjson.Field
+		raw               string
 	} `json:"-"`
 }
 

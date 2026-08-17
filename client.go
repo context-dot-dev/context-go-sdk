@@ -32,6 +32,8 @@ type Client struct {
 	// Scrape many pages or crawl a site asynchronously.
 	Batch  BatchService
 	People PersonService
+	// Search live first-party RSS and free historical news data by company identity.
+	News NewsService
 }
 
 // DefaultClientOptions read from the environment (CONTEXT_DEV_API_KEY,
@@ -73,6 +75,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Monitors = NewMonitorService(opts...)
 	r.Batch = NewBatchService(opts...)
 	r.People = NewPersonService(opts...)
+	r.News = NewNewsService(opts...)
 
 	return
 }

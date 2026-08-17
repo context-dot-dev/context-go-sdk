@@ -50,10 +50,15 @@ func (r *NewsService) Search(ctx context.Context, body NewsSearchParams, opts ..
 }
 
 type NewsSearchResponse struct {
-	Data       []NewsSearchResponseData `json:"data" api:"required"`
-	HasMore    bool                     `json:"has_more" api:"required"`
-	Meta       NewsSearchResponseMeta   `json:"meta" api:"required"`
-	NextCursor string                   `json:"next_cursor" api:"required"`
+	// Articles matching the search, in the requested order.
+	Data []NewsSearchResponseData `json:"data" api:"required"`
+	// True when more results are available beyond this page.
+	HasMore bool `json:"has_more" api:"required"`
+	// Summary information about this response.
+	Meta NewsSearchResponseMeta `json:"meta" api:"required"`
+	// Pass as cursor in the next request to fetch the following page. Null when there
+	// are no more results.
+	NextCursor string `json:"next_cursor" api:"required"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata NewsSearchResponseKeyMetadata `json:"key_metadata"`
@@ -76,20 +81,37 @@ func (r *NewsSearchResponse) UnmarshalJSON(data []byte) error {
 }
 
 type NewsSearchResponseData struct {
-	ID          string                       `json:"id" api:"required"`
-	Authors     []string                     `json:"authors" api:"required"`
-	Description string                       `json:"description" api:"required"`
-	ImageURL    string                       `json:"image_url" api:"required"`
-	Language    string                       `json:"language" api:"required"`
-	Match       NewsSearchResponseDataMatch  `json:"match" api:"required"`
-	PublishedAt time.Time                    `json:"published_at" api:"required" format:"date-time"`
-	Source      NewsSearchResponseDataSource `json:"source" api:"required"`
-	// Groups matching normalized headlines published on the same UTC day.
+	// Stable unique identifier for this article. Use it to deduplicate or reference an
+	// article across requests.
+	ID string `json:"id" api:"required"`
+	// Bylined authors. Empty when no byline is available.
+	Authors []string `json:"authors" api:"required"`
+	// Short summary or excerpt of the article, when the publisher provides one.
+	Description string `json:"description" api:"required"`
+	// Lead image for the article, when one is available.
+	ImageURL string `json:"image_url" api:"required"`
+	// Language the article is written in, as a lowercase ISO 639-1 code such as en.
+	// Null when unknown.
+	Language string `json:"language" api:"required"`
+	// How the article relates to the company you searched for.
+	Match NewsSearchResponseDataMatch `json:"match" api:"required"`
+	// When the article was published, as an ISO 8601 timestamp. Null when the
+	// publisher does not state a reliable date.
+	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
+	// The publication that published the article.
+	Source NewsSearchResponseDataSource `json:"source" api:"required"`
+	// Shared by articles covering the same story on the same day. Use it to group or
+	// collapse syndicated copies of one announcement across outlets.
 	StoryID string `json:"story_id" api:"required"`
-	Title   string `json:"title" api:"required"`
+	// Article headline.
+	Title string `json:"title" api:"required"`
+	// Kind of coverage. Use it to separate independent reporting (editorial) from
+	// company-issued content (press_release, regulatory_filing, advisory).
+	//
 	// Any of "editorial", "press_release", "regulatory_filing", "advisory".
 	Type string `json:"type" api:"required"`
-	URL  string `json:"url" api:"required" format:"uri"`
+	// Link to the article on the publisher site.
+	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
@@ -115,8 +137,13 @@ func (r *NewsSearchResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// How the article relates to the company you searched for.
 type NewsSearchResponseDataMatch struct {
+	// How confident the match is, from 0 to 1. Null when a score is unavailable.
 	Confidence float64 `json:"confidence" api:"required"`
+	// primary when the article is mainly about the company, secondary when the company
+	// is mentioned but is not the main subject.
+	//
 	// Any of "primary", "secondary".
 	Level string `json:"level" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -134,11 +161,14 @@ func (r *NewsSearchResponseDataMatch) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// The publication that published the article.
 type NewsSearchResponseDataSource struct {
 	// True when Context observed this article in the publisher-owned feed.
-	Direct bool   `json:"direct" api:"required"`
+	Direct bool `json:"direct" api:"required"`
+	// Website domain of the publication.
 	Domain string `json:"domain" api:"required"`
-	Name   string `json:"name" api:"required"`
+	// Name of the publication, such as Reuters.
+	Name string `json:"name" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Direct      respjson.Field
@@ -155,7 +185,9 @@ func (r *NewsSearchResponseDataSource) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Summary information about this response.
 type NewsSearchResponseMeta struct {
+	// Number of articles in this page.
 	Count int64 `json:"count" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {

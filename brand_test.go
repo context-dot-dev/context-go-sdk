@@ -88,8 +88,11 @@ func TestBrandSearchWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Brand.Search(context.TODO(), contextdev.BrandSearchParams{
-		Query: "x",
-		Tags:  []string{"production", "team-alpha"},
+		Query:         "x",
+		Autocomplete:  contextdev.Bool(true),
+		QueryBy:       []string{"name"},
+		Tags:          []string{"production", "team-alpha"},
+		TypoTolerance: contextdev.Int(0),
 	})
 	if err != nil {
 		var apierr *contextdev.Error

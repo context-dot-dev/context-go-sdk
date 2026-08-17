@@ -1149,7 +1149,8 @@ type BatchGetResultsResponseDataOk struct {
 	Status constant.Ok `json:"status" default:"ok"`
 	// URL as submitted, or as discovered by the crawl.
 	URL string `json:"url" api:"required"`
-	// Raw page HTML. Present on html batches.
+	// Page HTML. Present on html batches, and on markdown batches submitted with
+	// `options.includeHTML`.
 	HTML string `json:"html"`
 	// Caller-supplied identifier echoed from submission.
 	ItemID string `json:"itemId"`
@@ -1202,6 +1203,9 @@ type BatchGetResultsResponseDataOkMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []BatchGetResultsResponseDataOkMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -1234,6 +1238,7 @@ type BatchGetResultsResponseDataOkMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -1315,6 +1320,26 @@ type BatchGetResultsResponseDataOkMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r BatchGetResultsResponseDataOkMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *BatchGetResultsResponseDataOkMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type BatchGetResultsResponseDataOkMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BatchGetResultsResponseDataOkMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *BatchGetResultsResponseDataOkMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1795,6 +1820,9 @@ type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Also include each page's HTML in its result record, as an `html` field alongside
+	// the Markdown.
+	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
 	// Include image references in the Markdown.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Include links in the Markdown.
@@ -1860,16 +1888,16 @@ type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `json:"start,omitzero"`
 	// When true, OCR the selected PDF pages that have no usable text layer (scans),
 	// replacing each recovered page's text with the OCR result while pages with a real
 	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
 	// of the base request cost. When false, no OCR runs.
-	Ocr BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
-	ShouldParse BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
 
@@ -1880,56 +1908,6 @@ func (r BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) MarshalJSON() (data 
 func (r *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString)
-	OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString)
-}
-func (u *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrString string
-
-const (
-	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrStringTrue  BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrString = "true"
-	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrStringFalse BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString)
-	OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString)
-}
-func (u *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseString string
-
-const (
-	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseString = "true"
-	BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseStringFalse BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseString = "false"
-)
 
 // Scrape the listed pages as HTML.
 //
@@ -2041,16 +2019,16 @@ type BatchSubmitParamsInputScrapeDataHTMLOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `json:"start,omitzero"`
 	// When true, OCR the selected PDF pages that have no usable text layer (scans),
 	// replacing each recovered page's text with the OCR result while pages with a real
 	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
 	// of the base request cost. When false, no OCR runs.
-	Ocr BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
-	ShouldParse BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
 
@@ -2061,56 +2039,6 @@ func (r BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) MarshalJSON() (data []by
 func (r *BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfOcrString)
-	OfBatchSubmitsInputScrapeDataHTMLOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfOcrString)
-}
-func (u *BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrString string
-
-const (
-	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrStringTrue  BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrString = "true"
-	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrStringFalse BatchSubmitParamsInputScrapeDataHTMLOptionsPdfOcrString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfShouldParseString)
-	OfBatchSubmitsInputScrapeDataHTMLOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataHTMLOptionsPdfShouldParseString)
-}
-func (u *BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseString string
-
-const (
-	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseString = "true"
-	BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseStringFalse BatchSubmitParamsInputScrapeDataHTMLOptionsPdfShouldParseString = "false"
-)
 
 // Crawl pages starting from a URL or from a domain's sitemap.
 //
@@ -2298,6 +2226,9 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
 	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Also include each page's HTML in its result record, as an `html` field alongside
+	// the Markdown.
+	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
 	// Include image references in the Markdown.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Include links in the Markdown.
@@ -2363,16 +2294,16 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `json:"start,omitzero"`
 	// When true, OCR the selected PDF pages that have no usable text layer (scans),
 	// replacing each recovered page's text with the OCR result while pages with a real
 	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
 	// of the base request cost. When false, no OCR runs.
-	Ocr BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
-	ShouldParse BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
 
@@ -2383,56 +2314,6 @@ func (r BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) MarshalJSON() (data [
 func (r *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfOcrString)
-	OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfOcrString)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrString string
-
-const (
-	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrStringTrue  BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrString = "true"
-	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrStringFalse BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfOcrString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfShouldParseString)
-	OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataMarkdownOptionsPdfShouldParseString)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseString string
-
-const (
-	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseString = "true"
-	BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseStringFalse BatchSubmitParamsInputCrawlDataMarkdownOptionsPdfShouldParseString = "false"
-)
 
 // Crawl pages and return HTML.
 //
@@ -2634,16 +2515,16 @@ type BatchSubmitParamsInputCrawlDataHTMLOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `json:"start,omitzero"`
 	// When true, OCR the selected PDF pages that have no usable text layer (scans),
 	// replacing each recovered page's text with the OCR result while pages with a real
 	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
 	// of the base request cost. When false, no OCR runs.
-	Ocr BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion `json:"ocr,omitzero"`
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
-	ShouldParse BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion `json:"shouldParse,omitzero"`
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
 
@@ -2654,53 +2535,3 @@ func (r BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) MarshalJSON() (data []byt
 func (r *BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfOcrString)
-	OfBatchSubmitsInputCrawlDataHTMLOptionsPdfOcrString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfOcrString)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrString string
-
-const (
-	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrStringTrue  BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrString = "true"
-	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrStringFalse BatchSubmitParamsInputCrawlDataHTMLOptionsPdfOcrString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion struct {
-	OfBool param.Opt[bool] `json:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfShouldParseString)
-	OfBatchSubmitsInputCrawlDataHTMLOptionsPdfShouldParseString param.Opt[string] `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataHTMLOptionsPdfShouldParseString)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseString string
-
-const (
-	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseStringTrue  BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseString = "true"
-	BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseStringFalse BatchSubmitParamsInputCrawlDataHTMLOptionsPdfShouldParseString = "false"
-)

@@ -137,17 +137,17 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 //
 // ### Billing & errors
 //
-// | HTTP status | Billed?                                   | Meaning                                                                                  |
-// | ----------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing  |
-// | 400         | No                                        | Invalid input, skipped PDF, or the page could not be scraped                             |
-// | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code |
-// | 404         | No                                        | Target page returned or fingerprinted as not found                                       |
-// | 408         | No                                        | Request timed out                                                                        |
-// | 413         | No                                        | Target content exceeds the maximum supported size (20 MB)                                |
-// | 415         | No                                        | Unsupported content type                                                                 |
-// | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                        |
-// | 500         | No                                        | Internal error                                                                           |
+// | HTTP status | Billed?                                   | Meaning                                                                                                                                                                                                                                                                                                       |
+// | ----------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing                                                                                                                                                                                                                       |
+// | 400         | No                                        | Invalid input, skipped PDF, or the page could not be scraped. error_code WEBSITE_BLOCKED specifically means the site answered with an anti-bot challenge, CAPTCHA wall, or login shell instead of the page (even when the site returned HTTP 200) — retrying later or from another country sometimes succeeds |
+// | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code                                                                                                                                                                                                                      |
+// | 404         | No                                        | Target page returned or fingerprinted as not found                                                                                                                                                                                                                                                            |
+// | 408         | No                                        | Request timed out                                                                                                                                                                                                                                                                                             |
+// | 413         | No                                        | Target content exceeds the maximum supported size (20 MB)                                                                                                                                                                                                                                                     |
+// | 415         | No                                        | Unsupported content type                                                                                                                                                                                                                                                                                      |
+// | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                                                                                                                                                                                                                                             |
+// | 500         | No                                        | Internal error                                                                                                                                                                                                                                                                                                |
 func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams, opts ...option.RequestOption) (res *WebWebScrapeMdResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/markdown"
@@ -1407,6 +1407,9 @@ type WebWebCrawlMdResponseResultMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []WebWebCrawlMdResponseResultMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -1442,6 +1445,7 @@ type WebWebCrawlMdResponseResultMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -1522,6 +1526,26 @@ type WebWebCrawlMdResponseResultMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebCrawlMdResponseResultMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *WebWebCrawlMdResponseResultMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebCrawlMdResponseResultMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebCrawlMdResponseResultMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *WebWebCrawlMdResponseResultMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1688,6 +1712,9 @@ type WebWebScrapeHTMLResponseMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []WebWebScrapeHTMLResponseMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -1720,6 +1747,7 @@ type WebWebScrapeHTMLResponseMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -1801,6 +1829,26 @@ type WebWebScrapeHTMLResponseMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeHTMLResponseMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeHTMLResponseMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeHTMLResponseMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeHTMLResponseMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeHTMLResponseMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2092,6 +2140,10 @@ type WebWebScrapeMdResponse struct {
 	// True when an action was applied but the returned content could not be refreshed
 	// afterward.
 	ActionsHTMLStale bool `json:"actionsHtmlStale"`
+	// Only present when includeHTML=true: the page HTML the Markdown was converted
+	// from — the same body the Scrape HTML endpoint returns for the equivalent
+	// request.
+	HTML string `json:"html"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebWebScrapeMdResponseKeyMetadata `json:"key_metadata"`
@@ -2104,6 +2156,7 @@ type WebWebScrapeMdResponse struct {
 		URL              respjson.Field
 		ActionsApplied   respjson.Field
 		ActionsHTMLStale respjson.Field
+		HTML             respjson.Field
 		KeyMetadata      respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string
@@ -2135,6 +2188,9 @@ type WebWebScrapeMdResponseMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []WebWebScrapeMdResponseMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
@@ -2167,6 +2223,7 @@ type WebWebScrapeMdResponseMetadata struct {
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
 		Favicon        respjson.Field
+		Headings       respjson.Field
 		Image          respjson.Field
 		JsonLd         respjson.Field
 		Keywords       respjson.Field
@@ -2248,6 +2305,26 @@ type WebWebScrapeMdResponseMetadataAlternate struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeMdResponseMetadataAlternate) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeMdResponseMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeMdResponseMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeMdResponseMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeMdResponseMetadataHeading) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2669,6 +2746,10 @@ type WebScreenshotParams struct {
 	// domain will be automatically normalized and validated. You must provide either
 	// 'domain' or 'directUrl', but not both.
 	Domain param.Opt[string] `query:"domain,omitzero" json:"-"`
+	// Optional parameter to control cookie/consent popup handling. If 'true', we
+	// dismiss cookie banner before capture. If 'false' or not provided, captures the
+	// page without that step.
+	HandleCookiePopup param.Opt[bool] `query:"handleCookiePopup,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -2704,10 +2785,6 @@ type WebScreenshotParams struct {
 	//
 	// Any of "true", "false".
 	FullScreenshot WebScreenshotParamsFullScreenshot `query:"fullScreenshot,omitzero" json:"-"`
-	// Optional parameter to control cookie/consent popup handling. If 'true', we
-	// dismiss cookie banner before capture. If 'false' or not provided, captures the
-	// page without that step.
-	HandleCookiePopup WebScreenshotParamsHandleCookiePopupUnion `query:"handleCookiePopup,omitzero" json:"-"`
 	// Optional parameter to specify which page type to screenshot. If provided, the
 	// system will scrape the domain's links and use heuristics to find the most
 	// appropriate URL for the specified page type (30 supported languages). If not
@@ -2969,24 +3046,6 @@ type WebScreenshotParamsFullScreenshot string
 const (
 	WebScreenshotParamsFullScreenshotTrue  WebScreenshotParamsFullScreenshot = "true"
 	WebScreenshotParamsFullScreenshotFalse WebScreenshotParamsFullScreenshot = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebScreenshotParamsHandleCookiePopupUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebScreenshotsHandleCookiePopupString)
-	OfWebScreenshotsHandleCookiePopupString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebScreenshotParamsHandleCookiePopupString string
-
-const (
-	WebScreenshotParamsHandleCookiePopupStringTrue  WebScreenshotParamsHandleCookiePopupString = "true"
-	WebScreenshotParamsHandleCookiePopupStringFalse WebScreenshotParamsHandleCookiePopupString = "false"
 )
 
 // Optional parameter to specify which page type to screenshot. If provided, the
@@ -3765,10 +3824,19 @@ type WebWebScrapeHTMLParams struct {
 	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
 	// 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// When true, iframes are rendered inline into the returned HTML.
+	IncludeFrames param.Opt[bool] `query:"includeFrames,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// extracting HTML. Defaults to false. This adds a bit of latency in exchange for
+	// more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// When true, return only the page's main content in the HTML response, excluding
+	// headers, footers, sidebars, and navigation when detectable.
+	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
 	// Optional browser actions executed in array order after the page loads and before
 	// content is captured. Requires a paid plan. Send a JSON array in the query
 	// parameter. Maximum: 5 actions.
@@ -3805,22 +3873,13 @@ type WebWebScrapeHTMLParams struct {
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// When true, iframes are rendered inline into the returned HTML.
-	IncludeFrames WebWebScrapeHTMLParamsIncludeFramesUnion `query:"includeFrames,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
-	// When true, waits briefly for CSS and transition animations to settle before
-	// extracting HTML. Defaults to false. This adds a bit of latency in exchange for
-	// more stable output on animated pages.
-	SettleAnimations WebWebScrapeHTMLParamsSettleAnimationsUnion `query:"settleAnimations,omitzero" json:"-"`
 	// Optional comma-separated caller-defined tags for tracking this request. Tags are
 	// recorded on the request's usage log and can be used to filter usage on the
 	// dashboard usage page. Up to 20 tags, each 1-50 characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// When true, return only the page's main content in the HTML response, excluding
-	// headers, footers, sidebars, and navigation when detectable.
-	UseMainContentOnly WebWebScrapeHTMLParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
 	// organization (contact support@context.dev), otherwise the request fails with
@@ -4105,40 +4164,22 @@ const (
 	WebWebScrapeHTMLParamsCountryZw WebWebScrapeHTMLParamsCountry = "zw"
 )
 
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeHTMLParamsIncludeFramesUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeHTMLsIncludeFramesString)
-	OfWebWebScrapeHTMLsIncludeFramesString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeHTMLParamsIncludeFramesString string
-
-const (
-	WebWebScrapeHTMLParamsIncludeFramesStringTrue  WebWebScrapeHTMLParamsIncludeFramesString = "true"
-	WebWebScrapeHTMLParamsIncludeFramesStringFalse WebWebScrapeHTMLParamsIncludeFramesString = "false"
-)
-
 // PDF parsing controls. Use start/end to limit text extraction and embedded-image
 // detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeHTMLParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	// When true, OCR the selected PDF pages that have no usable text layer (scans),
 	// replacing each recovered page's text with the OCR result while pages with a real
 	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
 	// of the base request cost. When false, no OCR runs.
-	Ocr WebWebScrapeHTMLParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
+	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
-	ShouldParse WebWebScrapeHTMLParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
+	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4150,78 +4191,6 @@ func (r WebWebScrapeHTMLParamsPdf) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeHTMLParamsPdfOcrUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeHTMLsPdfOcrString)
-	OfWebWebScrapeHTMLsPdfOcrString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeHTMLParamsPdfOcrString string
-
-const (
-	WebWebScrapeHTMLParamsPdfOcrStringTrue  WebWebScrapeHTMLParamsPdfOcrString = "true"
-	WebWebScrapeHTMLParamsPdfOcrStringFalse WebWebScrapeHTMLParamsPdfOcrString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeHTMLParamsPdfShouldParseUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeHTMLsPdfShouldParseString)
-	OfWebWebScrapeHTMLsPdfShouldParseString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeHTMLParamsPdfShouldParseString string
-
-const (
-	WebWebScrapeHTMLParamsPdfShouldParseStringTrue  WebWebScrapeHTMLParamsPdfShouldParseString = "true"
-	WebWebScrapeHTMLParamsPdfShouldParseStringFalse WebWebScrapeHTMLParamsPdfShouldParseString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeHTMLParamsSettleAnimationsUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeHTMLsSettleAnimationsString)
-	OfWebWebScrapeHTMLsSettleAnimationsString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeHTMLParamsSettleAnimationsString string
-
-const (
-	WebWebScrapeHTMLParamsSettleAnimationsStringTrue  WebWebScrapeHTMLParamsSettleAnimationsString = "true"
-	WebWebScrapeHTMLParamsSettleAnimationsStringFalse WebWebScrapeHTMLParamsSettleAnimationsString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeHTMLParamsUseMainContentOnlyUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeHTMLsUseMainContentOnlyString)
-	OfWebWebScrapeHTMLsUseMainContentOnlyString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeHTMLParamsUseMainContentOnlyString string
-
-const (
-	WebWebScrapeHTMLParamsUseMainContentOnlyStringTrue  WebWebScrapeHTMLParamsUseMainContentOnlyString = "true"
-	WebWebScrapeHTMLParamsUseMainContentOnlyStringFalse WebWebScrapeHTMLParamsUseMainContentOnlyString = "false"
-)
 
 // Set to enabled to bypass shared caches and omit request and response content
 // from retained usage logs. Requires zero data retention to be enabled for your
@@ -4243,6 +4212,11 @@ type WebWebScrapeImagesParams struct {
 	// Optional browser wait time in milliseconds after initial page load before
 	// collecting images. Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// When true, visually duplicate images are removed: every image is loaded and
+	// perceptually hashed, and only the highest-resolution copy of each duplicate
+	// group is kept. Images that cannot be downloaded or hashed are kept. Default:
+	// false.
+	Dedupe param.Opt[bool] `query:"dedupe,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
@@ -4254,11 +4228,6 @@ type WebWebScrapeImagesParams struct {
 	// Optional per-image processing, sent as deep-object query params such as
 	// enrichment[resolution]=true.
 	Enrichment WebWebScrapeImagesParamsEnrichment `query:"enrichment,omitzero" json:"-"`
-	// When true, visually duplicate images are removed: every image is loaded and
-	// perceptually hashed, and only the highest-resolution copy of each duplicate
-	// group is kept. Images that cannot be downloaded or hashed are kept. Default:
-	// false.
-	Dedupe WebWebScrapeImagesParamsDedupeUnion `query:"dedupe,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
@@ -4334,36 +4303,18 @@ func (r WebWebScrapeImagesParamsActionPerform) URLQuery() (v url.Values, err err
 	})
 }
 
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeImagesParamsDedupeUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeImagessDedupeString)
-	OfWebWebScrapeImagessDedupeString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeImagesParamsDedupeString string
-
-const (
-	WebWebScrapeImagesParamsDedupeStringTrue  WebWebScrapeImagesParamsDedupeString = "true"
-	WebWebScrapeImagesParamsDedupeStringFalse WebWebScrapeImagesParamsDedupeString = "false"
-)
-
 // Optional per-image processing, sent as deep-object query params such as
 // enrichment[resolution]=true.
 type WebWebScrapeImagesParamsEnrichment struct {
-	// Per-image enrichment timeout in milliseconds. Default: 30000. Maximum: 60000.
-	MaxTimePerMs param.Opt[int64] `query:"maxTimePerMs,omitzero" json:"-"`
 	// Classify each image by visual asset type.
-	Classification WebWebScrapeImagesParamsEnrichmentClassificationUnion `query:"classification,omitzero" json:"-"`
+	Classification param.Opt[bool] `query:"classification,omitzero" json:"-"`
 	// Host materializable images on the Brand.dev CDN and return their URL and MIME
 	// type.
-	HostedURL WebWebScrapeImagesParamsEnrichmentHostedURLUnion `query:"hostedUrl,omitzero" json:"-"`
+	HostedURL param.Opt[bool] `query:"hostedUrl,omitzero" json:"-"`
+	// Per-image enrichment timeout in milliseconds. Default: 30000. Maximum: 60000.
+	MaxTimePerMs param.Opt[int64] `query:"maxTimePerMs,omitzero" json:"-"`
 	// Measure image width and height when possible.
-	Resolution WebWebScrapeImagesParamsEnrichmentResolutionUnion `query:"resolution,omitzero" json:"-"`
+	Resolution param.Opt[bool] `query:"resolution,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4376,60 +4327,6 @@ func (r WebWebScrapeImagesParamsEnrichment) URLQuery() (v url.Values, err error)
 	})
 }
 
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeImagesParamsEnrichmentClassificationUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeImagessEnrichmentClassificationString)
-	OfWebWebScrapeImagessEnrichmentClassificationString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeImagesParamsEnrichmentClassificationString string
-
-const (
-	WebWebScrapeImagesParamsEnrichmentClassificationStringTrue  WebWebScrapeImagesParamsEnrichmentClassificationString = "true"
-	WebWebScrapeImagesParamsEnrichmentClassificationStringFalse WebWebScrapeImagesParamsEnrichmentClassificationString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeImagesParamsEnrichmentHostedURLUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeImagessEnrichmentHostedURLString)
-	OfWebWebScrapeImagessEnrichmentHostedURLString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeImagesParamsEnrichmentHostedURLString string
-
-const (
-	WebWebScrapeImagesParamsEnrichmentHostedURLStringTrue  WebWebScrapeImagesParamsEnrichmentHostedURLString = "true"
-	WebWebScrapeImagesParamsEnrichmentHostedURLStringFalse WebWebScrapeImagesParamsEnrichmentHostedURLString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeImagesParamsEnrichmentResolutionUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeImagessEnrichmentResolutionString)
-	OfWebWebScrapeImagessEnrichmentResolutionString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeImagesParamsEnrichmentResolutionString string
-
-const (
-	WebWebScrapeImagesParamsEnrichmentResolutionStringTrue  WebWebScrapeImagesParamsEnrichmentResolutionString = "true"
-	WebWebScrapeImagesParamsEnrichmentResolutionStringFalse WebWebScrapeImagesParamsEnrichmentResolutionString = "false"
-)
-
 type WebWebScrapeMdParams struct {
 	// Full URL to scrape into LLM usable Markdown (must include http:// or https://
 	// protocol)
@@ -4441,10 +4338,29 @@ type WebWebScrapeMdParams struct {
 	// Optional browser wait time in milliseconds after initial page load before
 	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// When true, the contents of iframes are rendered to Markdown.
+	IncludeFrames param.Opt[bool] `query:"includeFrames,omitzero" json:"-"`
+	// When true, the response also includes an `html` field with the page HTML the
+	// Markdown was converted from — the same body the Scrape HTML endpoint returns for
+	// the equivalent request.
+	IncludeHTML param.Opt[bool] `query:"includeHTML,omitzero" json:"-"`
+	// Include image references in Markdown output
+	IncludeImages param.Opt[bool] `query:"includeImages,omitzero" json:"-"`
+	// Preserve hyperlinks in Markdown output
+	IncludeLinks param.Opt[bool] `query:"includeLinks,omitzero" json:"-"`
+	// When true, waits briefly for CSS and transition animations to settle before
+	// converting to Markdown. Defaults to false. This adds a bit of latency in
+	// exchange for more stable output on animated pages.
+	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
+	// Shorten base64-encoded image data in the Markdown output
+	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Extract only the main content of the page, excluding headers, footers, sidebars,
+	// and navigation
+	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
 	// Optional browser actions executed in array order after the page loads and before
 	// content is captured. Requires a paid plan. Send a JSON array in the query
 	// parameter. Maximum: 5 actions.
@@ -4481,28 +4397,13 @@ type WebWebScrapeMdParams struct {
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// When true, the contents of iframes are rendered to Markdown.
-	IncludeFrames WebWebScrapeMdParamsIncludeFramesUnion `query:"includeFrames,omitzero" json:"-"`
-	// Include image references in Markdown output
-	IncludeImages WebWebScrapeMdParamsIncludeImagesUnion `query:"includeImages,omitzero" json:"-"`
-	// Preserve hyperlinks in Markdown output
-	IncludeLinks WebWebScrapeMdParamsIncludeLinksUnion `query:"includeLinks,omitzero" json:"-"`
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`
-	// When true, waits briefly for CSS and transition animations to settle before
-	// converting to Markdown. Defaults to false. This adds a bit of latency in
-	// exchange for more stable output on animated pages.
-	SettleAnimations WebWebScrapeMdParamsSettleAnimationsUnion `query:"settleAnimations,omitzero" json:"-"`
-	// Shorten base64-encoded image data in the Markdown output
-	ShortenBase64Images WebWebScrapeMdParamsShortenBase64ImagesUnion `query:"shortenBase64Images,omitzero" json:"-"`
 	// Optional comma-separated caller-defined tags for tracking this request. Tags are
 	// recorded on the request's usage log and can be used to filter usage on the
 	// dashboard usage page. Up to 20 tags, each 1-50 characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Extract only the main content of the page, excluding headers, footers, sidebars,
-	// and navigation
-	UseMainContentOnly WebWebScrapeMdParamsUseMainContentOnlyUnion `query:"useMainContentOnly,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
 	// organization (contact support@context.dev), otherwise the request fails with
@@ -4787,76 +4688,22 @@ const (
 	WebWebScrapeMdParamsCountryZw WebWebScrapeMdParamsCountry = "zw"
 )
 
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsIncludeFramesUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsIncludeFramesString)
-	OfWebWebScrapeMdsIncludeFramesString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsIncludeFramesString string
-
-const (
-	WebWebScrapeMdParamsIncludeFramesStringTrue  WebWebScrapeMdParamsIncludeFramesString = "true"
-	WebWebScrapeMdParamsIncludeFramesStringFalse WebWebScrapeMdParamsIncludeFramesString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsIncludeImagesUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsIncludeImagesString)
-	OfWebWebScrapeMdsIncludeImagesString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsIncludeImagesString string
-
-const (
-	WebWebScrapeMdParamsIncludeImagesStringTrue  WebWebScrapeMdParamsIncludeImagesString = "true"
-	WebWebScrapeMdParamsIncludeImagesStringFalse WebWebScrapeMdParamsIncludeImagesString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsIncludeLinksUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsIncludeLinksString)
-	OfWebWebScrapeMdsIncludeLinksString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsIncludeLinksString string
-
-const (
-	WebWebScrapeMdParamsIncludeLinksStringTrue  WebWebScrapeMdParamsIncludeLinksString = "true"
-	WebWebScrapeMdParamsIncludeLinksStringFalse WebWebScrapeMdParamsIncludeLinksString = "false"
-)
-
 // PDF parsing controls. Use start/end to limit text extraction and embedded-image
 // detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
-	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	// When true, OCR the selected PDF pages that have no usable text layer (scans),
 	// replacing each recovered page's text with the OCR result while pages with a real
 	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
 	// of the base request cost. When false, no OCR runs.
-	Ocr WebWebScrapeMdParamsPdfOcrUnion `query:"ocr,omitzero" json:"-"`
+	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
 	// a 400 PDF_SKIPPED is returned.
-	ShouldParse WebWebScrapeMdParamsPdfShouldParseUnion `query:"shouldParse,omitzero" json:"-"`
+	ShouldParse param.Opt[bool] `query:"shouldParse,omitzero" json:"-"`
+	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	paramObj
 }
 
@@ -4868,96 +4715,6 @@ func (r WebWebScrapeMdParamsPdf) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsPdfOcrUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsPdfOcrString)
-	OfWebWebScrapeMdsPdfOcrString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsPdfOcrString string
-
-const (
-	WebWebScrapeMdParamsPdfOcrStringTrue  WebWebScrapeMdParamsPdfOcrString = "true"
-	WebWebScrapeMdParamsPdfOcrStringFalse WebWebScrapeMdParamsPdfOcrString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsPdfShouldParseUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsPdfShouldParseString)
-	OfWebWebScrapeMdsPdfShouldParseString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsPdfShouldParseString string
-
-const (
-	WebWebScrapeMdParamsPdfShouldParseStringTrue  WebWebScrapeMdParamsPdfShouldParseString = "true"
-	WebWebScrapeMdParamsPdfShouldParseStringFalse WebWebScrapeMdParamsPdfShouldParseString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsSettleAnimationsUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsSettleAnimationsString)
-	OfWebWebScrapeMdsSettleAnimationsString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsSettleAnimationsString string
-
-const (
-	WebWebScrapeMdParamsSettleAnimationsStringTrue  WebWebScrapeMdParamsSettleAnimationsString = "true"
-	WebWebScrapeMdParamsSettleAnimationsStringFalse WebWebScrapeMdParamsSettleAnimationsString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsShortenBase64ImagesUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsShortenBase64ImagesString)
-	OfWebWebScrapeMdsShortenBase64ImagesString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsShortenBase64ImagesString string
-
-const (
-	WebWebScrapeMdParamsShortenBase64ImagesStringTrue  WebWebScrapeMdParamsShortenBase64ImagesString = "true"
-	WebWebScrapeMdParamsShortenBase64ImagesStringFalse WebWebScrapeMdParamsShortenBase64ImagesString = "false"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type WebWebScrapeMdParamsUseMainContentOnlyUnion struct {
-	OfBool param.Opt[bool] `query:",omitzero,inline"`
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfWebWebScrapeMdsUseMainContentOnlyString)
-	OfWebWebScrapeMdsUseMainContentOnlyString param.Opt[string] `query:",omitzero,inline"`
-	paramUnion
-}
-
-type WebWebScrapeMdParamsUseMainContentOnlyString string
-
-const (
-	WebWebScrapeMdParamsUseMainContentOnlyStringTrue  WebWebScrapeMdParamsUseMainContentOnlyString = "true"
-	WebWebScrapeMdParamsUseMainContentOnlyStringFalse WebWebScrapeMdParamsUseMainContentOnlyString = "false"
-)
 
 // Set to enabled to bypass shared caches and omit request and response content
 // from retained usage logs. Requires zero data retention to be enabled for your

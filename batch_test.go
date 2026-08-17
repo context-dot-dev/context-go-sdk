@@ -176,19 +176,16 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 						Options: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptions{
 							Country:          "de",
 							ExcludeSelectors: []string{"x"},
+							IncludeHTML:      contextdev.Bool(true),
 							IncludeImages:    contextdev.Bool(true),
 							IncludeLinks:     contextdev.Bool(true),
 							IncludeSelectors: []string{"x"},
 							MaxAgeMs:         contextdev.Int(0),
 							Pdf: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf{
-								End: contextdev.Int(1),
-								Ocr: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfOcrUnion{
-									OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfOcrString: contextdev.String("true"),
-								},
-								ShouldParse: contextdev.BatchSubmitParamsInputScrapeDataMarkdownOptionsPdfShouldParseUnion{
-									OfBatchSubmitsInputScrapeDataMarkdownOptionsPdfShouldParseString: contextdev.String("true"),
-								},
-								Start: contextdev.Int(1),
+								End:         contextdev.Int(1),
+								Ocr:         contextdev.Bool(true),
+								ShouldParse: contextdev.Bool(true),
+								Start:       contextdev.Int(1),
 							},
 							SettleAnimations:    contextdev.Bool(true),
 							ShortenBase64Images: contextdev.Bool(true),

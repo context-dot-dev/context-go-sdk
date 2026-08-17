@@ -33,10 +33,11 @@ func NewUtilityService(opts ...option.RequestOption) (r UtilityService) {
 	return
 }
 
-// Signal that you may fetch brand data soon to improve latency. The type field
-// selects what to prefetch (currently only 'brand') and identifier carries exactly
-// one lookup key: a domain, or an email whose domain is extracted and validated
-// (free email providers and disposable email addresses are not allowed).
+// Signal that you may fetch data soon to improve latency. The type field selects
+// what to prefetch ('brand' queues a brand data fetch, 'styleguide' queues a
+// styleguide extraction) and identifier carries exactly one lookup key: a domain,
+// or an email whose domain is extracted and validated (free email providers and
+// disposable email addresses are not allowed).
 func (r *UtilityService) Prefetch(ctx context.Context, body UtilityPrefetchParams, opts ...option.RequestOption) (res *UtilityPrefetchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "utility/prefetch"
@@ -54,10 +55,9 @@ type UtilityPrefetchResponse struct {
 	Message string `json:"message"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
-	// The type of prefetch that was queued, echoed from the request (currently always
-	// 'brand')
+	// The type of prefetch that was queued, echoed from the request
 	//
-	// Any of "brand".
+	// Any of "brand", "styleguide".
 	Type UtilityPrefetchResponseType `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -99,20 +99,21 @@ func (r *UtilityPrefetchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The type of prefetch that was queued, echoed from the request (currently always
-// 'brand')
+// The type of prefetch that was queued, echoed from the request
 type UtilityPrefetchResponseType string
 
 const (
-	UtilityPrefetchResponseTypeBrand UtilityPrefetchResponseType = "brand"
+	UtilityPrefetchResponseTypeBrand      UtilityPrefetchResponseType = "brand"
+	UtilityPrefetchResponseTypeStyleguide UtilityPrefetchResponseType = "styleguide"
 )
 
 type UtilityPrefetchParams struct {
-	// Identifier of the brand to prefetch. Provide exactly one of domain or email.
+	// Identifier of the target to prefetch. Provide exactly one of domain or email.
 	Identifier UtilityPrefetchParamsIdentifierUnion `json:"identifier,omitzero" api:"required"`
-	// What to prefetch. Currently only 'brand' is supported.
+	// What to prefetch: 'brand' warms the brand data cache, 'styleguide' warms the
+	// styleguide cache.
 	//
-	// Any of "brand".
+	// Any of "brand", "styleguide".
 	Type UtilityPrefetchParamsType `json:"type,omitzero" api:"required"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
@@ -147,11 +148,11 @@ func (u *UtilityPrefetchParamsIdentifierUnion) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Prefetch brand data by domain.
+// Prefetch by domain.
 //
 // The property Domain is required.
 type UtilityPrefetchParamsIdentifierByDomain struct {
-	// Domain name to prefetch brand data for
+	// Domain name to prefetch data for
 	Domain string `json:"domain" api:"required"`
 	paramObj
 }
@@ -164,13 +165,13 @@ func (r *UtilityPrefetchParamsIdentifierByDomain) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Prefetch brand data by email. The domain will be extracted and validated.
+// Prefetch by email. The domain will be extracted and validated.
 //
 // The property Email is required.
 type UtilityPrefetchParamsIdentifierByEmail struct {
-	// Email address to prefetch brand data for. The domain will be extracted from the
-	// email. Free email providers (gmail.com, yahoo.com, etc.) and disposable email
-	// addresses are not allowed.
+	// Email address to prefetch data for. The domain will be extracted from the email.
+	// Free email providers (gmail.com, yahoo.com, etc.) and disposable email addresses
+	// are not allowed.
 	Email string `json:"email" api:"required" format:"email"`
 	paramObj
 }
@@ -183,9 +184,11 @@ func (r *UtilityPrefetchParamsIdentifierByEmail) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What to prefetch. Currently only 'brand' is supported.
+// What to prefetch: 'brand' warms the brand data cache, 'styleguide' warms the
+// styleguide cache.
 type UtilityPrefetchParamsType string
 
 const (
-	UtilityPrefetchParamsTypeBrand UtilityPrefetchParamsType = "brand"
+	UtilityPrefetchParamsTypeBrand      UtilityPrefetchParamsType = "brand"
+	UtilityPrefetchParamsTypeStyleguide UtilityPrefetchParamsType = "styleguide"
 )

@@ -2738,6 +2738,12 @@ type WebScreenshotParams struct {
 	// the screenshot. Min: 0. Max: 30000 (30 seconds). Defaults to 3000 ms when
 	// omitted.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// Optional parameter for comprehensive popup cleanup. If 'true', the browser
+	// dismisses detected cookie/consent UI and clears other detected obstructive
+	// popups and overlays before capture. If 'false' or not provided, this parameter
+	// requests no cleanup; handleCookiePopup can still request cookie/consent handling
+	// independently.
+	ClearPopups param.Opt[bool] `query:"clearPopups,omitzero" json:"-"`
 	// A specific URL to screenshot directly, bypassing domain resolution (e.g.,
 	// 'https://example.com/pricing'). When provided, the screenshot is taken of this
 	// exact URL. You must provide either 'domain' or 'directUrl', but not both.

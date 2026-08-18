@@ -287,10 +287,17 @@ type BrandGetResponseBrandColor struct {
 	Hex string `json:"hex"`
 	// Name of the color
 	Name string `json:"name"`
+	// Where the color was observed: 'site' colors come from the website's own theme
+	// signals (rendered page colors, manifest, theme-color meta), 'logo' colors from
+	// logo image pixels.
+	//
+	// Any of "site", "logo".
+	Source string `json:"source"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Hex         respjson.Field
 		Name        respjson.Field
+		Source      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -780,10 +787,17 @@ type BrandGetSimplifiedResponseBrandColor struct {
 	Hex string `json:"hex"`
 	// Name of the color
 	Name string `json:"name"`
+	// Where the color was observed: 'site' colors come from the website's own theme
+	// signals (rendered page colors, manifest, theme-color meta), 'logo' colors from
+	// logo image pixels.
+	//
+	// Any of "site", "logo".
+	Source string `json:"source"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Hex         respjson.Field
 		Name        respjson.Field
+		Source      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`

@@ -3511,13 +3511,15 @@ type WebWebCrawlMdParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
-	// Regex pattern. Only URLs matching this pattern will be followed and scraped.
+	// Regex pattern. Only URLs matching this pattern will be followed and scraped. An
+	// automatic prefix scope in the form ^<starting URL> follows a redirect of the
+	// starting page.
 	URLRegex param.Opt[string] `json:"urlRegex,omitzero"`
 	// Extract only the main content, stripping headers, footers, sidebars, and
 	// navigation
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
-	// Optional browser wait time in milliseconds after initial page load for each
-	// crawled page. Min: 0. Max: 30000 (30 seconds).
+	// Browser wait time in milliseconds after initial page load for each crawled page.
+	// Defaults to 3500 (3.5 seconds). Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
 	// Fetch the target page through a residential proxy in this country (ISO 3166-1
 	// alpha-2).

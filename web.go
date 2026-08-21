@@ -208,22 +208,58 @@ type WebExtractResponseMetadata struct {
 	NumSkipped   int64 `json:"numSkipped" api:"required"`
 	NumSucceeded int64 `json:"numSucceeded" api:"required"`
 	NumURLs      int64 `json:"numUrls" api:"required"`
+	// One verified outcome per requested browser action, in request order.
+	ActionsApplied []WebExtractResponseMetadataActionsApplied `json:"actionsApplied"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		MaxCrawlDepth respjson.Field
-		NumBlocked    respjson.Field
-		NumFailed     respjson.Field
-		NumSkipped    respjson.Field
-		NumSucceeded  respjson.Field
-		NumURLs       respjson.Field
-		ExtraFields   map[string]respjson.Field
-		raw           string
+		MaxCrawlDepth  respjson.Field
+		NumBlocked     respjson.Field
+		NumFailed      respjson.Field
+		NumSkipped     respjson.Field
+		NumSucceeded   respjson.Field
+		NumURLs        respjson.Field
+		ActionsApplied respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebExtractResponseMetadata) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractResponseMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractResponseMetadataActionsApplied struct {
+	Instruction string `json:"instruction" api:"required"`
+	// Applied means the requested page state was visibly verified. Failed means it was
+	// not verified. Skipped means it was not attempted.
+	//
+	// Any of "applied", "failed", "skipped".
+	Status string `json:"status" api:"required"`
+	// Visible page evidence used to verify an applied action.
+	CompletionEvidence string  `json:"completionEvidence"`
+	DurationMs         float64 `json:"durationMs"`
+	Error              string  `json:"error"`
+	Method             string  `json:"method"`
+	TargetDescription  string  `json:"targetDescription"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Instruction        respjson.Field
+		Status             respjson.Field
+		CompletionEvidence respjson.Field
+		DurationMs         respjson.Field
+		Error              respjson.Field
+		Method             respjson.Field
+		TargetDescription  respjson.Field
+		ExtraFields        map[string]respjson.Field
+		raw                string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractResponseMetadataActionsApplied) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractResponseMetadataActionsApplied) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2538,9 +2574,11 @@ func (r *WebWebScrapeSitemapResponseKeyMetadata) UnmarshalJSON(data []byte) erro
 }
 
 type WebExtractParams struct {
-	// JSON Schema for the returned data object. TypeScript Zod users can pass a JSON
-	// Schema generated from a Zod object; Python users can pass the equivalent JSON
-	// Schema object.
+	// JSON Schema for the returned data object. Image fields such as `image_urls` or
+	// `product_photos` automatically make page image references available to
+	// extraction, so product data and photos can be returned in one call. TypeScript
+	// Zod users can pass a JSON Schema generated from a Zod object; Python users can
+	// pass the equivalent JSON Schema object.
 	Schema map[string]any `json:"schema,omitzero" api:"required"`
 	// The starting website URL to crawl and extract from. Must include http:// or
 	// https://.
@@ -2572,7 +2610,8 @@ type WebExtractParams struct {
 	// exchange for more stable output on animated pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Soft time budget for the crawl in milliseconds. Min: 10000 (10s). Max: 110000
-	// (110s). Default: 80000 (80s).
+	// (110s). Defaults to 80000 (80s), or 110000 (110s) when browser actions are
+	// provided.
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
@@ -2580,8 +2619,12 @@ type WebExtractParams struct {
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional browser wait time in milliseconds after initial page load for each
 	// crawled page.
-	WaitForMs param.Opt[int64]    `json:"waitForMs,omitzero"`
-	Pdf       WebExtractParamsPdf `json:"pdf,omitzero"`
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Optional browser actions executed in order on the requested page after it loads
+	// and before extraction. Requires a paid plan. When actions are provided and
+	// stopAfterMs is omitted, the crawl budget defaults to 110000 ms.
+	Actions []WebExtractParamsActionUnion `json:"actions,omitzero"`
+	Pdf     WebExtractParamsPdf           `json:"pdf,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
@@ -2592,6 +2635,66 @@ func (r WebExtractParams) MarshalJSON() (data []byte, err error) {
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *WebExtractParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebExtractParamsActionUnion struct {
+	OfWait    *WebExtractParamsActionWait    `json:",omitzero,inline"`
+	OfPerform *WebExtractParamsActionPerform `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebExtractParamsActionUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfWait, u.OfPerform)
+}
+func (u *WebExtractParamsActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[WebExtractParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebExtractParamsActionWait]("wait"),
+		apijson.Discriminator[WebExtractParamsActionPerform]("perform"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebExtractParamsActionWait struct {
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `json:"do" default:"wait"`
+	paramObj
+}
+
+func (r WebExtractParamsActionWait) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParamsActionWait
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParamsActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebExtractParamsActionPerform struct {
+	Action string `json:"action" api:"required"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `json:"do" default:"perform"`
+	paramObj
+}
+
+func (r WebExtractParamsActionPerform) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParamsActionPerform
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParamsActionPerform) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

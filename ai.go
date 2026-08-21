@@ -129,6 +129,11 @@ type AIExtractProductResponseProduct struct {
 	Tags []string `json:"tags" api:"required"`
 	// Target audience for the product (array of strings)
 	TargetAudience []string `json:"target_audience" api:"required"`
+	// Normalized stock or ordering availability
+	//
+	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
+	// "backorder", "made_to_order", "discontinued".
+	Availability string `json:"availability" api:"nullable"`
 	// Billing frequency for the product
 	//
 	// Any of "monthly", "yearly", "one_time", "usage_based".
@@ -137,6 +142,8 @@ type AIExtractProductResponseProduct struct {
 	Category string `json:"category" api:"nullable"`
 	// Currency code for the price (e.g., USD, EUR)
 	Currency string `json:"currency" api:"nullable"`
+	// Dimension statements shown for the product, preserving labels, values, and units
+	Dimensions []string `json:"dimensions"`
 	// URL to the product image
 	ImageURL string `json:"image_url" api:"nullable"`
 	// Price of the product
@@ -145,6 +152,8 @@ type AIExtractProductResponseProduct struct {
 	//
 	// Any of "per_seat", "flat", "tiered", "freemium", "custom".
 	PricingModel string `json:"pricing_model" api:"nullable"`
+	// Original or regular price before a displayed discount
+	RegularPrice float64 `json:"regular_price" api:"nullable"`
 	// URL to the product page
 	URL string `json:"url" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -156,12 +165,15 @@ type AIExtractProductResponseProduct struct {
 		SKU              respjson.Field
 		Tags             respjson.Field
 		TargetAudience   respjson.Field
+		Availability     respjson.Field
 		BillingFrequency respjson.Field
 		Category         respjson.Field
 		Currency         respjson.Field
+		Dimensions       respjson.Field
 		ImageURL         respjson.Field
 		Price            respjson.Field
 		PricingModel     respjson.Field
+		RegularPrice     respjson.Field
 		URL              respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string
@@ -232,6 +244,11 @@ type AIExtractProductsResponseProduct struct {
 	Tags []string `json:"tags" api:"required"`
 	// Target audience for the product (array of strings)
 	TargetAudience []string `json:"target_audience" api:"required"`
+	// Normalized stock or ordering availability
+	//
+	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
+	// "backorder", "made_to_order", "discontinued".
+	Availability string `json:"availability" api:"nullable"`
 	// Billing frequency for the product
 	//
 	// Any of "monthly", "yearly", "one_time", "usage_based".
@@ -240,6 +257,8 @@ type AIExtractProductsResponseProduct struct {
 	Category string `json:"category" api:"nullable"`
 	// Currency code for the price (e.g., USD, EUR)
 	Currency string `json:"currency" api:"nullable"`
+	// Dimension statements shown for the product, preserving labels, values, and units
+	Dimensions []string `json:"dimensions"`
 	// URL to the product image
 	ImageURL string `json:"image_url" api:"nullable"`
 	// Price of the product
@@ -248,6 +267,8 @@ type AIExtractProductsResponseProduct struct {
 	//
 	// Any of "per_seat", "flat", "tiered", "freemium", "custom".
 	PricingModel string `json:"pricing_model" api:"nullable"`
+	// Original or regular price before a displayed discount
+	RegularPrice float64 `json:"regular_price" api:"nullable"`
 	// URL to the product page
 	URL string `json:"url" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -259,12 +280,15 @@ type AIExtractProductsResponseProduct struct {
 		SKU              respjson.Field
 		Tags             respjson.Field
 		TargetAudience   respjson.Field
+		Availability     respjson.Field
 		BillingFrequency respjson.Field
 		Category         respjson.Field
 		Currency         respjson.Field
+		Dimensions       respjson.Field
 		ImageURL         respjson.Field
 		Price            respjson.Field
 		PricingModel     respjson.Field
+		RegularPrice     respjson.Field
 		URL              respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string

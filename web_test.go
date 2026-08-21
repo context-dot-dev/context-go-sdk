@@ -33,7 +33,12 @@ func TestWebExtractWithOptionalParams(t *testing.T) {
 			"required":             "bar",
 			"additionalProperties": "bar",
 		},
-		URL:              "https://example.com",
+		URL: "https://example.com",
+		Actions: []contextdev.WebExtractParamsActionUnion{{
+			OfWait: &contextdev.WebExtractParamsActionWait{
+				TimeMs: 0,
+			},
+		}},
 		FactCheck:        contextdev.Bool(true),
 		FollowSubdomains: contextdev.Bool(true),
 		IncludeFrames:    contextdev.Bool(true),

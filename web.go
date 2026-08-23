@@ -208,22 +208,58 @@ type WebExtractResponseMetadata struct {
 	NumSkipped   int64 `json:"numSkipped" api:"required"`
 	NumSucceeded int64 `json:"numSucceeded" api:"required"`
 	NumURLs      int64 `json:"numUrls" api:"required"`
+	// One verified outcome per requested browser action, in request order.
+	ActionsApplied []WebExtractResponseMetadataActionsApplied `json:"actionsApplied"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		MaxCrawlDepth respjson.Field
-		NumBlocked    respjson.Field
-		NumFailed     respjson.Field
-		NumSkipped    respjson.Field
-		NumSucceeded  respjson.Field
-		NumURLs       respjson.Field
-		ExtraFields   map[string]respjson.Field
-		raw           string
+		MaxCrawlDepth  respjson.Field
+		NumBlocked     respjson.Field
+		NumFailed      respjson.Field
+		NumSkipped     respjson.Field
+		NumSucceeded   respjson.Field
+		NumURLs        respjson.Field
+		ActionsApplied respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebExtractResponseMetadata) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractResponseMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractResponseMetadataActionsApplied struct {
+	Instruction string `json:"instruction" api:"required"`
+	// Applied means the requested page state was visibly verified. Failed means it was
+	// not verified. Skipped means it was not attempted.
+	//
+	// Any of "applied", "failed", "skipped".
+	Status string `json:"status" api:"required"`
+	// Visible page evidence used to verify an applied action.
+	CompletionEvidence string  `json:"completionEvidence"`
+	DurationMs         float64 `json:"durationMs"`
+	Error              string  `json:"error"`
+	Method             string  `json:"method"`
+	TargetDescription  string  `json:"targetDescription"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Instruction        respjson.Field
+		Status             respjson.Field
+		CompletionEvidence respjson.Field
+		DurationMs         respjson.Field
+		Error              respjson.Field
+		Method             respjson.Field
+		TargetDescription  respjson.Field
+		ExtraFields        map[string]respjson.Field
+		raw                string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractResponseMetadataActionsApplied) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractResponseMetadataActionsApplied) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2011,17 +2047,20 @@ type WebWebScrapeImagesResponse struct {
 	Success bool `json:"success" api:"required"`
 	// Page URL that was scraped.
 	URL string `json:"url" api:"required"`
+	// One verified outcome per requested browser action, in request order.
+	ActionsApplied []WebWebScrapeImagesResponseActionsApplied `json:"actionsApplied"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebWebScrapeImagesResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Images      respjson.Field
-		Success     respjson.Field
-		URL         respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		Images         respjson.Field
+		Success        respjson.Field
+		URL            respjson.Field
+		ActionsApplied respjson.Field
+		KeyMetadata    respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
 	} `json:"-"`
 }
 
@@ -2095,6 +2134,39 @@ type WebWebScrapeImagesResponseImageEnrichment struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeImagesResponseImageEnrichment) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeImagesResponseImageEnrichment) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeImagesResponseActionsApplied struct {
+	Instruction string `json:"instruction" api:"required"`
+	// Applied means the requested page state was visibly verified. Failed means it was
+	// not verified. Skipped means it was not attempted.
+	//
+	// Any of "applied", "failed", "skipped".
+	Status string `json:"status" api:"required"`
+	// Visible page evidence used to verify an applied action.
+	CompletionEvidence string  `json:"completionEvidence"`
+	DurationMs         float64 `json:"durationMs"`
+	Error              string  `json:"error"`
+	Method             string  `json:"method"`
+	TargetDescription  string  `json:"targetDescription"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Instruction        respjson.Field
+		Status             respjson.Field
+		CompletionEvidence respjson.Field
+		DurationMs         respjson.Field
+		Error              respjson.Field
+		Method             respjson.Field
+		TargetDescription  respjson.Field
+		ExtraFields        map[string]respjson.Field
+		raw                string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeImagesResponseActionsApplied) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeImagesResponseActionsApplied) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2538,9 +2610,11 @@ func (r *WebWebScrapeSitemapResponseKeyMetadata) UnmarshalJSON(data []byte) erro
 }
 
 type WebExtractParams struct {
-	// JSON Schema for the returned data object. TypeScript Zod users can pass a JSON
-	// Schema generated from a Zod object; Python users can pass the equivalent JSON
-	// Schema object.
+	// JSON Schema for the returned data object. Image fields such as `image_urls` or
+	// `product_photos` automatically make page image references available to
+	// extraction, so product data and photos can be returned in one call. TypeScript
+	// Zod users can pass a JSON Schema generated from a Zod object; Python users can
+	// pass the equivalent JSON Schema object.
 	Schema map[string]any `json:"schema,omitzero" api:"required"`
 	// The starting website URL to crawl and extract from. Must include http:// or
 	// https://.
@@ -2572,7 +2646,8 @@ type WebExtractParams struct {
 	// exchange for more stable output on animated pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Soft time budget for the crawl in milliseconds. Min: 10000 (10s). Max: 110000
-	// (110s). Default: 80000 (80s).
+	// (110s). Defaults to 80000 (80s), or 110000 (110s) when browser actions are
+	// provided.
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
@@ -2580,8 +2655,13 @@ type WebExtractParams struct {
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional browser wait time in milliseconds after initial page load for each
 	// crawled page.
-	WaitForMs param.Opt[int64]    `json:"waitForMs,omitzero"`
-	Pdf       WebExtractParamsPdf `json:"pdf,omitzero"`
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Optional browser actions executed in order on the requested page after it loads,
+	// before links are discovered or additional pages are crawled. Requires a paid
+	// plan. When actions are provided and stopAfterMs is omitted, the crawl budget
+	// defaults to 110000 ms.
+	Actions []WebExtractParamsActionUnion `json:"actions,omitzero"`
+	Pdf     WebExtractParamsPdf           `json:"pdf,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
@@ -2594,6 +2674,129 @@ func (r WebExtractParams) MarshalJSON() (data []byte, err error) {
 func (r *WebExtractParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebExtractParamsActionUnion struct {
+	OfWait    *WebExtractParamsActionWait    `json:",omitzero,inline"`
+	OfPerform *WebExtractParamsActionPerform `json:",omitzero,inline"`
+	OfScroll  *WebExtractParamsActionScroll  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebExtractParamsActionUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfWait, u.OfPerform, u.OfScroll)
+}
+func (u *WebExtractParamsActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[WebExtractParamsActionUnion](
+		"do",
+		apijson.Discriminator[WebExtractParamsActionWait]("wait"),
+		apijson.Discriminator[WebExtractParamsActionPerform]("perform"),
+		apijson.Discriminator[WebExtractParamsActionScroll]("scroll"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type WebExtractParamsActionWait struct {
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `json:"do" default:"wait"`
+	paramObj
+}
+
+func (r WebExtractParamsActionWait) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParamsActionWait
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParamsActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type WebExtractParamsActionPerform struct {
+	Action string `json:"action" api:"required"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `json:"do" default:"perform"`
+	paramObj
+}
+
+func (r WebExtractParamsActionPerform) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParamsActionPerform
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParamsActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+//
+// The property Do is required.
+type WebExtractParamsActionScroll struct {
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container param.Opt[string] `json:"container,omitzero"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount WebExtractParamsActionScrollAmountUnion `json:"amount,omitzero"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction,omitzero"`
+	// This field can be elided, and will marshal its zero value as "scroll".
+	Do constant.Scroll `json:"do" default:"scroll"`
+	paramObj
+}
+
+func (r WebExtractParamsActionScroll) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParamsActionScroll
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParamsActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebExtractParamsActionScroll](
+		"direction", "up", "down", "left", "right",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebExtractParamsActionScrollAmountUnion struct {
+	OfInt param.Opt[int64] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebExtractsActionScrollAmountString)
+	OfWebExtractsActionScrollAmountString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebExtractParamsActionScrollAmountUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfInt, u.OfWebExtractsActionScrollAmountString)
+}
+func (u *WebExtractParamsActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type WebExtractParamsActionScrollAmountString string
+
+const (
+	WebExtractParamsActionScrollAmountStringViewport WebExtractParamsActionScrollAmountString = "viewport"
+	WebExtractParamsActionScrollAmountStringMax      WebExtractParamsActionScrollAmountString = "max"
+)
 
 type WebExtractParamsPdf struct {
 	// Last 1-based PDF page to parse. Must be greater than or equal to start when both
@@ -3511,13 +3714,15 @@ type WebWebCrawlMdParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
-	// Regex pattern. Only URLs matching this pattern will be followed and scraped.
+	// Regex pattern. Only URLs matching this pattern will be followed and scraped. An
+	// automatic prefix scope in the form ^<starting URL> follows a redirect of the
+	// starting page.
 	URLRegex param.Opt[string] `json:"urlRegex,omitzero"`
 	// Extract only the main content, stripping headers, footers, sidebars, and
 	// navigation
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
-	// Optional browser wait time in milliseconds after initial page load for each
-	// crawled page. Min: 0. Max: 30000 (30 seconds).
+	// Browser wait time in milliseconds after initial page load for each crawled page.
+	// Defaults to 3500 (3.5 seconds). Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
 	// Fetch the target page through a residential proxy in this country (ISO 3166-1
 	// alpha-2).
@@ -3910,6 +4115,7 @@ func (r WebWebScrapeHTMLParams) URLQuery() (v url.Values, err error) {
 type WebWebScrapeHTMLParamsActionUnion struct {
 	OfWait    *WebWebScrapeHTMLParamsActionWait    `query:",omitzero,inline"`
 	OfPerform *WebWebScrapeHTMLParamsActionPerform `query:",omitzero,inline"`
+	OfScroll  *WebWebScrapeHTMLParamsActionScroll  `query:",omitzero,inline"`
 	paramUnion
 }
 
@@ -3918,6 +4124,7 @@ func init() {
 		"do",
 		apijson.Discriminator[WebWebScrapeHTMLParamsActionWait]("wait"),
 		apijson.Discriminator[WebWebScrapeHTMLParamsActionPerform]("perform"),
+		apijson.Discriminator[WebWebScrapeHTMLParamsActionScroll]("scroll"),
 	)
 }
 
@@ -3958,6 +4165,55 @@ func (r WebWebScrapeHTMLParamsActionPerform) URLQuery() (v url.Values, err error
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+//
+// The property Do is required.
+type WebWebScrapeHTMLParamsActionScroll struct {
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container param.Opt[string] `query:"container,omitzero" json:"-"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls param.Opt[int64] `query:"maxScrolls,omitzero" json:"-"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount WebWebScrapeHTMLParamsActionScrollAmountUnion `query:"amount,omitzero" json:"-"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `query:"direction,omitzero" json:"-"`
+	// This field can be elided, and will marshal its zero value as "scroll".
+	Do constant.Scroll `query:"do" json:"-" default:"scroll"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsActionScroll]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeHTMLParamsActionScroll) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsActionScrollAmountUnion struct {
+	OfInt param.Opt[int64] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsActionScrollAmountString)
+	OfWebWebScrapeHTMLsActionScrollAmountString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsActionScrollAmountString string
+
+const (
+	WebWebScrapeHTMLParamsActionScrollAmountStringViewport WebWebScrapeHTMLParamsActionScrollAmountString = "viewport"
+	WebWebScrapeHTMLParamsActionScrollAmountStringMax      WebWebScrapeHTMLParamsActionScrollAmountString = "max"
+)
 
 // Fetch the target page through a residential proxy in this country (ISO 3166-1
 // alpha-2).
@@ -4260,6 +4516,7 @@ func (r WebWebScrapeImagesParams) URLQuery() (v url.Values, err error) {
 type WebWebScrapeImagesParamsActionUnion struct {
 	OfWait    *WebWebScrapeImagesParamsActionWait    `query:",omitzero,inline"`
 	OfPerform *WebWebScrapeImagesParamsActionPerform `query:",omitzero,inline"`
+	OfScroll  *WebWebScrapeImagesParamsActionScroll  `query:",omitzero,inline"`
 	paramUnion
 }
 
@@ -4268,6 +4525,7 @@ func init() {
 		"do",
 		apijson.Discriminator[WebWebScrapeImagesParamsActionWait]("wait"),
 		apijson.Discriminator[WebWebScrapeImagesParamsActionPerform]("perform"),
+		apijson.Discriminator[WebWebScrapeImagesParamsActionScroll]("scroll"),
 	)
 }
 
@@ -4308,6 +4566,55 @@ func (r WebWebScrapeImagesParamsActionPerform) URLQuery() (v url.Values, err err
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+//
+// The property Do is required.
+type WebWebScrapeImagesParamsActionScroll struct {
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container param.Opt[string] `query:"container,omitzero" json:"-"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls param.Opt[int64] `query:"maxScrolls,omitzero" json:"-"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount WebWebScrapeImagesParamsActionScrollAmountUnion `query:"amount,omitzero" json:"-"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `query:"direction,omitzero" json:"-"`
+	// This field can be elided, and will marshal its zero value as "scroll".
+	Do constant.Scroll `query:"do" json:"-" default:"scroll"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeImagesParamsActionScroll]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeImagesParamsActionScroll) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeImagesParamsActionScrollAmountUnion struct {
+	OfInt param.Opt[int64] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeImagessActionScrollAmountString)
+	OfWebWebScrapeImagessActionScrollAmountString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeImagesParamsActionScrollAmountString string
+
+const (
+	WebWebScrapeImagesParamsActionScrollAmountStringViewport WebWebScrapeImagesParamsActionScrollAmountString = "viewport"
+	WebWebScrapeImagesParamsActionScrollAmountStringMax      WebWebScrapeImagesParamsActionScrollAmountString = "max"
+)
 
 // Optional per-image processing, sent as deep-object query params such as
 // enrichment[resolution]=true.
@@ -4434,6 +4741,7 @@ func (r WebWebScrapeMdParams) URLQuery() (v url.Values, err error) {
 type WebWebScrapeMdParamsActionUnion struct {
 	OfWait    *WebWebScrapeMdParamsActionWait    `query:",omitzero,inline"`
 	OfPerform *WebWebScrapeMdParamsActionPerform `query:",omitzero,inline"`
+	OfScroll  *WebWebScrapeMdParamsActionScroll  `query:",omitzero,inline"`
 	paramUnion
 }
 
@@ -4442,6 +4750,7 @@ func init() {
 		"do",
 		apijson.Discriminator[WebWebScrapeMdParamsActionWait]("wait"),
 		apijson.Discriminator[WebWebScrapeMdParamsActionPerform]("perform"),
+		apijson.Discriminator[WebWebScrapeMdParamsActionScroll]("scroll"),
 	)
 }
 
@@ -4482,6 +4791,55 @@ func (r WebWebScrapeMdParamsActionPerform) URLQuery() (v url.Values, err error) 
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+//
+// The property Do is required.
+type WebWebScrapeMdParamsActionScroll struct {
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container param.Opt[string] `query:"container,omitzero" json:"-"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls param.Opt[int64] `query:"maxScrolls,omitzero" json:"-"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount WebWebScrapeMdParamsActionScrollAmountUnion `query:"amount,omitzero" json:"-"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `query:"direction,omitzero" json:"-"`
+	// This field can be elided, and will marshal its zero value as "scroll".
+	Do constant.Scroll `query:"do" json:"-" default:"scroll"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeMdParamsActionScroll]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeMdParamsActionScroll) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeMdParamsActionScrollAmountUnion struct {
+	OfInt param.Opt[int64] `query:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeMdsActionScrollAmountString)
+	OfWebWebScrapeMdsActionScrollAmountString param.Opt[string] `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeMdParamsActionScrollAmountString string
+
+const (
+	WebWebScrapeMdParamsActionScrollAmountStringViewport WebWebScrapeMdParamsActionScrollAmountString = "viewport"
+	WebWebScrapeMdParamsActionScrollAmountStringMax      WebWebScrapeMdParamsActionScrollAmountString = "max"
+)
 
 // Fetch the target page through a residential proxy in this country (ISO 3166-1
 // alpha-2).

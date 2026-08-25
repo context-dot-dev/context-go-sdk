@@ -115,7 +115,9 @@ type BrandGetResponseBrand struct {
 	IsNsfw bool `json:"is_nsfw"`
 	// Important website links for the brand
 	Links BrandGetResponseBrandLinks `json:"links"`
-	// An array of logos associated with the brand
+	// An array of logos associated with the brand. When a similarly shaped SVG variant
+	// exists, it is returned ahead of its raster equivalent; otherwise relevance order
+	// is preserved
 	Logos []BrandGetResponseBrandLogo `json:"logos"`
 	// Company phone number
 	Phone string `json:"phone"`

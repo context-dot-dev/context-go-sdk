@@ -41,7 +41,7 @@ To use a local version of this library from source in another project, edit the 
 directive. This can be done through the CLI with the following:
 
 ```sh
-$ go mod edit -replace github.com/context-dot-dev/context-go-sdk=/path/to/context-go-sdk
+$ go mod edit -replace github.com/context-dot-dev/context-go-sdk/v2=/path/to/context-go-sdk
 ```
 
 ## Running tests

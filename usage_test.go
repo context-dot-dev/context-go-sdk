@@ -33,5 +33,5 @@ func TestUsage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err should be nil: %s", err.Error())
 	}
-	t.Logf("%+v\n", brand.Brand)
+	t.Logf("%+v\n", brand.CacheMetadata)
 }

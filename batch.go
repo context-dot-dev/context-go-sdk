@@ -1055,6 +1055,8 @@ func (r *BatchGetResultsResponse) UnmarshalJSON(data []byte) error {
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type BatchGetResultsResponseDataUnion struct {
 	// This field is from variant [BatchGetResultsResponseDataOk].
+	CacheMetadata BatchGetResultsResponseDataOkCacheMetadata `json:"cache_metadata"`
+	// This field is from variant [BatchGetResultsResponseDataOk].
 	FinalURL string `json:"final_url"`
 	// This field is from variant [BatchGetResultsResponseDataOk].
 	HTTPStatus int64 `json:"http_status"`
@@ -1076,19 +1078,20 @@ type BatchGetResultsResponseDataUnion struct {
 	// This field is from variant [BatchGetResultsResponseDataError].
 	Message string `json:"message"`
 	JSON    struct {
-		FinalURL   respjson.Field
-		HTTPStatus respjson.Field
-		Metadata   respjson.Field
-		Status     respjson.Field
-		URL        respjson.Field
-		HTML       respjson.Field
-		ItemID     respjson.Field
-		Markdown   respjson.Field
-		Meta       respjson.Field
-		OcrPages   respjson.Field
-		ErrorCode  respjson.Field
-		Message    respjson.Field
-		raw        string
+		CacheMetadata respjson.Field
+		FinalURL      respjson.Field
+		HTTPStatus    respjson.Field
+		Metadata      respjson.Field
+		Status        respjson.Field
+		URL           respjson.Field
+		HTML          respjson.Field
+		ItemID        respjson.Field
+		Markdown      respjson.Field
+		Meta          respjson.Field
+		OcrPages      respjson.Field
+		ErrorCode     respjson.Field
+		Message       respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
@@ -1139,6 +1142,10 @@ func (r *BatchGetResultsResponseDataUnion) UnmarshalJSON(data []byte) error {
 
 // A page the batch fetched successfully.
 type BatchGetResultsResponseDataOk struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata BatchGetResultsResponseDataOkCacheMetadata `json:"cache_metadata" api:"required"`
 	// URL the content was read from, after redirects.
 	FinalURL string `json:"final_url" api:"required"`
 	// HTTP status of the final response, when known.
@@ -1163,24 +1170,51 @@ type BatchGetResultsResponseDataOk struct {
 	OcrPages int64 `json:"ocr_pages"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		FinalURL    respjson.Field
-		HTTPStatus  respjson.Field
-		Metadata    respjson.Field
-		Status      respjson.Field
-		URL         respjson.Field
-		HTML        respjson.Field
-		ItemID      respjson.Field
-		Markdown    respjson.Field
-		Meta        respjson.Field
-		OcrPages    respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CacheMetadata respjson.Field
+		FinalURL      respjson.Field
+		HTTPStatus    respjson.Field
+		Metadata      respjson.Field
+		Status        respjson.Field
+		URL           respjson.Field
+		HTML          respjson.Field
+		ItemID        respjson.Field
+		Markdown      respjson.Field
+		Meta          respjson.Field
+		OcrPages      respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r BatchGetResultsResponseDataOk) RawJSON() string { return r.JSON.raw }
 func (r *BatchGetResultsResponseDataOk) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type BatchGetResultsResponseDataOkCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BatchGetResultsResponseDataOkCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BatchGetResultsResponseDataOkCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1473,6 +1507,10 @@ func (r *BatchGetResultsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 type BatchSubmitResponse struct {
 	// Batch ID. Poll GET /batch/{batch_id} with it.
 	ID string `json:"id" api:"required"`
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata BatchSubmitResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// The crawl controls as submitted, so the limits requested can be compared against
 	// what the crawl reached.
 	Crawl CrawlControls `json:"crawl" api:"required"`
@@ -1506,6 +1544,7 @@ type BatchSubmitResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID            respjson.Field
+		CacheMetadata respjson.Field
 		Crawl         respjson.Field
 		CreatedAt     respjson.Field
 		Credits       respjson.Field
@@ -1525,6 +1564,32 @@ type BatchSubmitResponse struct {
 // Returns the unmodified JSON received from the API
 func (r BatchSubmitResponse) RawJSON() string { return r.JSON.raw }
 func (r *BatchSubmitResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type BatchSubmitResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BatchSubmitResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BatchSubmitResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

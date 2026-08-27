@@ -67,6 +67,10 @@ func (r *BrandService) Search(ctx context.Context, query BrandSearchParams, opts
 }
 
 type BrandGetResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata BrandGetResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Detailed brand information
 	Brand BrandGetResponseBrand `json:"brand"`
 	// HTTP status code
@@ -78,9 +82,36 @@ type BrandGetResponse struct {
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Brand       respjson.Field
-		Code        respjson.Field
-		KeyMetadata respjson.Field
+		CacheMetadata respjson.Field
+		Brand         respjson.Field
+		Code          respjson.Field
+		KeyMetadata   respjson.Field
+		Status        respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetResponse) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type BrandGetResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -88,8 +119,8 @@ type BrandGetResponse struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r BrandGetResponse) RawJSON() string { return r.JSON.raw }
-func (r *BrandGetResponse) UnmarshalJSON(data []byte) error {
+func (r BrandGetResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -661,6 +692,10 @@ func (r *BrandGetResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BrandGetSimplifiedResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata BrandGetSimplifiedResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Simplified brand information
 	Brand BrandGetSimplifiedResponseBrand `json:"brand"`
 	// HTTP status code of the response
@@ -672,9 +707,36 @@ type BrandGetSimplifiedResponse struct {
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Brand       respjson.Field
-		Code        respjson.Field
-		KeyMetadata respjson.Field
+		CacheMetadata respjson.Field
+		Brand         respjson.Field
+		Code          respjson.Field
+		KeyMetadata   respjson.Field
+		Status        respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrandGetSimplifiedResponse) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetSimplifiedResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type BrandGetSimplifiedResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
 		Status      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -682,8 +744,8 @@ type BrandGetSimplifiedResponse struct {
 }
 
 // Returns the unmodified JSON received from the API
-func (r BrandGetSimplifiedResponse) RawJSON() string { return r.JSON.raw }
-func (r *BrandGetSimplifiedResponse) UnmarshalJSON(data []byte) error {
+func (r BrandGetSimplifiedResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *BrandGetSimplifiedResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

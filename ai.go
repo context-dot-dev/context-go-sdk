@@ -53,6 +53,10 @@ func (r *AIService) ExtractProducts(ctx context.Context, body AIExtractProductsP
 }
 
 type AIExtractProductResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata AIExtractProductResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Whether the given URL is a product detail page
 	IsProductPage bool `json:"is_product_page"`
 	// Metadata about the API key used for the request. Included in every response
@@ -66,6 +70,7 @@ type AIExtractProductResponse struct {
 	Product AIExtractProductResponseProduct `json:"product" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		CacheMetadata respjson.Field
 		IsProductPage respjson.Field
 		KeyMetadata   respjson.Field
 		Platform      respjson.Field
@@ -78,6 +83,32 @@ type AIExtractProductResponse struct {
 // Returns the unmodified JSON received from the API
 func (r AIExtractProductResponse) RawJSON() string { return r.JSON.raw }
 func (r *AIExtractProductResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type AIExtractProductResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r AIExtractProductResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *AIExtractProductResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -187,6 +218,10 @@ func (r *AIExtractProductResponseProduct) UnmarshalJSON(data []byte) error {
 }
 
 type AIExtractProductsResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata AIExtractProductsResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata AIExtractProductsResponseKeyMetadata `json:"key_metadata"`
@@ -194,16 +229,43 @@ type AIExtractProductsResponse struct {
 	Products []AIExtractProductsResponseProduct `json:"products"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		KeyMetadata respjson.Field
-		Products    respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CacheMetadata respjson.Field
+		KeyMetadata   respjson.Field
+		Products      respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r AIExtractProductsResponse) RawJSON() string { return r.JSON.raw }
 func (r *AIExtractProductsResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type AIExtractProductsResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r AIExtractProductsResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *AIExtractProductsResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

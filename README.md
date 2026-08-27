@@ -73,7 +73,7 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("%+v\n", brand.Brand)
+	fmt.Printf("%+v\n", brand.CacheMetadata)
 }
 
 ```

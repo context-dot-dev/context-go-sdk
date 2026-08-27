@@ -168,6 +168,10 @@ func (r *WebService) WebScrapeSitemap(ctx context.Context, query WebWebScrapeSit
 }
 
 type WebExtractResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebExtractResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Extracted data matching the request schema
 	Data     map[string]any             `json:"data" api:"required"`
 	Metadata WebExtractResponseMetadata `json:"metadata" api:"required"`
@@ -182,20 +186,47 @@ type WebExtractResponse struct {
 	KeyMetadata WebExtractResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Data         respjson.Field
-		Metadata     respjson.Field
-		Status       respjson.Field
-		URL          respjson.Field
-		URLsAnalyzed respjson.Field
-		KeyMetadata  respjson.Field
-		ExtraFields  map[string]respjson.Field
-		raw          string
+		CacheMetadata respjson.Field
+		Data          respjson.Field
+		Metadata      respjson.Field
+		Status        respjson.Field
+		URL           respjson.Field
+		URLsAnalyzed  respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebExtractResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebExtractResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -408,6 +439,10 @@ func (r *WebExtractCompetitorsResponseKeyMetadata) UnmarshalJSON(data []byte) er
 }
 
 type WebExtractFontsResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebExtractFontsResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// HTTP status code, e.g., 200
 	Code int64 `json:"code" api:"required"`
 	// The normalized domain that was processed
@@ -425,20 +460,47 @@ type WebExtractFontsResponse struct {
 	KeyMetadata WebExtractFontsResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Code        respjson.Field
-		Domain      respjson.Field
-		Fonts       respjson.Field
-		Status      respjson.Field
-		FontLinks   respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CacheMetadata respjson.Field
+		Code          respjson.Field
+		Domain        respjson.Field
+		Fonts         respjson.Field
+		Status        respjson.Field
+		FontLinks     respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebExtractFontsResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractFontsResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebExtractFontsResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractFontsResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractFontsResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -530,6 +592,10 @@ func (r *WebExtractFontsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebExtractStyleguideResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebExtractStyleguideResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// HTTP status code
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
@@ -543,19 +609,46 @@ type WebExtractStyleguideResponse struct {
 	Styleguide WebExtractStyleguideResponseStyleguide `json:"styleguide"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Code        respjson.Field
-		Domain      respjson.Field
-		KeyMetadata respjson.Field
-		Status      respjson.Field
-		Styleguide  respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CacheMetadata respjson.Field
+		Code          respjson.Field
+		Domain        respjson.Field
+		KeyMetadata   respjson.Field
+		Status        respjson.Field
+		Styleguide    respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebExtractStyleguideResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractStyleguideResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebExtractStyleguideResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractStyleguideResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractStyleguideResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1172,6 +1265,10 @@ func (r *WebExtractStyleguideResponseStyleguideTypographyP) UnmarshalJSON(data [
 }
 
 type WebScreenshotResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebScreenshotResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// HTTP status code
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
@@ -1194,6 +1291,7 @@ type WebScreenshotResponse struct {
 	Width int64 `json:"width"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		CacheMetadata  respjson.Field
 		Code           respjson.Field
 		Domain         respjson.Field
 		Height         respjson.Field
@@ -1210,6 +1308,32 @@ type WebScreenshotResponse struct {
 // Returns the unmodified JSON received from the API
 func (r WebScreenshotResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebScreenshotResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebScreenshotResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScreenshotResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebScreenshotResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1244,6 +1368,10 @@ const (
 )
 
 type WebSearchResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebSearchResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Echo of the original query (useful when fanout was enabled).
 	Query   string                    `json:"query" api:"required"`
 	Results []WebSearchResponseResult `json:"results" api:"required"`
@@ -1252,17 +1380,44 @@ type WebSearchResponse struct {
 	KeyMetadata WebSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Query       respjson.Field
-		Results     respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CacheMetadata respjson.Field
+		Query         respjson.Field
+		Results       respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebSearchResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebSearchResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebSearchResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebSearchResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebSearchResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1345,24 +1500,55 @@ func (r *WebSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebWebCrawlMdResponse struct {
-	Metadata WebWebCrawlMdResponseMetadata `json:"metadata" api:"required"`
-	Results  []WebWebCrawlMdResponseResult `json:"results" api:"required"`
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebWebCrawlMdResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	Metadata      WebWebCrawlMdResponseMetadata      `json:"metadata" api:"required"`
+	Results       []WebWebCrawlMdResponseResult      `json:"results" api:"required"`
 	// Metadata about the API key used for the request. Included in every response
 	// whenever a valid API key is provided, even when the response status is not 200.
 	KeyMetadata WebWebCrawlMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Metadata    respjson.Field
-		Results     respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		CacheMetadata respjson.Field
+		Metadata      respjson.Field
+		Results       respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
 // Returns the unmodified JSON received from the API
 func (r WebWebCrawlMdResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebCrawlMdResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebWebCrawlMdResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebCrawlMdResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebCrawlMdResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1680,6 +1866,10 @@ func (r *WebWebCrawlMdResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebWebScrapeHTMLResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebWebScrapeHTMLResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// The scraped content of the page. For normal pages this is the raw HTML. When the
 	// page is a sitemap or feed served behind an XSL stylesheet (which browsers render
 	// into HTML), this is the underlying XML instead — see the `type` field.
@@ -1710,6 +1900,7 @@ type WebWebScrapeHTMLResponse struct {
 	KeyMetadata WebWebScrapeHTMLResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		CacheMetadata    respjson.Field
 		HTML             respjson.Field
 		Metadata         respjson.Field
 		Success          respjson.Field
@@ -1726,6 +1917,32 @@ type WebWebScrapeHTMLResponse struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeHTMLResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeHTMLResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebWebScrapeHTMLResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeHTMLResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeHTMLResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2039,6 +2256,10 @@ func (r *WebWebScrapeHTMLResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebWebScrapeImagesResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebWebScrapeImagesResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Images found on the page.
 	Images []WebWebScrapeImagesResponseImage `json:"images" api:"required"`
 	// Always true on success.
@@ -2054,6 +2275,7 @@ type WebWebScrapeImagesResponse struct {
 	KeyMetadata WebWebScrapeImagesResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		CacheMetadata  respjson.Field
 		Images         respjson.Field
 		Success        respjson.Field
 		URL            respjson.Field
@@ -2067,6 +2289,32 @@ type WebWebScrapeImagesResponse struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeImagesResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeImagesResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebWebScrapeImagesResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeImagesResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeImagesResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2193,6 +2441,10 @@ func (r *WebWebScrapeImagesResponseKeyMetadata) UnmarshalJSON(data []byte) error
 }
 
 type WebWebScrapeMdResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebWebScrapeMdResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// UTF-8 byte length of the returned Markdown. Use 0 to identify an empty result
 	// and compare small values against your workload's minimum useful-content
 	// threshold.
@@ -2221,6 +2473,7 @@ type WebWebScrapeMdResponse struct {
 	KeyMetadata WebWebScrapeMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		CacheMetadata    respjson.Field
 		ContentLength    respjson.Field
 		Markdown         respjson.Field
 		Metadata         respjson.Field
@@ -2238,6 +2491,32 @@ type WebWebScrapeMdResponse struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeMdResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeMdResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebWebScrapeMdResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeMdResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeMdResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

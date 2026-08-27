@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.13.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.12.0...v2.13.0) (2026-08-27)
+
+
+### Features
+
+* initial stlc build ([c2aa36e](https://github.com/context-dot-dev/context-go-sdk/commit/c2aa36ed6473d57d21250d6e3cffc64595217171))
+
 ## 2.12.0 (2026-08-23)
 
 Full Changelog: [v2.11.0...v2.12.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.11.0...v2.12.0)

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.14.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.13.0...v2.14.0) (2026-09-03)
+
+
+### Features
+
+* **sitemap:** add subdomain discovery ([25afd1a](https://github.com/context-dot-dev/context-go-sdk/commit/25afd1a8cc2c0114a076668b7777821ffa018bbc))
+
 ## [2.13.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.12.0...v2.13.0) (2026-08-27)
 
 

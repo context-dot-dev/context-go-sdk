@@ -460,13 +460,14 @@ func TestWebWebScrapeSitemapWithOptionalParams(t *testing.T) {
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		MaxLinks:   contextdev.Int(1),
-		Search:     contextdev.String("help center and troubleshooting articles"),
-		SitemapURL: contextdev.String("https://example.com"),
-		Tags:       []string{"production", "team-alpha"},
-		TimeoutMs:  contextdev.Int(1),
-		URLRegex:   contextdev.String("^https?://[^/]+/blog/"),
-		Zdr:        contextdev.WebWebScrapeSitemapParamsZdrEnabled,
+		IncludeSubdomains: contextdev.Bool(true),
+		MaxLinks:          contextdev.Int(1),
+		Search:            contextdev.String("help center and troubleshooting articles"),
+		SitemapURL:        contextdev.String("https://example.com"),
+		Tags:              []string{"production", "team-alpha"},
+		TimeoutMs:         contextdev.Int(1),
+		URLRegex:          contextdev.String("^https?://[^/]+/blog/"),
+		Zdr:               contextdev.WebWebScrapeSitemapParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

@@ -155,11 +155,12 @@ func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams
 	return res, err
 }
 
-// Crawl an entire website's sitemap and return all discovered page URLs. Pass
-// `search` to have the crawled sitemap filtered down to the pages about a phrase
-// (for example `pricing and plans` or `api authentication docs`), most relevant
-// first — a searched crawl scans the whole sitemap and costs 2 credits instead
-// of 1.
+// Crawl an entire website's sitemap and return all discovered page URLs. Set
+// `includeSubdomains=true` to also discover public pages and sitemaps on child
+// hosts such as `docs.example.com` or `brand.example.com`. Pass `search` to have
+// the discovered URLs filtered down to the pages about a phrase (for example
+// `pricing and plans` or `api authentication docs`), most relevant first — a
+// searched crawl scans the whole sitemap and costs 2 credits instead of 1.
 func (r *WebService) WebScrapeSitemap(ctx context.Context, query WebWebScrapeSitemapParams, opts ...option.RequestOption) (res *WebWebScrapeSitemapResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/sitemap"
@@ -5373,6 +5374,9 @@ const (
 type WebWebScrapeSitemapParams struct {
 	// Domain to build a sitemap for
 	Domain string `query:"domain" api:"required" json:"-"`
+	// When true, discover and include public pages and sitemaps on subdomains of the
+	// requested domain. Defaults to false.
+	IncludeSubdomains param.Opt[bool] `query:"includeSubdomains,omitzero" json:"-"`
 	// Maximum number of links to return from the sitemap crawl. Defaults to 10,000.
 	// Minimum is 1, maximum is 100,000.
 	MaxLinks param.Opt[int64] `query:"maxLinks,omitzero" json:"-"`

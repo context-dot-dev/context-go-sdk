@@ -59,8 +59,7 @@ type AIExtractProductResponse struct {
 	CacheMetadata AIExtractProductResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Whether the given URL is a product detail page
 	IsProductPage bool `json:"is_product_page"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata AIExtractProductResponseKeyMetadata `json:"key_metadata"`
 	// The detected ecommerce platform, or null if not a product page
 	//
@@ -112,12 +111,11 @@ func (r *AIExtractProductResponseCacheMetadata) UnmarshalJSON(data []byte) error
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type AIExtractProductResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -222,8 +220,7 @@ type AIExtractProductsResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata AIExtractProductsResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata AIExtractProductsResponseKeyMetadata `json:"key_metadata"`
 	// Array of products extracted from the website
 	Products []AIExtractProductsResponseProduct `json:"products"`
@@ -269,12 +266,11 @@ func (r *AIExtractProductsResponseCacheMetadata) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type AIExtractProductsResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {

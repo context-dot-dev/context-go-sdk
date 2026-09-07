@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/context-dot-dev/context-go-sdk/v2"
 	"github.com/context-dot-dev/context-go-sdk/v2/internal/testutil"
@@ -56,13 +57,14 @@ func TestWebhookDeliveryListWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Webhooks.Deliveries.List(context.TODO(), contextdev.WebhookDeliveryListParams{
-		BatchID:   contextdev.String("batch_id"),
-		Cursor:    contextdev.String("whd_210b9798eb53baa4e69d31c1071cf03d"),
-		Limit:     contextdev.Int(1),
-		MonitorID: contextdev.String("monitor_id"),
-		RunID:     contextdev.String("run_id"),
-		Status:    contextdev.WebhookDeliveryListParamsStatusPending,
-		Tags:      []string{"production", "team-alpha"},
+		OfBatch: &contextdev.WebhookDeliveryListParamsBodyBatch{
+			BatchID:      contextdev.String("batch_id"),
+			CreatedAfter: contextdev.Time(time.Now()),
+			Cursor:       contextdev.String("whd_210b9798eb53baa4e69d31c1071cf03d"),
+			Limit:        contextdev.Int(25),
+			Status:       "failed",
+			Tags:         []string{"production", "team-alpha"},
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error

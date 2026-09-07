@@ -75,8 +75,7 @@ type BrandGetResponse struct {
 	Brand BrandGetResponseBrand `json:"brand"`
 	// HTTP status code
 	Code int64 `json:"code"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BrandGetResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
@@ -669,12 +668,11 @@ func (r *BrandGetResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type BrandGetResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -700,8 +698,7 @@ type BrandGetSimplifiedResponse struct {
 	Brand BrandGetSimplifiedResponseBrand `json:"brand"`
 	// HTTP status code of the response
 	Code int64 `json:"code"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BrandGetSimplifiedResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
@@ -952,12 +949,11 @@ func (r *BrandGetSimplifiedResponseBrandLogoResolution) UnmarshalJSON(data []byt
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type BrandGetSimplifiedResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -978,8 +974,7 @@ type BrandSearchResponse struct {
 	// Up to 10 matching brands, name matches first, then domain matches, most popular
 	// first within each group. Empty when nothing matches.
 	Results []BrandSearchResponseResult `json:"results" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BrandSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1020,12 +1015,11 @@ func (r *BrandSearchResponseResult) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type BrandSearchResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1491,9 +1485,8 @@ type BrandGetSimplifiedParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Optional theme preference used when selecting brand assets.
 	//
@@ -1534,9 +1527,8 @@ type BrandSearchParams struct {
 	//
 	// Any of "name", "domain".
 	QueryBy []string `query:"queryBy,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }

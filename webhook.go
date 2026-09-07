@@ -19,8 +19,7 @@ import (
 // the [NewWebhookService] method instead.
 type WebhookService struct {
 	options []option.RequestOption
-	// Inspect and retry batch and monitor webhook deliveries without rerunning the
-	// underlying work.
+	// Inspect and retry webhook deliveries. These endpoints cost no credits.
 	Deliveries WebhookDeliveryService
 }
 
@@ -34,14 +33,10 @@ func NewWebhookService(opts ...option.RequestOption) (r WebhookService) {
 	return
 }
 
-// Opt into durable webhook delivery. An empty object uses the default retry
-// schedule. Omit retry to preserve legacy delivery behavior. The policy is
-// snapshotted for each event.
+// Webhook retry settings. Use {} for the default schedule.
 type RetryConfig struct {
-	// Wait in seconds after each failed attempt. The first attempt is immediate. At
-	// most 10 delays, each 1–86400 seconds, totaling at most 72 hours. Small jitter is
-	// added automatically. An empty array disables automatic retries; manual retries
-	// remain available.
+	// Retry delays in seconds, totaling at most 72 hours. Use [] to disable automatic
+	// retries.
 	DelaysSeconds []int64 `json:"delays_seconds"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -66,14 +61,10 @@ func (r RetryConfig) ToParam() RetryConfigParam {
 	return param.Override[RetryConfigParam](json.RawMessage(r.RawJSON()))
 }
 
-// Opt into durable webhook delivery. An empty object uses the default retry
-// schedule. Omit retry to preserve legacy delivery behavior. The policy is
-// snapshotted for each event.
+// Webhook retry settings. Use {} for the default schedule.
 type RetryConfigParam struct {
-	// Wait in seconds after each failed attempt. The first attempt is immediate. At
-	// most 10 delays, each 1–86400 seconds, totaling at most 72 hours. Small jitter is
-	// added automatically. An empty array disables automatic retries; manual retries
-	// remain available.
+	// Retry delays in seconds, totaling at most 72 hours. Use [] to disable automatic
+	// retries.
 	DelaysSeconds []int64 `json:"delays_seconds,omitzero"`
 	paramObj
 }

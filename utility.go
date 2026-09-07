@@ -48,8 +48,7 @@ func (r *UtilityService) Prefetch(ctx context.Context, body UtilityPrefetchParam
 type UtilityPrefetchResponse struct {
 	// The domain that was queued for prefetching
 	Domain string `json:"domain"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata UtilityPrefetchResponseKeyMetadata `json:"key_metadata"`
 	// Success message
 	Message string `json:"message"`
@@ -77,12 +76,11 @@ func (r *UtilityPrefetchResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type UtilityPrefetchResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {

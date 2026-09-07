@@ -345,8 +345,7 @@ type BatchGetResponse struct {
 	Timing BatchGetResponseTiming `json:"timing" api:"required"`
 	// API key usage for this request.
 	KeyMetadata BatchGetResponseKeyMetadata `json:"key_metadata"`
-	// Retained completion delivery ID. Inspect or retry it through
-	// /webhooks/deliveries/{delivery_id}. Present once the delivery has been retained.
+	// Batch completion delivery ID, when available.
 	WebhookDeliveryID string `json:"webhook_delivery_id"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -553,9 +552,9 @@ func (r *BatchGetResponseTiming) UnmarshalJSON(data []byte) error {
 
 // API key usage for this request.
 type BatchGetResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -577,8 +576,7 @@ type BatchListResponse struct {
 	Data []BatchListResponseData `json:"data"`
 	// Whether another page is available.
 	HasMore bool `json:"has_more"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BatchListResponseKeyMetadata `json:"key_metadata"`
 	// Cursor for the next page.
 	NextCursor string `json:"next_cursor" api:"nullable"`
@@ -788,12 +786,11 @@ func (r *BatchListResponseDataTiming) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type BatchListResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -815,8 +812,7 @@ type BatchDeleteResponse struct {
 	ID string `json:"id"`
 	// Always true on success.
 	Deleted bool `json:"deleted"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BatchDeleteResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -834,12 +830,11 @@ func (r *BatchDeleteResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type BatchDeleteResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1004,9 +999,9 @@ func (r *BatchCancelResponseTiming) UnmarshalJSON(data []byte) error {
 
 // API key usage for this request.
 type BatchCancelResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1028,8 +1023,7 @@ type BatchGetResultsResponse struct {
 	Data []BatchGetResultsResponseDataUnion `json:"data"`
 	// Whether another page is available.
 	HasMore bool `json:"has_more"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BatchGetResultsResponseKeyMetadata `json:"key_metadata"`
 	// Cursor for the next page.
 	NextCursor string `json:"next_cursor" api:"nullable"`
@@ -1486,12 +1480,11 @@ func (r *BatchGetResultsResponseDataError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type BatchGetResultsResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1661,9 +1654,9 @@ const (
 
 // API key usage for this request.
 type BatchSubmitResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2615,9 +2608,7 @@ func (r *BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) UnmarshalJSON(data []byt
 // The property URL is required.
 type BatchSubmitParamsWebhook struct {
 	URL string `json:"url" api:"required" format:"uri"`
-	// Opt into durable webhook delivery. An empty object uses the default retry
-	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
-	// snapshotted for each event.
+	// Webhook retry settings. Use {} for the default schedule.
 	Retry RetryConfigParam `json:"retry,omitzero"`
 	paramObj
 }

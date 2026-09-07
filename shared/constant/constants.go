@@ -18,6 +18,7 @@ func ValueOf[T Constant[T]]() T {
 	return t.Default()
 }
 
+type Batch string         // Always "batch"
 type ByDirectURL string   // Always "by_direct_url"
 type ByDomain string      // Always "by_domain"
 type ByEmail string       // Always "by_email"
@@ -33,6 +34,7 @@ type Extract string       // Always "extract"
 type HTML string          // Always "html"
 type Isin string          // Always "isin"
 type Markdown string      // Always "markdown"
+type Monitor string       // Always "monitor"
 type Name string          // Always "name"
 type NotFound string      // Always "not_found"
 type Ok string            // Always "ok"
@@ -46,6 +48,7 @@ type StartURL string      // Always "start_url"
 type Ticker string        // Always "ticker"
 type Wait string          // Always "wait"
 
+func (c Batch) Default() Batch                 { return "batch" }
 func (c ByDirectURL) Default() ByDirectURL     { return "by_direct_url" }
 func (c ByDomain) Default() ByDomain           { return "by_domain" }
 func (c ByEmail) Default() ByEmail             { return "by_email" }
@@ -61,6 +64,7 @@ func (c Extract) Default() Extract             { return "extract" }
 func (c HTML) Default() HTML                   { return "html" }
 func (c Isin) Default() Isin                   { return "isin" }
 func (c Markdown) Default() Markdown           { return "markdown" }
+func (c Monitor) Default() Monitor             { return "monitor" }
 func (c Name) Default() Name                   { return "name" }
 func (c NotFound) Default() NotFound           { return "not_found" }
 func (c Ok) Default() Ok                       { return "ok" }
@@ -74,6 +78,7 @@ func (c StartURL) Default() StartURL           { return "start_url" }
 func (c Ticker) Default() Ticker               { return "ticker" }
 func (c Wait) Default() Wait                   { return "wait" }
 
+func (c Batch) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c ByDirectURL) MarshalJSON() ([]byte, error)   { return marshalString(c) }
 func (c ByDomain) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c ByEmail) MarshalJSON() ([]byte, error)       { return marshalString(c) }
@@ -89,6 +94,7 @@ func (c Extract) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c HTML) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Isin) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Markdown) MarshalJSON() ([]byte, error)      { return marshalString(c) }
+func (c Monitor) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c Name) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c NotFound) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Ok) MarshalJSON() ([]byte, error)            { return marshalString(c) }

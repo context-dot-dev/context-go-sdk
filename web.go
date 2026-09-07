@@ -182,8 +182,7 @@ type WebExtractResponse struct {
 	URL string `json:"url" api:"required"`
 	// List of URLs whose Markdown was used for extraction
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebExtractResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -295,12 +294,11 @@ func (r *WebExtractResponseMetadataActionsApplied) UnmarshalJSON(data []byte) er
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebExtractResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -328,8 +326,7 @@ type WebExtractCompetitorsResponse struct {
 	Status WebExtractCompetitorsResponseStatus `json:"status" api:"required"`
 	// Target company profile inferred from the landing page.
 	Target WebExtractCompetitorsResponseTarget `json:"target" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebExtractCompetitorsResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -417,12 +414,11 @@ func (r *WebExtractCompetitorsResponseTarget) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebExtractCompetitorsResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -456,8 +452,7 @@ type WebExtractFontsResponse struct {
 	// names only). Clients match entries in fonts to pick a file URL from files.
 	// Omitted when no families resolve to Google or custom @font-face URLs.
 	FontLinks map[string]WebExtractFontsResponseFontLink `json:"fontLinks"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebExtractFontsResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -570,12 +565,11 @@ func (r *WebExtractFontsResponseFontLink) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebExtractFontsResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -601,8 +595,7 @@ type WebExtractStyleguideResponse struct {
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
 	Domain string `json:"domain"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebExtractStyleguideResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
@@ -653,12 +646,11 @@ func (r *WebExtractStyleguideResponseCacheMetadata) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebExtractStyleguideResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1276,8 +1268,7 @@ type WebScreenshotResponse struct {
 	Domain string `json:"domain"`
 	// Height in pixels of the returned screenshot image
 	Height int64 `json:"height"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebScreenshotResponseKeyMetadata `json:"key_metadata"`
 	// Public image URL for standard requests, or an in-memory data URL when ZDR is
 	// enabled.
@@ -1338,12 +1329,11 @@ func (r *WebScreenshotResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebScreenshotResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1376,8 +1366,7 @@ type WebSearchResponse struct {
 	// Echo of the original query (useful when fanout was enabled).
 	Query   string                    `json:"query" api:"required"`
 	Results []WebSearchResponseResult `json:"results" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1478,12 +1467,11 @@ func (r *WebSearchResponseResultMarkdown) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebSearchResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1507,8 +1495,7 @@ type WebWebCrawlMdResponse struct {
 	CacheMetadata WebWebCrawlMdResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	Metadata      WebWebCrawlMdResponseMetadata      `json:"metadata" api:"required"`
 	Results       []WebWebCrawlMdResponseResult      `json:"results" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebCrawlMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1844,12 +1831,11 @@ func (r *WebWebCrawlMdResponseResultMetadataTwitterUnion) UnmarshalJSON(data []b
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebWebCrawlMdResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1896,8 +1882,7 @@ type WebWebScrapeHTMLResponse struct {
 	// True when an action was applied but the returned content could not be refreshed
 	// afterward.
 	ActionsHTMLStale bool `json:"actionsHtmlStale"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeHTMLResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2234,12 +2219,11 @@ func (r *WebWebScrapeHTMLResponseActionsApplied) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebWebScrapeHTMLResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2271,8 +2255,7 @@ type WebWebScrapeImagesResponse struct {
 	URL string `json:"url" api:"required"`
 	// One verified outcome per requested browser action, in request order.
 	ActionsApplied []WebWebScrapeImagesResponseActionsApplied `json:"actionsApplied"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeImagesResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2419,12 +2402,11 @@ func (r *WebWebScrapeImagesResponseActionsApplied) UnmarshalJSON(data []byte) er
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebWebScrapeImagesResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2469,8 +2451,7 @@ type WebWebScrapeMdResponse struct {
 	// from — the same body the Scrape HTML endpoint returns for the equivalent
 	// request.
 	HTML string `json:"html"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2785,12 +2766,11 @@ func (r *WebWebScrapeMdResponseActionsApplied) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebWebScrapeMdResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2819,8 +2799,7 @@ type WebWebScrapeSitemapResponse struct {
 	// Discovered page URLs from the sitemap, up to `maxLinks`. When `search` is set
 	// these are only the matching pages, most relevant first.
 	URLs []string `json:"urls" api:"required"`
-	// Metadata about the API key used for the request. Included in every response
-	// whenever a valid API key is provided, even when the response status is not 200.
+	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeSitemapResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2867,12 +2846,11 @@ func (r *WebWebScrapeSitemapResponseMeta) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Metadata about the API key used for the request. Included in every response
-// whenever a valid API key is provided, even when the response status is not 200.
+// Credit usage, included whenever a valid API key is provided.
 type WebWebScrapeSitemapResponseKeyMetadata struct {
-	// The number of credits consumed by this request.
+	// Credits used by this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// The number of credits remaining for your organization after this request.
+	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3107,9 +3085,8 @@ type WebExtractCompetitorsParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -3141,9 +3118,8 @@ type WebExtractFontsParams struct {
 	// than this value, it will be aborted with a 408 status code. Maximum allowed
 	// value is 300000ms (5 minutes).
 	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -3180,9 +3156,8 @@ type WebExtractStyleguideParams struct {
 	//
 	// Any of "light", "dark".
 	ColorScheme WebExtractStyleguideParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -3283,9 +3258,8 @@ type WebScreenshotParams struct {
 	// Any of "login", "signup", "blog", "careers", "pricing", "terms", "privacy",
 	// "contact".
 	Page WebScreenshotParamsPage `query:"page,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 	Viewport WebScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
@@ -4367,9 +4341,8 @@ type WebWebScrapeHTMLParams struct {
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeHTMLParamsPdf `query:"pdf,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
@@ -4774,9 +4747,8 @@ type WebWebScrapeImagesParams struct {
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -4993,9 +4965,8 @@ type WebWebScrapeMdParams struct {
 	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
 	// detection/OCR to an inclusive 1-based page range.
 	Pdf WebWebScrapeMdParamsPdf `query:"pdf,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
@@ -5398,9 +5369,8 @@ type WebWebScrapeSitemapParams struct {
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// Optional comma-separated caller-defined tags for tracking this request. Tags are
-	// recorded on the request's usage log and can be used to filter usage on the
-	// dashboard usage page. Up to 20 tags, each 1-50 characters.
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your

@@ -204,6 +204,9 @@ type WebhookDelivery struct {
 	//
 	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
 	Status WebhookDeliveryStatus `json:"status" api:"required"`
+	// Retained delivery ID for GET /webhooks/deliveries/{delivery_id}. Omitted for
+	// historical or unretained deliveries.
+	DeliveryID string `json:"delivery_id"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		AttemptedAt respjson.Field
@@ -212,6 +215,7 @@ type WebhookDelivery struct {
 		EventID     respjson.Field
 		HTTPStatus  respjson.Field
 		Status      respjson.Field
+		DeliveryID  respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -856,6 +860,10 @@ type MonitorNewResponseWebhook struct {
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
+	// Opt into durable webhook delivery. An empty object uses the default retry
+	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
+	// snapshotted for each event.
+	Retry RetryConfig `json:"retry"`
 	// Signing secret used to verify webhook authenticity. Each delivery includes an
 	// `X-Context-Signature: t=<unix>,v1=<hmac>` header, where the HMAC is SHA-256 over
 	// `"{t}.{rawRequestBody}"` keyed by this secret. Recompute it with a constant-time
@@ -866,6 +874,7 @@ type MonitorNewResponseWebhook struct {
 	JSON struct {
 		URL         respjson.Field
 		Events      respjson.Field
+		Retry       respjson.Field
 		Secret      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -1499,6 +1508,10 @@ type MonitorGetResponseWebhook struct {
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
+	// Opt into durable webhook delivery. An empty object uses the default retry
+	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
+	// snapshotted for each event.
+	Retry RetryConfig `json:"retry"`
 	// Signing secret used to verify webhook authenticity. Each delivery includes an
 	// `X-Context-Signature: t=<unix>,v1=<hmac>` header, where the HMAC is SHA-256 over
 	// `"{t}.{rawRequestBody}"` keyed by this secret. Recompute it with a constant-time
@@ -1509,6 +1522,7 @@ type MonitorGetResponseWebhook struct {
 	JSON struct {
 		URL         respjson.Field
 		Events      respjson.Field
+		Retry       respjson.Field
 		Secret      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -2143,6 +2157,10 @@ type MonitorUpdateResponseWebhook struct {
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
+	// Opt into durable webhook delivery. An empty object uses the default retry
+	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
+	// snapshotted for each event.
+	Retry RetryConfig `json:"retry"`
 	// Signing secret used to verify webhook authenticity. Each delivery includes an
 	// `X-Context-Signature: t=<unix>,v1=<hmac>` header, where the HMAC is SHA-256 over
 	// `"{t}.{rawRequestBody}"` keyed by this secret. Recompute it with a constant-time
@@ -2153,6 +2171,7 @@ type MonitorUpdateResponseWebhook struct {
 	JSON struct {
 		URL         respjson.Field
 		Events      respjson.Field
+		Retry       respjson.Field
 		Secret      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -2788,6 +2807,10 @@ type MonitorListResponseDataWebhook struct {
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
+	// Opt into durable webhook delivery. An empty object uses the default retry
+	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
+	// snapshotted for each event.
+	Retry RetryConfig `json:"retry"`
 	// Signing secret used to verify webhook authenticity. Each delivery includes an
 	// `X-Context-Signature: t=<unix>,v1=<hmac>` header, where the HMAC is SHA-256 over
 	// `"{t}.{rawRequestBody}"` keyed by this secret. Recompute it with a constant-time
@@ -2798,6 +2821,7 @@ type MonitorListResponseDataWebhook struct {
 	JSON struct {
 		URL         respjson.Field
 		Events      respjson.Field
+		Retry       respjson.Field
 		Secret      respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -3078,6 +3102,11 @@ type MonitorListAccountRunsResponseData struct {
 	//
 	// Deprecated: deprecated
 	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
+	// Retained webhook deliveries for this run. Inspect their live state and attempt
+	// history through /webhooks/deliveries. With webhook.retry configured, delivery is
+	// asynchronous and the legacy webhook_delivery/webhook_deliveries outcomes are
+	// omitted.
+	WebhookDeliveryIDs []string `json:"webhook_delivery_ids"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
@@ -3096,6 +3125,7 @@ type MonitorListAccountRunsResponseData struct {
 		StartedAt           respjson.Field
 		WebhookDeliveries   respjson.Field
 		WebhookDelivery     respjson.Field
+		WebhookDeliveryIDs  respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
 	} `json:"-"`
@@ -3263,6 +3293,11 @@ type MonitorListRunsResponseData struct {
 	//
 	// Deprecated: deprecated
 	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
+	// Retained webhook deliveries for this run. Inspect their live state and attempt
+	// history through /webhooks/deliveries. With webhook.retry configured, delivery is
+	// asynchronous and the legacy webhook_delivery/webhook_deliveries outcomes are
+	// omitted.
+	WebhookDeliveryIDs []string `json:"webhook_delivery_ids"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID                  respjson.Field
@@ -3281,6 +3316,7 @@ type MonitorListRunsResponseData struct {
 		StartedAt           respjson.Field
 		WebhookDeliveries   respjson.Field
 		WebhookDelivery     respjson.Field
+		WebhookDeliveryIDs  respjson.Field
 		ExtraFields         map[string]respjson.Field
 		raw                 string
 	} `json:"-"`
@@ -3736,6 +3772,10 @@ type MonitorNewParamsWebhook struct {
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events,omitzero"`
+	// Opt into durable webhook delivery. An empty object uses the default retry
+	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
+	// snapshotted for each event.
+	Retry RetryConfigParam `json:"retry,omitzero"`
 	paramObj
 }
 
@@ -4017,6 +4057,10 @@ type MonitorUpdateParamsWebhook struct {
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events,omitzero"`
+	// Opt into durable webhook delivery. An empty object uses the default retry
+	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
+	// snapshotted for each event.
+	Retry RetryConfigParam `json:"retry,omitzero"`
 	paramObj
 }
 

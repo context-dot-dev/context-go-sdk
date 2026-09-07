@@ -30,8 +30,9 @@ type Client struct {
 	// schemas.
 	Monitors MonitorService
 	// Scrape many pages or crawl a site asynchronously.
-	Batch  BatchService
-	People PersonService
+	Batch    BatchService
+	Webhooks WebhookService
+	People   PersonService
 	// Search live first-party RSS and free historical news data by company identity.
 	News NewsService
 }
@@ -74,6 +75,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Utility = NewUtilityService(opts...)
 	r.Monitors = NewMonitorService(opts...)
 	r.Batch = NewBatchService(opts...)
+	r.Webhooks = NewWebhookService(opts...)
 	r.People = NewPersonService(opts...)
 	r.News = NewNewsService(opts...)
 

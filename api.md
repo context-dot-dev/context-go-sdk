@@ -145,6 +145,34 @@ Methods:
 - <code title="get /batch/{batch_id}/results">client.Batch.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BatchService.GetResults">GetResults</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, batchID <a href="https://pkg.go.dev/builtin#string">string</a>, query <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BatchGetResultsParams">BatchGetResultsParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BatchGetResultsResponse">BatchGetResultsResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 - <code title="post /batch/submit">client.Batch.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BatchService.Submit">Submit</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, params <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BatchSubmitParams">BatchSubmitParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BatchSubmitResponse">BatchSubmitResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
+# Webhooks
+
+Params Types:
+
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#RetryConfigParam">RetryConfigParam</a>
+
+Response Types:
+
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#RetryConfig">RetryConfig</a>
+
+## Deliveries
+
+Response Types:
+
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#Attempt">Attempt</a>
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#Delivery">Delivery</a>
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryGetResponse">WebhookDeliveryGetResponse</a>
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryListResponse">WebhookDeliveryListResponse</a>
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryListAttemptsResponse">WebhookDeliveryListAttemptsResponse</a>
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryRetryResponse">WebhookDeliveryRetryResponse</a>
+
+Methods:
+
+- <code title="get /webhooks/deliveries/{delivery_id}">client.Webhooks.Deliveries.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryService.Get">Get</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, deliveryID <a href="https://pkg.go.dev/builtin#string">string</a>, query <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryGetParams">WebhookDeliveryGetParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryGetResponse">WebhookDeliveryGetResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="get /webhooks/deliveries">client.Webhooks.Deliveries.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryService.List">List</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryListParams">WebhookDeliveryListParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryListResponse">WebhookDeliveryListResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="get /webhooks/deliveries/{delivery_id}/attempts">client.Webhooks.Deliveries.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryService.ListAttempts">ListAttempts</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, deliveryID <a href="https://pkg.go.dev/builtin#string">string</a>, query <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryListAttemptsParams">WebhookDeliveryListAttemptsParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryListAttemptsResponse">WebhookDeliveryListAttemptsResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="post /webhooks/deliveries/{delivery_id}/retry">client.Webhooks.Deliveries.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryService.Retry">Retry</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, deliveryID <a href="https://pkg.go.dev/builtin#string">string</a>, params <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryRetryParams">WebhookDeliveryRetryParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#WebhookDeliveryRetryResponse">WebhookDeliveryRetryResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
 # People
 
 Response Types:

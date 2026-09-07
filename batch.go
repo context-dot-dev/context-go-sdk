@@ -345,25 +345,29 @@ type BatchGetResponse struct {
 	Timing BatchGetResponseTiming `json:"timing" api:"required"`
 	// API key usage for this request.
 	KeyMetadata BatchGetResponseKeyMetadata `json:"key_metadata"`
+	// Retained completion delivery ID. Inspect or retry it through
+	// /webhooks/deliveries/{delivery_id}. Present once the delivery has been retained.
+	WebhookDeliveryID string `json:"webhook_delivery_id"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		ID          respjson.Field
-		Crawl       respjson.Field
-		Credits     respjson.Field
-		Failure     respjson.Field
-		Format      respjson.Field
-		Input       respjson.Field
-		InvalidURLs respjson.Field
-		Mode        respjson.Field
-		PageErrors  respjson.Field
-		Progress    respjson.Field
-		Results     respjson.Field
-		Status      respjson.Field
-		Tags        respjson.Field
-		Timing      respjson.Field
-		KeyMetadata respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		ID                respjson.Field
+		Crawl             respjson.Field
+		Credits           respjson.Field
+		Failure           respjson.Field
+		Format            respjson.Field
+		Input             respjson.Field
+		InvalidURLs       respjson.Field
+		Mode              respjson.Field
+		PageErrors        respjson.Field
+		Progress          respjson.Field
+		Results           respjson.Field
+		Status            respjson.Field
+		Tags              respjson.Field
+		Timing            respjson.Field
+		KeyMetadata       respjson.Field
+		WebhookDeliveryID respjson.Field
+		ExtraFields       map[string]respjson.Field
+		raw               string
 	} `json:"-"`
 }
 
@@ -1747,13 +1751,17 @@ func (r BatchGetResultsParams) URLQuery() (v url.Values, err error) {
 type BatchSubmitParams struct {
 	// Choose a URL list or a site crawl.
 	Input BatchSubmitParamsInputUnion `json:"input,omitzero" api:"required"`
-	// URL notified when the batch finishes.
+	// Legacy URL notified when the batch finishes. Preserves one best-effort attempt.
+	// Cannot be combined with webhook.
 	WebhookURL param.Opt[string] `json:"webhookUrl,omitzero"`
 	// Any string unique to this submission. Retries with the same key return the
 	// original batch.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
 	// Tags stored on the batch. Filter the batch list by them later.
 	Tags []string `json:"tags,omitzero"`
+	// Completion webhook settings. Cannot be combined with webhookUrl. Omitting retry
+	// preserves legacy delivery; retry: {} opts into durable retries.
+	Webhook BatchSubmitParamsWebhook `json:"webhook,omitzero"`
 	paramObj
 }
 
@@ -2598,5 +2606,26 @@ func (r BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) MarshalJSON() (data []byt
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Completion webhook settings. Cannot be combined with webhookUrl. Omitting retry
+// preserves legacy delivery; retry: {} opts into durable retries.
+//
+// The property URL is required.
+type BatchSubmitParamsWebhook struct {
+	URL string `json:"url" api:"required" format:"uri"`
+	// Opt into durable webhook delivery. An empty object uses the default retry
+	// schedule. Omit retry to preserve legacy delivery behavior. The policy is
+	// snapshotted for each event.
+	Retry RetryConfigParam `json:"retry,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsWebhook) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsWebhook
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }

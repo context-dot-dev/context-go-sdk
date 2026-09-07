@@ -196,7 +196,13 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 				},
 			},
 		},
-		Tags:           []string{"docs", "competitor"},
+		Tags: []string{"docs", "competitor"},
+		Webhook: contextdev.BatchSubmitParamsWebhook{
+			URL: "https://example.com",
+			Retry: contextdev.RetryConfigParam{
+				DelaysSeconds: []int64{10, 60, 300, 1800, 7200, 21600, 57600},
+			},
+		},
 		WebhookURL:     contextdev.String("webhookUrl"),
 		IdempotencyKey: contextdev.String("Idempotency-Key"),
 	})

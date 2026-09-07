@@ -49,6 +49,9 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		Webhook: contextdev.MonitorNewParamsWebhook{
 			URL:    "https://example.com/webhook",
 			Events: []string{"change.detected", "run.completed"},
+			Retry: contextdev.RetryConfigParam{
+				DelaysSeconds: []int64{10, 60, 300, 1800, 7200, 21600, 57600},
+			},
 		},
 	})
 	if err != nil {
@@ -121,6 +124,9 @@ func TestMonitorUpdateWithOptionalParams(t *testing.T) {
 			Webhook: contextdev.MonitorUpdateParamsWebhook{
 				URL:    "https://example.com/webhook",
 				Events: []string{"change.detected", "run.completed"},
+				Retry: contextdev.RetryConfigParam{
+					DelaysSeconds: []int64{10, 60, 300, 1800, 7200, 21600, 57600},
+				},
 			},
 		},
 	)

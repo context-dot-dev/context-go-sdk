@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.15.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.14.0...v2.15.0) (2026-09-08)
+
+
+### Features
+
+* **webhooks:** add configurable retries and manual replay ([fd0248b](https://github.com/context-dot-dev/context-go-sdk/commit/fd0248b1eb93de5066c5ef2cad0122323b6f486e))
+* **webhooks:** simplify delivery APIs ([40be01e](https://github.com/context-dot-dev/context-go-sdk/commit/40be01eb69ac498d7178d1b216c67a9d0b74b208))
+
 ## [2.14.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.13.0...v2.14.0) (2026-09-03)
 
 

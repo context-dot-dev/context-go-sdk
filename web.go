@@ -3194,7 +3194,8 @@ type WebScreenshotParams struct {
 	ScrollOffset param.Opt[int64] `query:"scrollOffset,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load before taking
 	// the screenshot. Min: 0. Max: 30000 (30 seconds). Defaults to 3000 ms when
-	// omitted.
+	// omitted. When combined with timeoutMS, timeoutMS must be at least waitForMs +
+	// 10000 ms; a shorter deadline is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// Optional parameter for comprehensive popup cleanup. If 'true', the browser
 	// dismisses detected cookie/consent UI and clears other detected obstructive
@@ -4287,7 +4288,9 @@ type WebWebScrapeHTMLParams struct {
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
-	// 30000 (30 seconds).
+	// 30000 (30 seconds). When combined with timeoutMS, timeoutMS must be at least
+	// waitForMs + 10000 ms; a shorter deadline is rejected with 400
+	// TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// When true, iframes are rendered inline into the returned HTML.
 	IncludeFrames param.Opt[bool] `query:"includeFrames,omitzero" json:"-"`
@@ -4725,7 +4728,9 @@ type WebWebScrapeImagesParams struct {
 	// day). Set to 0 to bypass cache. Maximum: 2592000000 (30 days).
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load before
-	// collecting images. Min: 0. Max: 30000 (30 seconds).
+	// collecting images. Min: 0. Max: 30000 (30 seconds). When combined with
+	// timeoutMS, timeoutMS must be at least waitForMs + 10000 ms; a shorter deadline
+	// is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// When true, visually duplicate images are removed: every image is loaded and
 	// perceptually hashed, and only the highest-resolution copy of each duplicate
@@ -4901,7 +4906,9 @@ type WebWebScrapeMdParams struct {
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load before
-	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds).
+	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds). When combined
+	// with timeoutMS, timeoutMS must be at least waitForMs + 10000 ms; a shorter
+	// deadline is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// When true, the contents of iframes are rendered to Markdown.
 	IncludeFrames param.Opt[bool] `query:"includeFrames,omitzero" json:"-"`

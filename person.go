@@ -49,11 +49,15 @@ func (r *PersonService) Enrich(ctx context.Context, body PersonEnrichParams, opt
 type PersonEnrichResponse struct {
 	// The highest-scoring person candidate.
 	Match PersonEnrichResponseMatchUnion `json:"match" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata PersonEnrichResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Match       respjson.Field
+		RequestID   respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string

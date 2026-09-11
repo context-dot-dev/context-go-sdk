@@ -52,6 +52,9 @@ func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseH
 type ParseHandleResponse struct {
 	// Input bytes converted to GitHub Flavored Markdown
 	Markdown string `json:"markdown" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Indicates success
 	//
 	// Any of true.
@@ -69,6 +72,7 @@ type ParseHandleResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Markdown    respjson.Field
+		RequestID   respjson.Field
 		Success     respjson.Field
 		Type        respjson.Field
 		KeyMetadata respjson.Field

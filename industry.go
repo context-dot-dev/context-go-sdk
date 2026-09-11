@@ -54,6 +54,9 @@ func (r *IndustryService) GetSic(ctx context.Context, query IndustryGetSicParams
 }
 
 type IndustryGetNaicsResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Array of NAICS codes and titles.
 	Codes []IndustryGetNaicsResponseCode `json:"codes"`
 	// Domain found for the brand
@@ -66,6 +69,7 @@ type IndustryGetNaicsResponse struct {
 	Type string `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID   respjson.Field
 		Codes       respjson.Field
 		Domain      respjson.Field
 		KeyMetadata respjson.Field
@@ -129,6 +133,9 @@ func (r *IndustryGetNaicsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type IndustryGetSicResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Echoes back which SIC dataset was used to classify the brand.
 	//
 	// Any of "original_sic", "latest_sec".
@@ -147,6 +154,7 @@ type IndustryGetSicResponse struct {
 	Type string `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID      respjson.Field
 		Classification respjson.Field
 		Codes          respjson.Field
 		Domain         respjson.Field

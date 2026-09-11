@@ -176,6 +176,9 @@ type WebExtractResponse struct {
 	// Extracted data matching the request schema
 	Data     map[string]any             `json:"data" api:"required"`
 	Metadata WebExtractResponseMetadata `json:"metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status" api:"required"`
 	// The starting URL that was analyzed
@@ -189,6 +192,7 @@ type WebExtractResponse struct {
 		CacheMetadata respjson.Field
 		Data          respjson.Field
 		Metadata      respjson.Field
+		RequestID     respjson.Field
 		Status        respjson.Field
 		URL           respjson.Field
 		URLsAnalyzed  respjson.Field
@@ -320,6 +324,9 @@ type WebExtractCompetitorsResponse struct {
 	Competitors []WebExtractCompetitorsResponseCompetitor `json:"competitors" api:"required"`
 	// Normalized input domain.
 	Domain string `json:"domain" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Status of the response.
 	//
 	// Any of "ok".
@@ -332,6 +339,7 @@ type WebExtractCompetitorsResponse struct {
 	JSON struct {
 		Competitors respjson.Field
 		Domain      respjson.Field
+		RequestID   respjson.Field
 		Status      respjson.Field
 		Target      respjson.Field
 		KeyMetadata respjson.Field
@@ -446,6 +454,9 @@ type WebExtractFontsResponse struct {
 	Domain string `json:"domain" api:"required"`
 	// Array of font usage information
 	Fonts []WebExtractFontsResponseFont `json:"fonts" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status" api:"required"`
 	// Font assets keyed by family name as it appears in the fonts array (non-generic
@@ -460,6 +471,7 @@ type WebExtractFontsResponse struct {
 		Code          respjson.Field
 		Domain        respjson.Field
 		Fonts         respjson.Field
+		RequestID     respjson.Field
 		Status        respjson.Field
 		FontLinks     respjson.Field
 		KeyMetadata   respjson.Field
@@ -591,6 +603,9 @@ type WebExtractStyleguideResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata WebExtractStyleguideResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// HTTP status code
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
@@ -604,6 +619,7 @@ type WebExtractStyleguideResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
+		RequestID     respjson.Field
 		Code          respjson.Field
 		Domain        respjson.Field
 		KeyMetadata   respjson.Field
@@ -1262,6 +1278,9 @@ type WebScreenshotResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata WebScreenshotResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// HTTP status code
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
@@ -1284,6 +1303,7 @@ type WebScreenshotResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata  respjson.Field
+		RequestID      respjson.Field
 		Code           respjson.Field
 		Domain         respjson.Field
 		Height         respjson.Field
@@ -1364,14 +1384,18 @@ type WebSearchResponse struct {
 	// oldest contributing hit.
 	CacheMetadata WebSearchResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Echo of the original query (useful when fanout was enabled).
-	Query   string                    `json:"query" api:"required"`
-	Results []WebSearchResponseResult `json:"results" api:"required"`
+	Query string `json:"query" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string                    `json:"request_id" api:"required" format:"uuid"`
+	Results   []WebSearchResponseResult `json:"results" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
 		Query         respjson.Field
+		RequestID     respjson.Field
 		Results       respjson.Field
 		KeyMetadata   respjson.Field
 		ExtraFields   map[string]respjson.Field
@@ -1494,13 +1518,17 @@ type WebWebCrawlMdResponse struct {
 	// oldest contributing hit.
 	CacheMetadata WebWebCrawlMdResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	Metadata      WebWebCrawlMdResponseMetadata      `json:"metadata" api:"required"`
-	Results       []WebWebCrawlMdResponseResult      `json:"results" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string                        `json:"request_id" api:"required" format:"uuid"`
+	Results   []WebWebCrawlMdResponseResult `json:"results" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebCrawlMdResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
 		Metadata      respjson.Field
+		RequestID     respjson.Field
 		Results       respjson.Field
 		KeyMetadata   respjson.Field
 		ExtraFields   map[string]respjson.Field
@@ -1863,6 +1891,9 @@ type WebWebScrapeHTMLResponse struct {
 	HTML string `json:"html" api:"required"`
 	// Metadata extracted from the scraped page HTML.
 	Metadata WebWebScrapeHTMLResponseMetadata `json:"metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Indicates success
 	//
 	// Any of true.
@@ -1889,6 +1920,7 @@ type WebWebScrapeHTMLResponse struct {
 		CacheMetadata    respjson.Field
 		HTML             respjson.Field
 		Metadata         respjson.Field
+		RequestID        respjson.Field
 		Success          respjson.Field
 		Type             respjson.Field
 		URL              respjson.Field
@@ -2247,6 +2279,9 @@ type WebWebScrapeImagesResponse struct {
 	CacheMetadata WebWebScrapeImagesResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Images found on the page.
 	Images []WebWebScrapeImagesResponseImage `json:"images" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Always true on success.
 	//
 	// Any of true.
@@ -2261,6 +2296,7 @@ type WebWebScrapeImagesResponse struct {
 	JSON struct {
 		CacheMetadata  respjson.Field
 		Images         respjson.Field
+		RequestID      respjson.Field
 		Success        respjson.Field
 		URL            respjson.Field
 		ActionsApplied respjson.Field
@@ -2436,6 +2472,9 @@ type WebWebScrapeMdResponse struct {
 	Markdown string `json:"markdown" api:"required"`
 	// Metadata extracted from the scraped page HTML.
 	Metadata WebWebScrapeMdResponseMetadata `json:"metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Indicates success
 	//
 	// Any of true.
@@ -2459,6 +2498,7 @@ type WebWebScrapeMdResponse struct {
 		ContentLength    respjson.Field
 		Markdown         respjson.Field
 		Metadata         respjson.Field
+		RequestID        respjson.Field
 		Success          respjson.Field
 		URL              respjson.Field
 		ActionsApplied   respjson.Field
@@ -2792,6 +2832,9 @@ type WebWebScrapeSitemapResponse struct {
 	Domain string `json:"domain" api:"required"`
 	// Metadata about the sitemap crawl operation
 	Meta WebWebScrapeSitemapResponseMeta `json:"meta" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Indicates success
 	//
 	// Any of true.
@@ -2805,6 +2848,7 @@ type WebWebScrapeSitemapResponse struct {
 	JSON struct {
 		Domain      respjson.Field
 		Meta        respjson.Field
+		RequestID   respjson.Field
 		Success     respjson.Field
 		URLs        respjson.Field
 		KeyMetadata respjson.Field

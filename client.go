@@ -35,6 +35,9 @@ type Client struct {
 	People   PersonService
 	// Search live first-party RSS and free historical news data by company identity.
 	News NewsService
+	// Read your organization's API request logs to debug failed calls. These endpoints
+	// cost no credits and use a separate rate limit.
+	Logs LogService
 }
 
 // DefaultClientOptions read from the environment (CONTEXT_DEV_API_KEY,
@@ -78,6 +81,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Webhooks = NewWebhookService(opts...)
 	r.People = NewPersonService(opts...)
 	r.News = NewNewsService(opts...)
+	r.Logs = NewLogService(opts...)
 
 	return
 }

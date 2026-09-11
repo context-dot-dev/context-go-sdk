@@ -71,6 +71,9 @@ type BrandGetResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata BrandGetResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Detailed brand information
 	Brand BrandGetResponseBrand `json:"brand"`
 	// HTTP status code
@@ -82,6 +85,7 @@ type BrandGetResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
+		RequestID     respjson.Field
 		Brand         respjson.Field
 		Code          respjson.Field
 		KeyMetadata   respjson.Field
@@ -694,6 +698,9 @@ type BrandGetSimplifiedResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata BrandGetSimplifiedResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Simplified brand information
 	Brand BrandGetSimplifiedResponseBrand `json:"brand"`
 	// HTTP status code of the response
@@ -705,6 +712,7 @@ type BrandGetSimplifiedResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
+		RequestID     respjson.Field
 		Brand         respjson.Field
 		Code          respjson.Field
 		KeyMetadata   respjson.Field
@@ -971,6 +979,9 @@ func (r *BrandGetSimplifiedResponseKeyMetadata) UnmarshalJSON(data []byte) error
 }
 
 type BrandSearchResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Up to 10 matching brands, name matches first, then domain matches, most popular
 	// first within each group. Empty when nothing matches.
 	Results []BrandSearchResponseResult `json:"results" api:"required"`
@@ -978,6 +989,7 @@ type BrandSearchResponse struct {
 	KeyMetadata BrandSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID   respjson.Field
 		Results     respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field

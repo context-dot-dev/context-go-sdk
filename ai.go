@@ -57,6 +57,9 @@ type AIExtractProductResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata AIExtractProductResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Whether the given URL is a product detail page
 	IsProductPage bool `json:"is_product_page"`
 	// Credit usage, included whenever a valid API key is provided.
@@ -70,6 +73,7 @@ type AIExtractProductResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
+		RequestID     respjson.Field
 		IsProductPage respjson.Field
 		KeyMetadata   respjson.Field
 		Platform      respjson.Field
@@ -220,6 +224,9 @@ type AIExtractProductsResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata AIExtractProductsResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata AIExtractProductsResponseKeyMetadata `json:"key_metadata"`
 	// Array of products extracted from the website
@@ -227,6 +234,7 @@ type AIExtractProductsResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
+		RequestID     respjson.Field
 		KeyMetadata   respjson.Field
 		Products      respjson.Field
 		ExtraFields   map[string]respjson.Field

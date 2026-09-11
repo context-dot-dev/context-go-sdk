@@ -522,10 +522,14 @@ const (
 )
 
 type WebhookDeliveryGetResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebhookDeliveryGetResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID   respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -567,6 +571,9 @@ type WebhookDeliveryListResponse struct {
 	HasMore bool `json:"has_more" api:"required"`
 	// Next page cursor, or null on the last page.
 	NextCursor string `json:"next_cursor" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebhookDeliveryListResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -574,6 +581,7 @@ type WebhookDeliveryListResponse struct {
 		Data        respjson.Field
 		HasMore     respjson.Field
 		NextCursor  respjson.Field
+		RequestID   respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -614,6 +622,9 @@ type WebhookDeliveryListAttemptsResponse struct {
 	HasMore bool `json:"has_more" api:"required"`
 	// Next page cursor, or null on the last page.
 	NextCursor string `json:"next_cursor" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebhookDeliveryListAttemptsResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -621,6 +632,7 @@ type WebhookDeliveryListAttemptsResponse struct {
 		Data        respjson.Field
 		HasMore     respjson.Field
 		NextCursor  respjson.Field
+		RequestID   respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -657,11 +669,15 @@ func (r *WebhookDeliveryListAttemptsResponseKeyMetadata) UnmarshalJSON(data []by
 type WebhookDeliveryRetryResponse struct {
 	// Delivery ID.
 	ID string `json:"id" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebhookDeliveryRetryResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
+		RequestID   respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string

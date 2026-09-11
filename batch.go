@@ -333,6 +333,9 @@ type BatchGetResponse struct {
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
 	// Pages attempted so far. Use `status` to check completion.
 	Progress BatchGetResponseProgress `json:"progress" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Download links, available once the batch reaches a final status and null before
 	// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
 	Results BatchGetResponseResults `json:"results" api:"required"`
@@ -359,6 +362,7 @@ type BatchGetResponse struct {
 		Mode              respjson.Field
 		PageErrors        respjson.Field
 		Progress          respjson.Field
+		RequestID         respjson.Field
 		Results           respjson.Field
 		Status            respjson.Field
 		Tags              respjson.Field
@@ -572,6 +576,9 @@ func (r *BatchGetResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchListResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Batches on this page.
 	Data []BatchListResponseData `json:"data"`
 	// Whether another page is available.
@@ -582,6 +589,7 @@ type BatchListResponse struct {
 	NextCursor string `json:"next_cursor" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID   respjson.Field
 		Data        respjson.Field
 		HasMore     respjson.Field
 		KeyMetadata respjson.Field
@@ -808,6 +816,9 @@ func (r *BatchListResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchDeleteResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// ID of the deleted batch.
 	ID string `json:"id"`
 	// Always true on success.
@@ -816,6 +827,7 @@ type BatchDeleteResponse struct {
 	KeyMetadata BatchDeleteResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID   respjson.Field
 		ID          respjson.Field
 		Deleted     respjson.Field
 		KeyMetadata respjson.Field
@@ -873,6 +885,9 @@ type BatchCancelResponse struct {
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
 	// How far the batch got before cancellation.
 	Progress BatchCancelResponseProgress `json:"progress" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Always `cancelling`. Work already in flight finishes; the batch reaches
 	// `cancelled` shortly after.
 	//
@@ -894,6 +909,7 @@ type BatchCancelResponse struct {
 		Mode        respjson.Field
 		PageErrors  respjson.Field
 		Progress    respjson.Field
+		RequestID   respjson.Field
 		Status      respjson.Field
 		Tags        respjson.Field
 		Timing      respjson.Field
@@ -1019,6 +1035,9 @@ func (r *BatchCancelResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchGetResultsResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Result records on this page.
 	Data []BatchGetResultsResponseDataUnion `json:"data"`
 	// Whether another page is available.
@@ -1029,6 +1048,7 @@ type BatchGetResultsResponse struct {
 	NextCursor string `json:"next_cursor" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID   respjson.Field
 		Data        respjson.Field
 		HasMore     respjson.Field
 		KeyMetadata respjson.Field
@@ -1527,6 +1547,9 @@ type BatchSubmitResponse struct {
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchSubmitResponseMode `json:"mode" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Always `queued`. An accepted batch has not started yet.
 	//
 	// Any of "queued".
@@ -1549,6 +1572,7 @@ type BatchSubmitResponse struct {
 		Input         respjson.Field
 		InvalidURLs   respjson.Field
 		Mode          respjson.Field
+		RequestID     respjson.Field
 		Status        respjson.Field
 		Tags          respjson.Field
 		KeyMetadata   respjson.Field

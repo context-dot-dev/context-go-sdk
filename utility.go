@@ -46,6 +46,9 @@ func (r *UtilityService) Prefetch(ctx context.Context, body UtilityPrefetchParam
 }
 
 type UtilityPrefetchResponse struct {
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// The domain that was queued for prefetching
 	Domain string `json:"domain"`
 	// Credit usage, included whenever a valid API key is provided.
@@ -60,6 +63,7 @@ type UtilityPrefetchResponse struct {
 	Type UtilityPrefetchResponseType `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		RequestID   respjson.Field
 		Domain      respjson.Field
 		KeyMetadata respjson.Field
 		Message     respjson.Field

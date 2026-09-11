@@ -59,6 +59,9 @@ type NewsSearchResponse struct {
 	// Pass as cursor in the next request to fetch the following page. Null when there
 	// are no more results.
 	NextCursor string `json:"next_cursor" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata NewsSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -67,6 +70,7 @@ type NewsSearchResponse struct {
 		HasMore     respjson.Field
 		Meta        respjson.Field
 		NextCursor  respjson.Field
+		RequestID   respjson.Field
 		KeyMetadata respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string

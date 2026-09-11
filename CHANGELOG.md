@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.16.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.15.0...v2.16.0) (2026-09-11)
+
+
+### Features
+
+* **api:** return request_id on every response ([a427c33](https://github.com/context-dot-dev/context-go-sdk/commit/a427c3336c828a1a768c47aa1fd17b84bc116d1e))
+* **logs:** expose request log endpoints in SDKs ([#1025](https://github.com/context-dot-dev/context-go-sdk/issues/1025)) ([b793378](https://github.com/context-dot-dev/context-go-sdk/commit/b79337824f94cd6db5dd6f8b997a3ad9723e73f3))
+
+
+### Bug Fixes
+
+* **api:** reject timeoutMS too short for waitForMs ([04e4e16](https://github.com/context-dot-dev/context-go-sdk/commit/04e4e16b053707e1f8e6bdaa592187b7a701c234))
+
 ## [2.15.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.14.0...v2.15.0) (2026-09-08)
 
 

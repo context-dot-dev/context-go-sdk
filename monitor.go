@@ -510,9 +510,13 @@ const (
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorNewResponseTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type         string `json:"type"`
-	URL          string `json:"url"`
-	Instructions string `json:"instructions"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+	// This field is from variant [MonitorNewResponseTargetPage].
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// This field is from variant [MonitorNewResponseTargetPage].
+	IncludeSelectors []string `json:"include_selectors"`
+	Instructions     string   `json:"instructions"`
 	// This field is from variant [MonitorNewResponseTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorNewResponseTargetSitemap].
@@ -532,6 +536,8 @@ type MonitorNewResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
@@ -604,6 +610,17 @@ func (r *MonitorNewResponseTargetUnion) UnmarshalJSON(data []byte) error {
 type MonitorNewResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// CSS selectors for HTML regions to remove before text extraction. Applied after
+	// include_selectors; exclusion takes precedence when an element matches both. Omit
+	// or pass an empty array to apply no explicit exclusions. Changing these selectors
+	// creates a new baseline.
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// CSS selectors defining the HTML regions to monitor. Matching subtrees are
+	// combined in document order before text extraction, instead of automatic
+	// main-content selection. Omit or pass an empty array to use automatic
+	// main-content extraction. If the filtered page has no usable text, the run fails
+	// without replacing the baseline. Changing these selectors creates a new baseline.
+	IncludeSelectors []string `json:"include_selectors"`
 	// Plain-language goal describing which page changes matter. When provided without
 	// change_detection, semantic detection is inferred.
 	Instructions string `json:"instructions"`
@@ -613,6 +630,8 @@ type MonitorNewResponseTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -1156,9 +1175,13 @@ const (
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorGetResponseTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type         string `json:"type"`
-	URL          string `json:"url"`
-	Instructions string `json:"instructions"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+	// This field is from variant [MonitorGetResponseTargetPage].
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// This field is from variant [MonitorGetResponseTargetPage].
+	IncludeSelectors []string `json:"include_selectors"`
+	Instructions     string   `json:"instructions"`
 	// This field is from variant [MonitorGetResponseTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorGetResponseTargetSitemap].
@@ -1178,6 +1201,8 @@ type MonitorGetResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
@@ -1250,6 +1275,17 @@ func (r *MonitorGetResponseTargetUnion) UnmarshalJSON(data []byte) error {
 type MonitorGetResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// CSS selectors for HTML regions to remove before text extraction. Applied after
+	// include_selectors; exclusion takes precedence when an element matches both. Omit
+	// or pass an empty array to apply no explicit exclusions. Changing these selectors
+	// creates a new baseline.
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// CSS selectors defining the HTML regions to monitor. Matching subtrees are
+	// combined in document order before text extraction, instead of automatic
+	// main-content selection. Omit or pass an empty array to use automatic
+	// main-content extraction. If the filtered page has no usable text, the run fails
+	// without replacing the baseline. Changing these selectors creates a new baseline.
+	IncludeSelectors []string `json:"include_selectors"`
 	// Plain-language goal describing which page changes matter. When provided without
 	// change_detection, semantic detection is inferred.
 	Instructions string `json:"instructions"`
@@ -1259,6 +1295,8 @@ type MonitorGetResponseTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -1803,9 +1841,13 @@ const (
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorUpdateResponseTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type         string `json:"type"`
-	URL          string `json:"url"`
-	Instructions string `json:"instructions"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+	// This field is from variant [MonitorUpdateResponseTargetPage].
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// This field is from variant [MonitorUpdateResponseTargetPage].
+	IncludeSelectors []string `json:"include_selectors"`
+	Instructions     string   `json:"instructions"`
 	// This field is from variant [MonitorUpdateResponseTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorUpdateResponseTargetSitemap].
@@ -1825,6 +1867,8 @@ type MonitorUpdateResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
@@ -1897,6 +1941,17 @@ func (r *MonitorUpdateResponseTargetUnion) UnmarshalJSON(data []byte) error {
 type MonitorUpdateResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// CSS selectors for HTML regions to remove before text extraction. Applied after
+	// include_selectors; exclusion takes precedence when an element matches both. Omit
+	// or pass an empty array to apply no explicit exclusions. Changing these selectors
+	// creates a new baseline.
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// CSS selectors defining the HTML regions to monitor. Matching subtrees are
+	// combined in document order before text extraction, instead of automatic
+	// main-content selection. Omit or pass an empty array to use automatic
+	// main-content extraction. If the filtered page has no usable text, the run fails
+	// without replacing the baseline. Changing these selectors creates a new baseline.
+	IncludeSelectors []string `json:"include_selectors"`
 	// Plain-language goal describing which page changes matter. When provided without
 	// change_detection, semantic detection is inferred.
 	Instructions string `json:"instructions"`
@@ -1906,6 +1961,8 @@ type MonitorUpdateResponseTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -2451,9 +2508,13 @@ func (r *MonitorListResponseDataSchedule) UnmarshalJSON(data []byte) error {
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorListResponseDataTargetUnion struct {
 	// Any of "page", "sitemap", "extract".
-	Type         string `json:"type"`
-	URL          string `json:"url"`
-	Instructions string `json:"instructions"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+	// This field is from variant [MonitorListResponseDataTargetPage].
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// This field is from variant [MonitorListResponseDataTargetPage].
+	IncludeSelectors []string `json:"include_selectors"`
+	Instructions     string   `json:"instructions"`
 	// This field is from variant [MonitorListResponseDataTargetPage].
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// This field is from variant [MonitorListResponseDataTargetSitemap].
@@ -2473,6 +2534,8 @@ type MonitorListResponseDataTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		Exclude             respjson.Field
@@ -2545,6 +2608,17 @@ func (r *MonitorListResponseDataTargetUnion) UnmarshalJSON(data []byte) error {
 type MonitorListResponseDataTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	URL  string        `json:"url" api:"required" format:"uri"`
+	// CSS selectors for HTML regions to remove before text extraction. Applied after
+	// include_selectors; exclusion takes precedence when an element matches both. Omit
+	// or pass an empty array to apply no explicit exclusions. Changing these selectors
+	// creates a new baseline.
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// CSS selectors defining the HTML regions to monitor. Matching subtrees are
+	// combined in document order before text extraction, instead of automatic
+	// main-content selection. Omit or pass an empty array to use automatic
+	// main-content extraction. If the filtered page has no usable text, the run fails
+	// without replacing the baseline. Changing these selectors creates a new baseline.
+	IncludeSelectors []string `json:"include_selectors"`
 	// Plain-language goal describing which page changes matter. When provided without
 	// change_detection, semantic detection is inferred.
 	Instructions string `json:"instructions"`
@@ -2554,6 +2628,8 @@ type MonitorListResponseDataTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
 		NormalizeWhitespace respjson.Field
 		ExtraFields         map[string]respjson.Field
@@ -3553,6 +3629,17 @@ type MonitorNewParamsTargetPage struct {
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
+	// CSS selectors for HTML regions to remove before text extraction. Applied after
+	// include_selectors; exclusion takes precedence when an element matches both. Omit
+	// or pass an empty array to apply no explicit exclusions. Changing these selectors
+	// creates a new baseline.
+	ExcludeSelectors []string `json:"exclude_selectors,omitzero"`
+	// CSS selectors defining the HTML regions to monitor. Matching subtrees are
+	// combined in document order before text extraction, instead of automatic
+	// main-content selection. Omit or pass an empty array to use automatic
+	// main-content extraction. If the filtered page has no usable text, the run fails
+	// without replacing the baseline. Changing these selectors creates a new baseline.
+	IncludeSelectors []string `json:"include_selectors,omitzero"`
 	// This field can be elided, and will marshal its zero value as "page".
 	Type constant.Page `json:"type" default:"page"`
 	paramObj
@@ -3945,6 +4032,17 @@ type MonitorUpdateParamsTargetPage struct {
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
+	// CSS selectors for HTML regions to remove before text extraction. Applied after
+	// include_selectors; exclusion takes precedence when an element matches both. Omit
+	// or pass an empty array to apply no explicit exclusions. Changing these selectors
+	// creates a new baseline.
+	ExcludeSelectors []string `json:"exclude_selectors,omitzero"`
+	// CSS selectors defining the HTML regions to monitor. Matching subtrees are
+	// combined in document order before text extraction, instead of automatic
+	// main-content selection. Omit or pass an empty array to use automatic
+	// main-content extraction. If the filtered page has no usable text, the run fails
+	// without replacing the baseline. Changing these selectors creates a new baseline.
+	IncludeSelectors []string `json:"include_selectors,omitzero"`
 	// This field can be elided, and will marshal its zero value as "page".
 	Type constant.Page `json:"type" default:"page"`
 	paramObj

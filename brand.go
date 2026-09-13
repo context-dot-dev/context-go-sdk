@@ -1104,9 +1104,9 @@ type BrandGetParamsBodyByDomain struct {
 	// Domain name to retrieve brand data for (e.g., 'stripe.com').
 	Domain string `json:"domain" api:"required"`
 	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
-	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
-	// year.
+	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
+	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
+	// are clamped to 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -1169,9 +1169,9 @@ type BrandGetParamsBodyByName struct {
 	// by company name.
 	CountryGl param.Opt[string] `json:"country_gl,omitzero"`
 	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
-	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
-	// year.
+	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
+	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
+	// are clamped to 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -1232,9 +1232,9 @@ type BrandGetParamsBodyByEmail struct {
 	// Email address to retrieve brand data for (e.g., 'jane@stripe.com').
 	Email string `json:"email" api:"required" format:"email"`
 	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
-	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
-	// year.
+	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
+	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
+	// are clamped to 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -1294,9 +1294,9 @@ type BrandGetParamsBodyByTicker struct {
 	// Stock ticker symbol to retrieve brand data for (e.g., 'AAPL').
 	Ticker string `json:"ticker" api:"required"`
 	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
-	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
-	// year.
+	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
+	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
+	// are clamped to 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -1489,9 +1489,9 @@ type BrandGetSimplifiedParams struct {
 	// Domain name to retrieve simplified brand data for
 	Domain string `query:"domain" api:"required" json:"-"`
 	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Values below 1 day (86400000 ms)
-	// are clamped to 1 day; values above 1 year (31536000000 ms) are clamped to 1
-	// year.
+	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
+	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
+	// are clamped to 1 year.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional timeout in milliseconds for the request. If the request takes longer
 	// than this value, it will be aborted with a 408 status code. Maximum allowed

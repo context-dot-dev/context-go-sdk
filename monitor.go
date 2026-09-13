@@ -869,7 +869,8 @@ func (r *MonitorNewResponseLastError) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorNewResponseWebhook struct {
-	// Webhook URL events are delivered to.
+	// Webhook URL events are delivered to. Slack incoming webhook URLs are
+	// automatically formatted as Slack messages.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Events delivered to this endpoint. `change.detected` fires only when a run
 	// detects a change; `run.completed` fires on every completed run — including runs
@@ -1535,7 +1536,8 @@ func (r *MonitorGetResponseLastError) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorGetResponseWebhook struct {
-	// Webhook URL events are delivered to.
+	// Webhook URL events are delivered to. Slack incoming webhook URLs are
+	// automatically formatted as Slack messages.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Events delivered to this endpoint. `change.detected` fires only when a run
 	// detects a change; `run.completed` fires on every completed run — including runs
@@ -2202,7 +2204,8 @@ func (r *MonitorUpdateResponseLastError) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorUpdateResponseWebhook struct {
-	// Webhook URL events are delivered to.
+	// Webhook URL events are delivered to. Slack incoming webhook URLs are
+	// automatically formatted as Slack messages.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Events delivered to this endpoint. `change.detected` fires only when a run
 	// detects a change; `run.completed` fires on every completed run — including runs
@@ -2870,7 +2873,8 @@ func (r *MonitorListResponseDataLastError) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListResponseDataWebhook struct {
-	// Webhook URL events are delivered to.
+	// Webhook URL events are delivered to. Slack incoming webhook URLs are
+	// automatically formatted as Slack messages.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Events delivered to this endpoint. `change.detected` fires only when a run
 	// detects a change; `run.completed` fires on every completed run — including runs
@@ -3839,7 +3843,8 @@ func init() {
 
 // The property URL is required.
 type MonitorNewParamsWebhook struct {
-	// Webhook URL events are delivered to.
+	// Webhook URL events are delivered to. Slack incoming webhook URLs are
+	// automatically formatted as Slack messages.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Events delivered to this endpoint. `change.detected` fires only when a run
 	// detects a change; `run.completed` fires on every completed run — including runs
@@ -4133,7 +4138,8 @@ func (r *MonitorUpdateParamsTargetExtract) UnmarshalJSON(data []byte) error {
 //
 // The property URL is required.
 type MonitorUpdateParamsWebhook struct {
-	// Webhook URL events are delivered to.
+	// Webhook URL events are delivered to. Slack incoming webhook URLs are
+	// automatically formatted as Slack messages.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Events delivered to this endpoint. `change.detected` fires only when a run
 	// detects a change; `run.completed` fires on every completed run — including runs

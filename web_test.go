@@ -13,6 +13,38 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
+func TestWebAnswersWithOptionalParams(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Web.Answers(context.TODO(), contextdev.WebAnswersParams{
+		Task: "Find the pricing page URL and plan names for context.dev.",
+		JsonFormat: map[string]any{
+			"pricing_page_url": "bar",
+			"plans":            "bar",
+		},
+		Mode:      contextdev.WebAnswersParamsModeFast,
+		Tags:      []string{"production", "team-alpha"},
+		TimeoutMs: contextdev.Int(1000),
+	})
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
 func TestWebExtractWithOptionalParams(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"

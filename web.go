@@ -37,6 +37,17 @@ func NewWebService(opts ...option.RequestOption) (r WebService) {
 	return
 }
 
+// Researches the live web and returns a sourced answer in your requested JSON
+// shape. Select fast for a smaller research budget at 10 credits or ultra for
+// deeper reasoning at 100 credits. Defaults to ultra. Fast research is limited to
+// 30 seconds and ultra to 50 seconds; timeoutMS can shorten either deadline.
+func (r *WebService) Answers(ctx context.Context, body WebAnswersParams, opts ...option.RequestOption) (res *WebAnswersResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "web/answers"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	return res, err
+}
+
 // Crawl a website, use the provided JSON Schema and instructions to prioritize
 // relevant internal links, and extract structured data from the selected pages.
 func (r *WebService) Extract(ctx context.Context, body WebExtractParams, opts ...option.RequestOption) (res *WebExtractResponse, err error) {
@@ -166,6 +177,51 @@ func (r *WebService) WebScrapeSitemap(ctx context.Context, query WebWebScrapeSit
 	path := "web/scrape/sitemap"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
 	return res, err
+}
+
+type WebAnswersResponse struct {
+	// The answer, in the shape requested by json_format.
+	JsonContent map[string]any `json:"json_content" api:"required"`
+	// URLs that supplied search results or readable page content, in first-seen order.
+	// Unreadable pages are excluded.
+	Sources []string `json:"sources" api:"required"`
+	// Credit usage, included whenever a valid API key is provided.
+	KeyMetadata WebAnswersResponseKeyMetadata `json:"key_metadata"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		JsonContent respjson.Field
+		Sources     respjson.Field
+		KeyMetadata respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebAnswersResponse) RawJSON() string { return r.JSON.raw }
+func (r *WebAnswersResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Credit usage, included whenever a valid API key is provided.
+type WebAnswersResponseKeyMetadata struct {
+	// Credits used by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// Credits remaining for your organization.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebAnswersResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebAnswersResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type WebExtractResponse struct {
@@ -2910,6 +2966,49 @@ func (r WebWebScrapeSitemapResponseKeyMetadata) RawJSON() string { return r.JSON
 func (r *WebWebScrapeSitemapResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+type WebAnswersParams struct {
+	// What to research and answer, in plain language. Naming a domain in the task (for
+	// example "pricing on context.dev") makes the agent read that site before it
+	// searches.
+	Task string `json:"task" api:"required"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
+	// An example object with placeholder values (for example {"pricing_page_url": "",
+	// "plans": [{"name": "", "price": 0}]}). Object keys and value types are
+	// preserved; unknown values may be null. Empty arrays accept any JSON items.
+	// Defaults to {"result": ""}. Maximum 8 levels, 500 values, and 16000 characters.
+	JsonFormat map[string]any `json:"json_format,omitzero"`
+	// Research level: fast uses a smaller model and research budget for 10 credits;
+	// ultra uses deeper reasoning and research for 100 credits. Defaults to ultra.
+	// Only successful requests consume credits.
+	//
+	// Any of "fast", "ultra".
+	Mode WebAnswersParamsMode `json:"mode,omitzero"`
+	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	Tags []string `json:"tags,omitzero"`
+	paramObj
+}
+
+func (r WebAnswersParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebAnswersParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebAnswersParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Research level: fast uses a smaller model and research budget for 10 credits;
+// ultra uses deeper reasoning and research for 100 credits. Defaults to ultra.
+// Only successful requests consume credits.
+type WebAnswersParamsMode string
+
+const (
+	WebAnswersParamsModeFast  WebAnswersParamsMode = "fast"
+	WebAnswersParamsModeUltra WebAnswersParamsMode = "ultra"
+)
 
 type WebExtractParams struct {
 	// JSON Schema for the returned data object. Image fields such as `image_urls` or

@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.17.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.16.0...v2.17.0) (2026-09-15)
+
+
+### Features
+
+* **answers:** add live web research with fast and ultra modes ([#954](https://github.com/context-dot-dev/context-go-sdk/issues/954)) ([8afed59](https://github.com/context-dot-dev/context-go-sdk/commit/8afed59792171c3b47ce6c7920c61ac1f7cb3eb5))
+* **api-keys:** enforce scoped API key permissions ([#1038](https://github.com/context-dot-dev/context-go-sdk/issues/1038)) ([c57fd08](https://github.com/context-dot-dev/context-go-sdk/commit/c57fd08878279f1d26abdb028391e3d3e7e1520a))
+* **api:** unify timeout configuration and return partial results ([#1030](https://github.com/context-dot-dev/context-go-sdk/issues/1030)) ([e97671f](https://github.com/context-dot-dev/context-go-sdk/commit/e97671f10a1ea4259b569857064cb5393a1f9e72))
+* **monitors:** add page selector filters ([#1037](https://github.com/context-dot-dev/context-go-sdk/issues/1037)) ([0ccb6f5](https://github.com/context-dot-dev/context-go-sdk/commit/0ccb6f50adf9d70df40431bfe871541d15352d5c))
+* **web:** add raw bytes scraping endpoint ([#1081](https://github.com/context-dot-dev/context-go-sdk/issues/1081)) ([be248db](https://github.com/context-dot-dev/context-go-sdk/commit/be248db1234fc2326c235a350b8c2ac8ee5e4e2b))
+
+
+### Bug Fixes
+
+* **api:** honour maxAgeMs=0 on brand retrieve, styleguide and fonts endpoints ([#998](https://github.com/context-dot-dev/context-go-sdk/issues/998)) ([f6ad226](https://github.com/context-dot-dev/context-go-sdk/commit/f6ad226be329652febab996049e3b735c6f6707c))
+* **webhooks:** format Slack webhook notifications ([#1045](https://github.com/context-dot-dev/context-go-sdk/issues/1045)) ([25d6d1a](https://github.com/context-dot-dev/context-go-sdk/commit/25d6d1a83d0da5a01d942bc59ae7174d51171125))
+
 ## [2.16.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.15.0...v2.16.0) (2026-09-11)
 
 

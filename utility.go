@@ -117,12 +117,12 @@ type UtilityPrefetchParams struct {
 	//
 	// Any of "brand", "styleguide".
 	Type UtilityPrefetchParamsType `json:"type,omitzero" api:"required"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts UtilityPrefetchParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -194,3 +194,33 @@ const (
 	UtilityPrefetchParamsTypeBrand      UtilityPrefetchParamsType = "brand"
 	UtilityPrefetchParamsTypeStyleguide UtilityPrefetchParamsType = "styleguide"
 )
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type UtilityPrefetchParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. This endpoint supports "fail": return 408
+	// REQUEST_TIMEOUT without charging credits.
+	//
+	// Any of "fail".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r UtilityPrefetchParamsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow UtilityPrefetchParamsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *UtilityPrefetchParamsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[UtilityPrefetchParamsTimeoutOpts](
+		"behavior", "fail",
+	)
+}

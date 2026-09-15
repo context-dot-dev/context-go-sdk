@@ -27,10 +27,13 @@ func TestAIExtractProductWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.AI.ExtractProduct(context.TODO(), contextdev.AIExtractProductParams{
-		URL:       "https://example.com",
-		MaxAgeMs:  contextdev.Int(0),
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1000),
+		URL:      "https://example.com",
+		MaxAgeMs: contextdev.Int(0),
+		Tags:     []string{"production", "team-alpha"},
+		TimeoutOpts: contextdev.AIExtractProductParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -60,7 +63,10 @@ func TestAIExtractProductsWithOptionalParams(t *testing.T) {
 			MaxAgeMs:    contextdev.Int(0),
 			MaxProducts: contextdev.Int(1),
 			Tags:        []string{"production", "team-alpha"},
-			TimeoutMs:   contextdev.Int(1000),
+			TimeoutOpts: contextdev.AIExtractProductsParamsBodyByDomainTimeoutOpts{
+				Milliseconds: 1000,
+				Behavior:     "fail",
+			},
 		},
 	})
 	if err != nil {

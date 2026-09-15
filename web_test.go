@@ -32,9 +32,12 @@ func TestWebAnswersWithOptionalParams(t *testing.T) {
 			"pricing_page_url": "bar",
 			"plans":            "bar",
 		},
-		Mode:      contextdev.WebAnswersParamsModeFast,
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1000),
+		Mode: contextdev.WebAnswersParamsModeFast,
+		Tags: []string{"production", "team-alpha"},
+		TimeoutOpts: contextdev.WebAnswersParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -86,8 +89,11 @@ func TestWebExtractWithOptionalParams(t *testing.T) {
 		SettleAnimations: contextdev.Bool(true),
 		StopAfterMs:      contextdev.Int(10000),
 		Tags:             []string{"production", "team-alpha"},
-		TimeoutMs:        contextdev.Int(1000),
-		WaitForMs:        contextdev.Int(0),
+		TimeoutOpts: contextdev.WebExtractParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
+		WaitForMs: contextdev.Int(0),
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -115,7 +121,10 @@ func TestWebExtractCompetitorsWithOptionalParams(t *testing.T) {
 		Domain:         "xxx",
 		NumCompetitors: contextdev.Int(1),
 		Tags:           []string{"production", "team-alpha"},
-		TimeoutMs:      contextdev.Int(1000),
+		TimeoutOpts: contextdev.WebExtractCompetitorsParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -144,7 +153,10 @@ func TestWebExtractFontsWithOptionalParams(t *testing.T) {
 		Domain:    contextdev.String("xxx"),
 		MaxAgeMs:  contextdev.Int(0),
 		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1000),
+		TimeoutOpts: contextdev.WebExtractFontsParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -174,7 +186,10 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 		Domain:      contextdev.String("xxx"),
 		MaxAgeMs:    contextdev.Int(0),
 		Tags:        []string{"production", "team-alpha"},
-		TimeoutMs:   contextdev.Int(1000),
+		TimeoutOpts: contextdev.WebExtractStyleguideParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -210,7 +225,10 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		Page:              contextdev.WebScreenshotParamsPageLogin,
 		ScrollOffset:      contextdev.Int(0),
 		Tags:              []string{"production", "team-alpha"},
-		TimeoutMs:         contextdev.Int(1),
+		TimeoutOpts: contextdev.WebScreenshotParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
 		Viewport: contextdev.WebScreenshotParamsViewport{
 			Height: contextdev.Int(240),
 			Width:  contextdev.Int(240),
@@ -258,14 +276,20 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 				Start:       contextdev.Int(1),
 			},
 			ShortenBase64Images: contextdev.Bool(true),
-			TimeoutMs:           contextdev.Int(1000),
-			UseMainContentOnly:  contextdev.Bool(true),
-			WaitForMs:           contextdev.Int(0),
+			TimeoutOpts: contextdev.WebSearchParamsMarkdownOptionsTimeoutOpts{
+				Milliseconds: 1,
+				Behavior:     "fail",
+			},
+			UseMainContentOnly: contextdev.Bool(true),
+			WaitForMs:          contextdev.Int(0),
 		},
 		NumResults:  contextdev.Int(10),
 		QueryFanout: contextdev.Bool(true),
 		Tags:        []string{"production", "team-alpha"},
-		TimeoutMs:   contextdev.Int(1000),
+		TimeoutOpts: contextdev.WebSearchParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -311,11 +335,14 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		ShortenBase64Images: contextdev.Bool(true),
 		StopAfterMs:         contextdev.Int(10000),
 		Tags:                []string{"production", "team-alpha"},
-		TimeoutMs:           contextdev.Int(1000),
-		URLRegex:            contextdev.String("^https?://[^/]+/blog/"),
-		UseMainContentOnly:  contextdev.Bool(true),
-		WaitForMs:           contextdev.Int(0),
-		Zdr:                 contextdev.WebWebCrawlMdParamsZdrEnabled,
+		TimeoutOpts: contextdev.WebWebCrawlMdParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
+		URLRegex:           contextdev.String("^https?://[^/]+/blog/"),
+		UseMainContentOnly: contextdev.Bool(true),
+		WaitForMs:          contextdev.Int(0),
+		Zdr:                contextdev.WebWebCrawlMdParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -345,9 +372,12 @@ func TestWebWebScrapeBytesWithOptionalParams(t *testing.T) {
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1),
-		Zdr:       contextdev.WebWebScrapeBytesParamsZdrEnabled,
+		Tags: []string{"production", "team-alpha"},
+		TimeoutOpts: contextdev.WebWebScrapeBytesParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
+		Zdr: contextdev.WebWebScrapeBytesParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -392,9 +422,12 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
-		SettleAnimations:   contextdev.Bool(true),
-		Tags:               []string{"production", "team-alpha"},
-		TimeoutMs:          contextdev.Int(1),
+		SettleAnimations: contextdev.Bool(true),
+		Tags:             []string{"production", "team-alpha"},
+		TimeoutOpts: contextdev.WebWebScrapeHTMLParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
 		UseMainContentOnly: contextdev.Bool(true),
 		WaitForMs:          contextdev.Int(0),
 		Zdr:                contextdev.WebWebScrapeHTMLParamsZdrEnabled,
@@ -438,9 +471,12 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		MaxAgeMs:  contextdev.Int(0),
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1),
+		MaxAgeMs: contextdev.Int(0),
+		Tags:     []string{"production", "team-alpha"},
+		TimeoutOpts: contextdev.WebWebScrapeImagesParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
 		WaitForMs: contextdev.Int(0),
 	})
 	if err != nil {
@@ -492,10 +528,13 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 		SettleAnimations:    contextdev.Bool(true),
 		ShortenBase64Images: contextdev.Bool(true),
 		Tags:                []string{"production", "team-alpha"},
-		TimeoutMs:           contextdev.Int(1),
-		UseMainContentOnly:  contextdev.Bool(true),
-		WaitForMs:           contextdev.Int(0),
-		Zdr:                 contextdev.WebWebScrapeMdParamsZdrEnabled,
+		TimeoutOpts: contextdev.WebWebScrapeMdParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
+		UseMainContentOnly: contextdev.Bool(true),
+		WaitForMs:          contextdev.Int(0),
+		Zdr:                contextdev.WebWebScrapeMdParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -529,9 +568,12 @@ func TestWebWebScrapeSitemapWithOptionalParams(t *testing.T) {
 		Search:            contextdev.String("help center and troubleshooting articles"),
 		SitemapURL:        contextdev.String("https://example.com"),
 		Tags:              []string{"production", "team-alpha"},
-		TimeoutMs:         contextdev.Int(1),
-		URLRegex:          contextdev.String("^https?://[^/]+/blog/"),
-		Zdr:               contextdev.WebWebScrapeSitemapParamsZdrEnabled,
+		TimeoutOpts: contextdev.WebWebScrapeSitemapParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
+		URLRegex: contextdev.String("^https?://[^/]+/blog/"),
+		Zdr:      contextdev.WebWebScrapeSitemapParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

@@ -40,7 +40,8 @@ func NewWebService(opts ...option.RequestOption) (r WebService) {
 // Researches the live web and returns a sourced answer in your requested JSON
 // shape. Select fast for a smaller research budget at 10 credits or ultra for
 // deeper reasoning at 100 credits. Defaults to ultra. Fast research is limited to
-// 30 seconds and ultra to 50 seconds; timeoutMS can shorten either deadline.
+// 30 seconds and ultra to 50 seconds; timeoutOpts.milliseconds can shorten either
+// deadline.
 func (r *WebService) Answers(ctx context.Context, body WebAnswersParams, opts ...option.RequestOption) (res *WebAnswersResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/answers"
@@ -127,7 +128,11 @@ func (r *WebService) WebScrapeBytes(ctx context.Context, query WebWebScrapeBytes
 }
 
 // Scrapes the given URL and returns the raw HTML content of the page. The base
-// request costs 1 credit; requests with browser actions cost 2 credits.
+// request costs 1 credit; requests with browser actions cost 2 credits. A request
+// that hits its timeoutOpts.milliseconds deadline fails with 408 and is not
+// billed, unless timeoutOpts.behavior=return-partial is set — then the page as
+// rendered so far is returned with `finalDOMState: "still-loading"` and billed at
+// the base cost of 1 credit.
 func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLParams, opts ...option.RequestOption) (res *WebWebScrapeHTMLResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/html"
@@ -167,11 +172,11 @@ func (r *WebService) WebScrapeImages(ctx context.Context, query WebWebScrapeImag
 //
 // | HTTP status | Billed?                                   | Meaning                                                                                                                                                                                                                                                                                                       |
 // | ----------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing                                                                                                                                                                                                                       |
+// | 200         | Yes — 1 credit, or 2 credits with actions | Successful scrape, including a zero-length result when includeSelectors matched nothing. A partial result (`finalDOMState: "still-loading"`, only with timeoutOpts.behavior=return-partial) is billed at the base 1 credit with no OCR or actions surcharge                                                   |
 // | 400         | No                                        | Invalid input, skipped PDF, or the page could not be scraped. error_code WEBSITE_BLOCKED specifically means the site answered with an anti-bot challenge, CAPTCHA wall, or login shell instead of the page (even when the site returned HTTP 200) — retrying later or from another country sometimes succeeds |
 // | 401 / 403   | No                                        | Invalid/disabled key, insufficient permissions, or credits exhausted; inspect error_code                                                                                                                                                                                                                      |
 // | 404         | No                                        | Target page returned or fingerprinted as not found                                                                                                                                                                                                                                                            |
-// | 408         | No                                        | Request timed out                                                                                                                                                                                                                                                                                             |
+// | 408         | No                                        | Request timed out. With timeoutOpts.behavior=return-partial this only happens when nothing usable had rendered by the deadline                                                                                                                                                                                |
 // | 413         | No                                        | Target content exceeds the maximum supported size (20 MB)                                                                                                                                                                                                                                                     |
 // | 415         | No                                        | Unsupported content type                                                                                                                                                                                                                                                                                      |
 // | 429         | No                                        | Per-minute rate limit exceeded; honor Retry-After                                                                                                                                                                                                                                                             |
@@ -204,11 +209,15 @@ type WebAnswersResponse struct {
 	Sources []string `json:"sources" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebAnswersResponseKeyMetadata `json:"key_metadata"`
+	// True when the request deadline ended research and the answer uses the evidence
+	// collected so far.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		JsonContent respjson.Field
 		Sources     respjson.Field
 		KeyMetadata respjson.Field
+		Partial     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -260,6 +269,9 @@ type WebExtractResponse struct {
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebExtractResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and this response contains only usable
+	// results completed so far. Unfinished results are omitted.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
@@ -270,6 +282,7 @@ type WebExtractResponse struct {
 		URL           respjson.Field
 		URLsAnalyzed  respjson.Field
 		KeyMetadata   respjson.Field
+		Partial       respjson.Field
 		ExtraFields   map[string]respjson.Field
 		raw           string
 	} `json:"-"`
@@ -408,6 +421,9 @@ type WebExtractCompetitorsResponse struct {
 	Target WebExtractCompetitorsResponseTarget `json:"target" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebExtractCompetitorsResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and this response contains only usable
+	// results completed so far. Unfinished results are omitted.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Competitors respjson.Field
@@ -416,6 +432,7 @@ type WebExtractCompetitorsResponse struct {
 		Status      respjson.Field
 		Target      respjson.Field
 		KeyMetadata respjson.Field
+		Partial     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -532,6 +549,14 @@ type WebExtractFontsResponse struct {
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status" api:"required"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState WebExtractFontsResponseFinalDomState `json:"finalDOMState"`
 	// Font assets keyed by family name as it appears in the fonts array (non-generic
 	// names only). Clients match entries in fonts to pick a file URL from files.
 	// Omitted when no families resolve to Google or custom @font-face URLs.
@@ -546,6 +571,7 @@ type WebExtractFontsResponse struct {
 		Fonts         respjson.Field
 		RequestID     respjson.Field
 		Status        respjson.Field
+		FinalDomState respjson.Field
 		FontLinks     respjson.Field
 		KeyMetadata   respjson.Field
 		ExtraFields   map[string]respjson.Field
@@ -620,6 +646,18 @@ func (r *WebExtractFontsResponseFont) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// How complete the returned content is. `loaded` means the page finished the waits
+// the request asked for. `still-loading` only occurs with
+// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+// reached first, so the content reflects the DOM at that moment and late-rendering
+// parts may be missing. Partial results are billed at the base request cost.
+type WebExtractFontsResponseFinalDomState string
+
+const (
+	WebExtractFontsResponseFinalDomStateLoaded       WebExtractFontsResponseFinalDomState = "loaded"
+	WebExtractFontsResponseFinalDomStateStillLoading WebExtractFontsResponseFinalDomState = "still-loading"
+)
+
 type WebExtractFontsResponseFontLink struct {
 	// Upright font files keyed by weight string (e.g. "400" for regular, "500",
 	// "700"). Values are absolute URLs.
@@ -683,6 +721,14 @@ type WebExtractStyleguideResponse struct {
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
 	Domain string `json:"domain"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState WebExtractStyleguideResponseFinalDomState `json:"finalDOMState"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebExtractStyleguideResponseKeyMetadata `json:"key_metadata"`
 	// Status of the response, e.g., 'ok'
@@ -695,6 +741,7 @@ type WebExtractStyleguideResponse struct {
 		RequestID     respjson.Field
 		Code          respjson.Field
 		Domain        respjson.Field
+		FinalDomState respjson.Field
 		KeyMetadata   respjson.Field
 		Status        respjson.Field
 		Styleguide    respjson.Field
@@ -734,6 +781,18 @@ func (r WebExtractStyleguideResponseCacheMetadata) RawJSON() string { return r.J
 func (r *WebExtractStyleguideResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// How complete the returned content is. `loaded` means the page finished the waits
+// the request asked for. `still-loading` only occurs with
+// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+// reached first, so the content reflects the DOM at that moment and late-rendering
+// parts may be missing. Partial results are billed at the base request cost.
+type WebExtractStyleguideResponseFinalDomState string
+
+const (
+	WebExtractStyleguideResponseFinalDomStateLoaded       WebExtractStyleguideResponseFinalDomState = "loaded"
+	WebExtractStyleguideResponseFinalDomStateStillLoading WebExtractStyleguideResponseFinalDomState = "still-loading"
+)
 
 // Credit usage, included whenever a valid API key is provided.
 type WebExtractStyleguideResponseKeyMetadata struct {
@@ -1358,6 +1417,14 @@ type WebScreenshotResponse struct {
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
 	Domain string `json:"domain"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState WebScreenshotResponseFinalDomState `json:"finalDOMState"`
 	// Height in pixels of the returned screenshot image
 	Height int64 `json:"height"`
 	// Credit usage, included whenever a valid API key is provided.
@@ -1379,6 +1446,7 @@ type WebScreenshotResponse struct {
 		RequestID      respjson.Field
 		Code           respjson.Field
 		Domain         respjson.Field
+		FinalDomState  respjson.Field
 		Height         respjson.Field
 		KeyMetadata    respjson.Field
 		Screenshot     respjson.Field
@@ -1422,6 +1490,18 @@ func (r *WebScreenshotResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// How complete the returned content is. `loaded` means the page finished the waits
+// the request asked for. `still-loading` only occurs with
+// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+// reached first, so the content reflects the DOM at that moment and late-rendering
+// parts may be missing. Partial results are billed at the base request cost.
+type WebScreenshotResponseFinalDomState string
+
+const (
+	WebScreenshotResponseFinalDomStateLoaded       WebScreenshotResponseFinalDomState = "loaded"
+	WebScreenshotResponseFinalDomStateStillLoading WebScreenshotResponseFinalDomState = "still-loading"
+)
+
 // Credit usage, included whenever a valid API key is provided.
 type WebScreenshotResponseKeyMetadata struct {
 	// Credits used by this request.
@@ -1464,6 +1544,10 @@ type WebSearchResponse struct {
 	Results   []WebSearchResponseResult `json:"results" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebSearchResponseKeyMetadata `json:"key_metadata"`
+	// True when timeoutOpts.behavior=return-partial returned the usable results
+	// collected before the deadline. Partial collections are not cached as complete
+	// results.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
@@ -1471,6 +1555,7 @@ type WebSearchResponse struct {
 		RequestID     respjson.Field
 		Results       respjson.Field
 		KeyMetadata   respjson.Field
+		Partial       respjson.Field
 		ExtraFields   map[string]respjson.Field
 		raw           string
 	} `json:"-"`
@@ -1549,12 +1634,21 @@ type WebSearchResponseResultMarkdown struct {
 	// GFM Markdown of the page. Null unless markdownOptions.enabled is true and
 	// scraping succeeded.
 	Markdown string `json:"markdown" api:"required"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState string `json:"finalDOMState"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Code        respjson.Field
-		Markdown    respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		Code          respjson.Field
+		Markdown      respjson.Field
+		FinalDomState respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
 	} `json:"-"`
 }
 
@@ -1597,6 +1691,10 @@ type WebWebCrawlMdResponse struct {
 	Results   []WebWebCrawlMdResponseResult `json:"results" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebCrawlMdResponseKeyMetadata `json:"key_metadata"`
+	// True when timeoutOpts.behavior=return-partial returned the usable results
+	// collected before the deadline. Partial collections are not cached as complete
+	// results.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata respjson.Field
@@ -1604,6 +1702,7 @@ type WebWebCrawlMdResponse struct {
 		RequestID     respjson.Field
 		Results       respjson.Field
 		KeyMetadata   respjson.Field
+		Partial       respjson.Field
 		ExtraFields   map[string]respjson.Field
 		raw           string
 	} `json:"-"`
@@ -2032,6 +2131,14 @@ type WebWebScrapeHTMLResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata WebWebScrapeHTMLResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState WebWebScrapeHTMLResponseFinalDomState `json:"finalDOMState" api:"required"`
 	// The scraped content of the page. For normal pages this is the raw HTML. When the
 	// page is a sitemap or feed served behind an XSL stylesheet (which browsers render
 	// into HTML), this is the underlying XML instead — see the `type` field.
@@ -2065,6 +2172,7 @@ type WebWebScrapeHTMLResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata    respjson.Field
+		FinalDomState    respjson.Field
 		HTML             respjson.Field
 		Metadata         respjson.Field
 		RequestID        respjson.Field
@@ -2110,6 +2218,18 @@ func (r WebWebScrapeHTMLResponseCacheMetadata) RawJSON() string { return r.JSON.
 func (r *WebWebScrapeHTMLResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// How complete the returned content is. `loaded` means the page finished the waits
+// the request asked for. `still-loading` only occurs with
+// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+// reached first, so the content reflects the DOM at that moment and late-rendering
+// parts may be missing. Partial results are billed at the base request cost.
+type WebWebScrapeHTMLResponseFinalDomState string
+
+const (
+	WebWebScrapeHTMLResponseFinalDomStateLoaded       WebWebScrapeHTMLResponseFinalDomState = "loaded"
+	WebWebScrapeHTMLResponseFinalDomStateStillLoading WebWebScrapeHTMLResponseFinalDomState = "still-loading"
+)
 
 // Metadata extracted from the scraped page HTML.
 type WebWebScrapeHTMLResponseMetadata struct {
@@ -2437,8 +2557,20 @@ type WebWebScrapeImagesResponse struct {
 	URL string `json:"url" api:"required"`
 	// One verified outcome per requested browser action, in request order.
 	ActionsApplied []WebWebScrapeImagesResponseActionsApplied `json:"actionsApplied"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState WebWebScrapeImagesResponseFinalDomState `json:"finalDOMState"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeImagesResponseKeyMetadata `json:"key_metadata"`
+	// True when the deadline interrupted rendering or image enrichment. Partial
+	// results are billed at the base request cost, without enrichment or actions
+	// surcharges.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CacheMetadata  respjson.Field
@@ -2447,7 +2579,9 @@ type WebWebScrapeImagesResponse struct {
 		Success        respjson.Field
 		URL            respjson.Field
 		ActionsApplied respjson.Field
+		FinalDomState  respjson.Field
 		KeyMetadata    respjson.Field
+		Partial        respjson.Field
 		ExtraFields    map[string]respjson.Field
 		raw            string
 	} `json:"-"`
@@ -2585,6 +2719,18 @@ func (r *WebWebScrapeImagesResponseActionsApplied) UnmarshalJSON(data []byte) er
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// How complete the returned content is. `loaded` means the page finished the waits
+// the request asked for. `still-loading` only occurs with
+// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+// reached first, so the content reflects the DOM at that moment and late-rendering
+// parts may be missing. Partial results are billed at the base request cost.
+type WebWebScrapeImagesResponseFinalDomState string
+
+const (
+	WebWebScrapeImagesResponseFinalDomStateLoaded       WebWebScrapeImagesResponseFinalDomState = "loaded"
+	WebWebScrapeImagesResponseFinalDomStateStillLoading WebWebScrapeImagesResponseFinalDomState = "still-loading"
+)
+
 // Credit usage, included whenever a valid API key is provided.
 type WebWebScrapeImagesResponseKeyMetadata struct {
 	// Credits used by this request.
@@ -2615,6 +2761,14 @@ type WebWebScrapeMdResponse struct {
 	// and compare small values against your workload's minimum useful-content
 	// threshold.
 	ContentLength int64 `json:"contentLength" api:"required"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState WebWebScrapeMdResponseFinalDomState `json:"finalDOMState" api:"required"`
 	// Page content converted to GitHub Flavored Markdown
 	Markdown string `json:"markdown" api:"required"`
 	// Metadata extracted from the scraped page HTML.
@@ -2643,6 +2797,7 @@ type WebWebScrapeMdResponse struct {
 	JSON struct {
 		CacheMetadata    respjson.Field
 		ContentLength    respjson.Field
+		FinalDomState    respjson.Field
 		Markdown         respjson.Field
 		Metadata         respjson.Field
 		RequestID        respjson.Field
@@ -2688,6 +2843,18 @@ func (r WebWebScrapeMdResponseCacheMetadata) RawJSON() string { return r.JSON.ra
 func (r *WebWebScrapeMdResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// How complete the returned content is. `loaded` means the page finished the waits
+// the request asked for. `still-loading` only occurs with
+// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+// reached first, so the content reflects the DOM at that moment and late-rendering
+// parts may be missing. Partial results are billed at the base request cost.
+type WebWebScrapeMdResponseFinalDomState string
+
+const (
+	WebWebScrapeMdResponseFinalDomStateLoaded       WebWebScrapeMdResponseFinalDomState = "loaded"
+	WebWebScrapeMdResponseFinalDomStateStillLoading WebWebScrapeMdResponseFinalDomState = "still-loading"
+)
 
 // Metadata extracted from the scraped page HTML.
 type WebWebScrapeMdResponseMetadata struct {
@@ -2991,6 +3158,10 @@ type WebWebScrapeSitemapResponse struct {
 	URLs []string `json:"urls" api:"required"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeSitemapResponseKeyMetadata `json:"key_metadata"`
+	// True when timeoutOpts.behavior=return-partial returned the usable results
+	// collected before the deadline. Partial collections are not cached as complete
+	// results.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Domain      respjson.Field
@@ -2999,6 +3170,7 @@ type WebWebScrapeSitemapResponse struct {
 		Success     respjson.Field
 		URLs        respjson.Field
 		KeyMetadata respjson.Field
+		Partial     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -3063,10 +3235,6 @@ type WebAnswersParams struct {
 	// example "pricing on context.dev") makes the agent read that site before it
 	// searches.
 	Task string `json:"task" api:"required"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// An example object with placeholder values (for example {"pricing_page_url": "",
 	// "plans": [{"name": "", "price": 0}]}). Object keys and value types are
 	// preserved; unknown values may be null. Empty arrays accept any JSON items.
@@ -3080,6 +3248,10 @@ type WebAnswersParams struct {
 	Mode WebAnswersParamsMode `json:"mode,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebAnswersParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -3100,6 +3272,38 @@ const (
 	WebAnswersParamsModeFast  WebAnswersParamsMode = "fast"
 	WebAnswersParamsModeUltra WebAnswersParamsMode = "ultra"
 )
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebAnswersParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r WebAnswersParamsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow WebAnswersParamsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebAnswersParamsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebAnswersParamsTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
 
 type WebExtractParams struct {
 	// JSON Schema for the returned data object. Image fields such as `image_urls` or
@@ -3141,10 +3345,6 @@ type WebExtractParams struct {
 	// (110s). Defaults to 80000 (80s), or 110000 (110s) when browser actions are
 	// provided.
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional browser wait time in milliseconds after initial page load for each
 	// crawled page.
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
@@ -3156,6 +3356,10 @@ type WebExtractParams struct {
 	Pdf     WebExtractParamsPdf           `json:"pdf,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebExtractParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -3309,25 +3513,84 @@ func (r *WebExtractParamsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebExtractParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r WebExtractParamsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow WebExtractParamsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebExtractParamsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebExtractParamsTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
+
 type WebExtractCompetitorsParams struct {
 	// Company domain to analyze, such as `stripe.com`. Full http(s) URLs are accepted
 	// and normalized to their domain.
 	Domain string `query:"domain" api:"required" json:"-"`
 	// Exact number of direct competitors to return. Defaults to 5.
 	NumCompetitors param.Opt[int64] `query:"numCompetitors,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebExtractCompetitorsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	paramObj
 }
 
 // URLQuery serializes [WebExtractCompetitorsParams]'s query parameters as
 // `url.Values`.
 func (r WebExtractCompetitorsParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebExtractCompetitorsParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebExtractCompetitorsParamsTimeoutOpts]'s query parameters
+// as `url.Values`.
+func (r WebExtractCompetitorsParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
@@ -3348,18 +3611,46 @@ type WebExtractFontsParams struct {
 	// domain will be automatically normalized and validated. You must provide either
 	// 'domain' or 'directUrl', but not both.
 	Domain param.Opt[string] `query:"domain,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebExtractFontsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	paramObj
 }
 
 // URLQuery serializes [WebExtractFontsParams]'s query parameters as `url.Values`.
 func (r WebExtractFontsParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebExtractFontsParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 15000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebExtractFontsParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r WebExtractFontsParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
@@ -3381,10 +3672,6 @@ type WebExtractStyleguideParams struct {
 	// domain will be automatically normalized and validated. You must provide either
 	// 'domain' or 'directUrl', but not both.
 	Domain param.Opt[string] `query:"domain,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Optional browser color scheme to emulate for websites that respond to
 	// prefers-color-scheme. This value is part of the styleguide cache key.
 	//
@@ -3393,6 +3680,10 @@ type WebExtractStyleguideParams struct {
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebExtractStyleguideParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3414,6 +3705,34 @@ const (
 	WebExtractStyleguideParamsColorSchemeDark  WebExtractStyleguideParamsColorScheme = "dark"
 )
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebExtractStyleguideParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 15000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebExtractStyleguideParamsTimeoutOpts]'s query parameters
+// as `url.Values`.
+func (r WebExtractStyleguideParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
 type WebScreenshotParams struct {
 	// Return a cached screenshot if a prior screenshot for the same parameters exists
 	// and is younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
@@ -3428,8 +3747,9 @@ type WebScreenshotParams struct {
 	ScrollOffset param.Opt[int64] `query:"scrollOffset,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load before taking
 	// the screenshot. Min: 0. Max: 30000 (30 seconds). Defaults to 3000 ms when
-	// omitted. When combined with timeoutMS, timeoutMS must be at least waitForMs +
-	// 10000 ms; a shorter deadline is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
+	// omitted. When combined with timeoutOpts, timeoutOpts.milliseconds must be at
+	// least waitForMs + 10000 ms; a shorter deadline is rejected with 400
+	// TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// Optional parameter for comprehensive popup cleanup. If 'true', the browser
 	// dismisses detected cookie/consent UI and clears other detected obstructive
@@ -3449,10 +3769,6 @@ type WebScreenshotParams struct {
 	// dismiss cookie banner before capture. If 'false' or not provided, captures the
 	// page without that step.
 	HandleCookiePopup param.Opt[bool] `query:"handleCookiePopup,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Optional parameter to choose the site's visual theme in the screenshot. Use
 	// 'light' or 'dark' when the site offers both appearances.
 	//
@@ -3496,6 +3812,10 @@ type WebScreenshotParams struct {
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebScreenshotParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 	Viewport WebScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
@@ -3764,6 +4084,34 @@ const (
 	WebScreenshotParamsPageContact WebScreenshotParamsPage = "contact"
 )
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebScreenshotParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 15000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebScreenshotParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r WebScreenshotParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
 // Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 type WebScreenshotParamsViewport struct {
 	// Viewport height in pixels.
@@ -3801,10 +4149,6 @@ type WebSearchParams struct {
 	NumResults param.Opt[int64] `json:"numResults,omitzero"`
 	// Expand the query into multiple parallel variants for broader recall.
 	QueryFanout param.Opt[bool] `json:"queryFanout,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Two-letter ISO 3166-1 alpha-2 country code to localize results to a specific
 	// country (maps to Google's `gl` parameter). Example: "us", "gb", "de".
 	//
@@ -3842,6 +4186,10 @@ type WebSearchParams struct {
 	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebSearchParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -4124,10 +4472,6 @@ type WebSearchParamsMarkdownOptions struct {
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Truncate inline base64 image payloads to keep responses small.
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Strip nav, header, footer, and sidebar — keep only the primary article content.
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
 	// Extra wait after page load before rendering, in ms (0–30000). Useful for
@@ -4135,6 +4479,10 @@ type WebSearchParamsMarkdownOptions struct {
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
 	// PDF handling. Use start/end to bound text extraction and OCR to a page range.
 	Pdf WebSearchParamsMarkdownOptionsPdf `json:"pdf,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebSearchParamsMarkdownOptionsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -4164,6 +4512,71 @@ func (r WebSearchParamsMarkdownOptionsPdf) MarshalJSON() (data []byte, err error
 }
 func (r *WebSearchParamsMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebSearchParamsMarkdownOptionsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 15000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r WebSearchParamsMarkdownOptionsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow WebSearchParamsMarkdownOptionsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebSearchParamsMarkdownOptionsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebSearchParamsMarkdownOptionsTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebSearchParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r WebSearchParamsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow WebSearchParamsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebSearchParamsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebSearchParamsTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
 }
 
 type WebWebCrawlMdParams struct {
@@ -4199,10 +4612,6 @@ type WebWebCrawlMdParams struct {
 	// instead of continuing. Min: 10000 (10s). Max: 110000 (110s). Default: 80000
 	// (80s).
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Regex pattern. Only URLs matching this pattern will be followed and scraped. An
 	// automatic prefix scope in the form ^<starting URL> follows a redirect of the
 	// starting page.
@@ -4247,6 +4656,10 @@ type WebWebCrawlMdParams struct {
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebWebCrawlMdParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
 	// organization (contact support@context.dev), otherwise the request fails with
@@ -4503,6 +4916,38 @@ func (r *WebWebCrawlMdParamsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebWebCrawlMdParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r WebWebCrawlMdParamsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow WebWebCrawlMdParamsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebWebCrawlMdParamsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebWebCrawlMdParamsTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
+
 // Set to enabled to bypass shared caches and omit request and response content
 // from retained usage logs. Requires zero data retention to be enabled for your
 // organization (contact support@context.dev), otherwise the request fails with
@@ -4517,10 +4962,6 @@ const (
 type WebWebScrapeBytesParams struct {
 	// Full HTTP(S) URL of the resource to download, such as an image, PDF, or page.
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Fetch the target page through a residential proxy in this country (ISO 3166-1
 	// alpha-2).
 	//
@@ -4550,6 +4991,10 @@ type WebWebScrapeBytesParams struct {
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebWebScrapeBytesParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
 	// organization (contact support@context.dev), otherwise the request fails with
@@ -4780,6 +5225,31 @@ const (
 	WebWebScrapeBytesParamsCountryZw WebWebScrapeBytesParamsCountry = "zw"
 )
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebWebScrapeBytesParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. This endpoint supports "fail": return 408
+	// REQUEST_TIMEOUT without charging credits.
+	//
+	// Any of "fail".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeBytesParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeBytesParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
 // Set to enabled to bypass shared caches and omit request and response content
 // from retained usage logs. Requires zero data retention to be enabled for your
 // organization (contact support@context.dev), otherwise the request fails with
@@ -4799,8 +5269,8 @@ type WebWebScrapeHTMLParams struct {
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load. Min: 0. Max:
-	// 30000 (30 seconds). When combined with timeoutMS, timeoutMS must be at least
-	// waitForMs + 10000 ms; a shorter deadline is rejected with 400
+	// 30000 (30 seconds). When combined with timeoutOpts, timeoutOpts.milliseconds
+	// must be at least waitForMs + 10000 ms; a shorter deadline is rejected with 400
 	// TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// When true, iframes are rendered inline into the returned HTML.
@@ -4809,10 +5279,6 @@ type WebWebScrapeHTMLParams struct {
 	// extracting HTML. Defaults to false. This adds a bit of latency in exchange for
 	// more stable output on animated pages.
 	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// When true, return only the page's main content in the HTML response, excluding
 	// headers, footers, sidebars, and navigation when detectable.
 	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
@@ -4858,6 +5324,10 @@ type WebWebScrapeHTMLParams struct {
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebWebScrapeHTMLParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
 	// organization (contact support@context.dev), otherwise the request fails with
@@ -5221,6 +5691,34 @@ func (r WebWebScrapeHTMLParamsPdf) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebWebScrapeHTMLParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 15000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeHTMLParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
 // Set to enabled to bypass shared caches and omit request and response content
 // from retained usage logs. Requires zero data retention to be enabled for your
 // organization (contact support@context.dev), otherwise the request fails with
@@ -5240,18 +5738,14 @@ type WebWebScrapeImagesParams struct {
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load before
 	// collecting images. Min: 0. Max: 30000 (30 seconds). When combined with
-	// timeoutMS, timeoutMS must be at least waitForMs + 10000 ms; a shorter deadline
-	// is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
+	// timeoutOpts, timeoutOpts.milliseconds must be at least waitForMs + 10000 ms; a
+	// shorter deadline is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// When true, visually duplicate images are removed: every image is loaded and
 	// perceptually hashed, and only the highest-resolution copy of each duplicate
 	// group is kept. Images that cannot be downloaded or hashed are kept. Default:
 	// false.
 	Dedupe param.Opt[bool] `query:"dedupe,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Optional browser actions executed in array order after the page loads and before
 	// content is captured. Requires a paid plan. Send a JSON array in the query
 	// parameter. Maximum: 5 actions.
@@ -5266,6 +5760,10 @@ type WebWebScrapeImagesParams struct {
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebWebScrapeImagesParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	paramObj
 }
 
@@ -5408,6 +5906,34 @@ func (r WebWebScrapeImagesParamsEnrichment) URLQuery() (v url.Values, err error)
 	})
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebWebScrapeImagesParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 15000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeImagesParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeImagesParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
 type WebWebScrapeMdParams struct {
 	// Full URL to scrape into LLM usable Markdown (must include http:// or https://
 	// protocol)
@@ -5418,8 +5944,8 @@ type WebWebScrapeMdParams struct {
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
 	// Optional browser wait time in milliseconds after initial page load before
 	// converting the page to Markdown. Min: 0. Max: 30000 (30 seconds). When combined
-	// with timeoutMS, timeoutMS must be at least waitForMs + 10000 ms; a shorter
-	// deadline is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
+	// with timeoutOpts, timeoutOpts.milliseconds must be at least waitForMs + 10000
+	// ms; a shorter deadline is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
 	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// When true, the contents of iframes are rendered to Markdown.
 	IncludeFrames param.Opt[bool] `query:"includeFrames,omitzero" json:"-"`
@@ -5437,10 +5963,6 @@ type WebWebScrapeMdParams struct {
 	SettleAnimations param.Opt[bool] `query:"settleAnimations,omitzero" json:"-"`
 	// Shorten base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Extract only the main content of the page, excluding headers, footers, sidebars,
 	// and navigation
 	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
@@ -5486,6 +6008,10 @@ type WebWebScrapeMdParams struct {
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebWebScrapeMdParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
 	// organization (contact support@context.dev), otherwise the request fails with
@@ -5849,6 +6375,34 @@ func (r WebWebScrapeMdParamsPdf) URLQuery() (v url.Values, err error) {
 	})
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebWebScrapeMdParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 15000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeMdParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeMdParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
 // Set to enabled to bypass shared caches and omit request and response content
 // from retained usage logs. Requires zero data retention to be enabled for your
 // organization (contact support@context.dev), otherwise the request fails with
@@ -5876,10 +6430,6 @@ type WebWebScrapeSitemapParams struct {
 	// Optional explicit sitemap URL. When provided, exactly this sitemap is crawled
 	// instead of discovering the domain's sitemaps.
 	SitemapURL param.Opt[string] `query:"sitemapUrl,omitzero" format:"uri" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Optional RE2-compatible regex pattern. Only URLs matching this pattern are
 	// returned and counted against maxLinks.
 	URLRegex param.Opt[string] `query:"urlRegex,omitzero" json:"-"`
@@ -5890,6 +6440,10 @@ type WebWebScrapeSitemapParams struct {
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebWebScrapeSitemapParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
 	// from retained usage logs. Requires zero data retention to be enabled for your
 	// organization (contact support@context.dev), otherwise the request fails with
@@ -5903,6 +6457,33 @@ type WebWebScrapeSitemapParams struct {
 // URLQuery serializes [WebWebScrapeSitemapParams]'s query parameters as
 // `url.Values`.
 func (r WebWebScrapeSitemapParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebWebScrapeSitemapParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeSitemapParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeSitemapParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,

@@ -33,7 +33,10 @@ func TestBrandGetWithOptionalParams(t *testing.T) {
 			MaxAgeMs:      contextdev.Int(0),
 			MaxSpeed:      contextdev.Bool(true),
 			Tags:          []string{"production", "team-alpha"},
-			TimeoutMs:     contextdev.Int(1000),
+			TimeoutOpts: contextdev.BrandGetParamsBodyByDomainTimeoutOpts{
+				Milliseconds: 1000,
+				Behavior:     "fail",
+			},
 		},
 	})
 	if err != nil {
@@ -59,11 +62,14 @@ func TestBrandGetSimplifiedWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Brand.GetSimplified(context.TODO(), contextdev.BrandGetSimplifiedParams{
-		Domain:    "xxx",
-		MaxAgeMs:  contextdev.Int(0),
-		Tags:      []string{"production", "team-alpha"},
-		Theme:     contextdev.BrandGetSimplifiedParamsThemeLight,
-		TimeoutMs: contextdev.Int(1000),
+		Domain:   "xxx",
+		MaxAgeMs: contextdev.Int(0),
+		Tags:     []string{"production", "team-alpha"},
+		Theme:    contextdev.BrandGetSimplifiedParamsThemeLight,
+		TimeoutOpts: contextdev.BrandGetSimplifiedParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error

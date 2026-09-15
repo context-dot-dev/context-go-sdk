@@ -52,7 +52,10 @@ func TestPersonEnrichWithOptionalParams(t *testing.T) {
 		},
 		SocialURLs: []string{"https://www.linkedin.com/in/ada-lovelace/"},
 		Tags:       []string{"production", "team-alpha"},
-		TimeoutMs:  contextdev.Int(1000),
+		TimeoutOpts: contextdev.PersonEnrichParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error

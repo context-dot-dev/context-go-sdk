@@ -63,6 +63,9 @@ type IndustryGetNaicsResponse struct {
 	Domain string `json:"domain"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata IndustryGetNaicsResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and this response contains only usable
+	// results completed so far. Unfinished results are omitted.
+	Partial bool `json:"partial"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// Industry classification type, for naics api it will be `naics`
@@ -73,6 +76,7 @@ type IndustryGetNaicsResponse struct {
 		Codes       respjson.Field
 		Domain      respjson.Field
 		KeyMetadata respjson.Field
+		Partial     respjson.Field
 		Status      respjson.Field
 		Type        respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -148,6 +152,9 @@ type IndustryGetSicResponse struct {
 	Domain string `json:"domain"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata IndustryGetSicResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and this response contains only usable
+	// results completed so far. Unfinished results are omitted.
+	Partial bool `json:"partial"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// Industry classification type, for sic api it will be `sic`
@@ -159,6 +166,7 @@ type IndustryGetSicResponse struct {
 		Codes          respjson.Field
 		Domain         respjson.Field
 		KeyMetadata    respjson.Field
+		Partial        respjson.Field
 		Status         respjson.Field
 		Type           respjson.Field
 		ExtraFields    map[string]respjson.Field
@@ -248,18 +256,45 @@ type IndustryGetNaicsParams struct {
 	MaxResults param.Opt[int64] `query:"maxResults,omitzero" json:"-"`
 	// Minimum number of NAICS codes to return. Must be at least 1. Defaults to 1.
 	MinResults param.Opt[int64] `query:"minResults,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts IndustryGetNaicsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	paramObj
 }
 
 // URLQuery serializes [IndustryGetNaicsParams]'s query parameters as `url.Values`.
 func (r IndustryGetNaicsParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type IndustryGetNaicsParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [IndustryGetNaicsParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r IndustryGetNaicsParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
@@ -275,13 +310,13 @@ type IndustryGetSicParams struct {
 	MaxResults param.Opt[int64] `query:"maxResults,omitzero" json:"-"`
 	// Minimum number of SIC codes to return. Must be at least 1. Defaults to 1.
 	MinResults param.Opt[int64] `query:"minResults,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts IndustryGetSicParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Which SIC dataset to classify against. `original_sic` uses the 1987 Standard
 	// Industrial Classification system; `latest_sec` uses the current SIC list as
 	// published by the SEC. Defaults to `original_sic`.
@@ -293,6 +328,33 @@ type IndustryGetSicParams struct {
 
 // URLQuery serializes [IndustryGetSicParams]'s query parameters as `url.Values`.
 func (r IndustryGetSicParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type IndustryGetSicParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [IndustryGetSicParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r IndustryGetSicParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,

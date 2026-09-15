@@ -31,7 +31,10 @@ func TestIndustryGetNaicsWithOptionalParams(t *testing.T) {
 		MaxResults: contextdev.Int(1),
 		MinResults: contextdev.Int(1),
 		Tags:       []string{"production", "team-alpha"},
-		TimeoutMs:  contextdev.Int(1000),
+		TimeoutOpts: contextdev.IndustryGetNaicsParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -60,8 +63,11 @@ func TestIndustryGetSicWithOptionalParams(t *testing.T) {
 		MaxResults: contextdev.Int(1),
 		MinResults: contextdev.Int(1),
 		Tags:       []string{"production", "team-alpha"},
-		TimeoutMs:  contextdev.Int(1000),
-		Type:       contextdev.IndustryGetSicParamsTypeOriginalSic,
+		TimeoutOpts: contextdev.IndustryGetSicParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
+		Type: contextdev.IndustryGetSicParamsTypeOriginalSic,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

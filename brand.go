@@ -80,6 +80,9 @@ type BrandGetResponse struct {
 	Code int64 `json:"code"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BrandGetResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and this response contains the usable
+	// data completed so far. Unfinished fields are omitted.
+	Partial bool `json:"partial"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -89,6 +92,7 @@ type BrandGetResponse struct {
 		Brand         respjson.Field
 		Code          respjson.Field
 		KeyMetadata   respjson.Field
+		Partial       respjson.Field
 		Status        respjson.Field
 		ExtraFields   map[string]respjson.Field
 		raw           string
@@ -707,6 +711,9 @@ type BrandGetSimplifiedResponse struct {
 	Code int64 `json:"code"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata BrandGetSimplifiedResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and only completed brand data is
+	// returned.
+	Partial bool `json:"partial"`
 	// Status of the response, e.g., 'ok'
 	Status string `json:"status"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -716,6 +723,7 @@ type BrandGetSimplifiedResponse struct {
 		Brand         respjson.Field
 		Code          respjson.Field
 		KeyMetadata   respjson.Field
+		Partial       respjson.Field
 		Status        respjson.Field
 		ExtraFields   map[string]respjson.Field
 		raw           string
@@ -1112,10 +1120,6 @@ type BrandGetParamsBodyByDomain struct {
 	// the API will skip time-consuming operations for faster response at the cost of
 	// less comprehensive data.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1137,6 +1141,10 @@ type BrandGetParamsBodyByDomain struct {
 	ForceLanguage string `json:"force_language,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts BrandGetParamsBodyByDomainTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for domain-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_domain".
@@ -1155,6 +1163,38 @@ func (r *BrandGetParamsBodyByDomain) UnmarshalJSON(data []byte) error {
 func init() {
 	apijson.RegisterFieldValidator[BrandGetParamsBodyByDomain](
 		"force_language", "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese", "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian", "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian", "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi", "fijian", "finnish", "french", "galician", "georgian", "german", "greek", "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi", "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian", "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean", "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian", "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese", "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo", "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian", "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi", "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili", "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan", "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu", "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba", "zulu",
+	)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type BrandGetParamsBodyByDomainTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r BrandGetParamsBodyByDomainTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByDomainTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrandGetParamsBodyByDomainTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByDomainTimeoutOpts](
+		"behavior", "fail", "return-partial",
 	)
 }
 
@@ -1177,10 +1217,6 @@ type BrandGetParamsBodyByName struct {
 	// the API will skip time-consuming operations for faster response at the cost of
 	// less comprehensive data.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1202,6 +1238,10 @@ type BrandGetParamsBodyByName struct {
 	ForceLanguage string `json:"force_language,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts BrandGetParamsBodyByNameTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for name-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_name".
@@ -1223,6 +1263,38 @@ func init() {
 	)
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type BrandGetParamsBodyByNameTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r BrandGetParamsBodyByNameTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByNameTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrandGetParamsBodyByNameTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByNameTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
+
 // Retrieve brand data by email address. The domain is extracted from the email.
 // Free and disposable email providers are rejected with 422. Cannot be combined
 // with domain, name, or ticker.
@@ -1240,10 +1312,6 @@ type BrandGetParamsBodyByEmail struct {
 	// the API will skip time-consuming operations for faster response at the cost of
 	// less comprehensive data.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1265,6 +1333,10 @@ type BrandGetParamsBodyByEmail struct {
 	ForceLanguage string `json:"force_language,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts BrandGetParamsBodyByEmailTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for email-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_email".
@@ -1286,6 +1358,38 @@ func init() {
 	)
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type BrandGetParamsBodyByEmailTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r BrandGetParamsBodyByEmailTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByEmailTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrandGetParamsBodyByEmailTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByEmailTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
+
 // Retrieve brand data by stock ticker. Cannot be combined with domain, name, or
 // email.
 //
@@ -1304,10 +1408,6 @@ type BrandGetParamsBodyByTicker struct {
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
 	// Optional stock exchange for the ticker. Defaults to NASDAQ if not specified.
 	TickerExchange param.Opt[string] `json:"ticker_exchange,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1329,6 +1429,10 @@ type BrandGetParamsBodyByTicker struct {
 	ForceLanguage string `json:"force_language,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts BrandGetParamsBodyByTickerTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for ticker-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_ticker".
@@ -1350,6 +1454,38 @@ func init() {
 	)
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type BrandGetParamsBodyByTickerTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r BrandGetParamsBodyByTickerTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByTickerTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrandGetParamsBodyByTickerTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByTickerTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
+
 // Retrieve brand data by fetching the provided URL directly. Note: if you use
 // this, brand data is fetched only from the provided URL — not from the entire
 // internet — so results are limited to what that single page contains. No domain
@@ -1362,12 +1498,12 @@ type BrandGetParamsBodyByDirectURL struct {
 	// 'https://stripe.com/enterprise'). Only this URL is fetched — not the entire
 	// internet.
 	DirectURL string `json:"direct_url" api:"required" format:"uri"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts BrandGetParamsBodyByDirectURLTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for direct-URL-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_direct_url".
@@ -1381,6 +1517,38 @@ func (r BrandGetParamsBodyByDirectURL) MarshalJSON() (data []byte, err error) {
 }
 func (r *BrandGetParamsBodyByDirectURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type BrandGetParamsBodyByDirectURLTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r BrandGetParamsBodyByDirectURLTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByDirectURLTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrandGetParamsBodyByDirectURLTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByDirectURLTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
 }
 
 // Identify brand data from a transaction descriptor. Cannot be combined with
@@ -1402,10 +1570,6 @@ type BrandGetParamsBodyByTransaction struct {
 	// the API will skip time-consuming operations for faster response at the cost of
 	// less comprehensive data.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1432,6 +1596,10 @@ type BrandGetParamsBodyByTransaction struct {
 	Phone BrandGetParamsBodyByTransactionPhoneUnion `json:"phone,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts BrandGetParamsBodyByTransactionTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for transaction-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_transaction".
@@ -1485,6 +1653,38 @@ func (u *BrandGetParamsBodyByTransactionPhoneUnion) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, u)
 }
 
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type BrandGetParamsBodyByTransactionTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r BrandGetParamsBodyByTransactionTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow BrandGetParamsBodyByTransactionTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrandGetParamsBodyByTransactionTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByTransactionTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
+}
+
 type BrandGetSimplifiedParams struct {
 	// Domain name to retrieve simplified brand data for
 	Domain string `query:"domain" api:"required" json:"-"`
@@ -1493,10 +1693,6 @@ type BrandGetSimplifiedParams struct {
 	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
 	// are clamped to 1 year.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
@@ -1504,6 +1700,10 @@ type BrandGetSimplifiedParams struct {
 	//
 	// Any of "light", "dark".
 	Theme BrandGetSimplifiedParamsTheme `query:"theme,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts BrandGetSimplifiedParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	paramObj
 }
 
@@ -1523,6 +1723,33 @@ const (
 	BrandGetSimplifiedParamsThemeLight BrandGetSimplifiedParamsTheme = "light"
 	BrandGetSimplifiedParamsThemeDark  BrandGetSimplifiedParamsTheme = "dark"
 )
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type BrandGetSimplifiedParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [BrandGetSimplifiedParamsTimeoutOpts]'s query parameters as
+// `url.Values`.
+func (r BrandGetSimplifiedParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
 
 type BrandSearchParams struct {
 	// Search term, matched against the fields selected by queryBy (e.g. 'nike',

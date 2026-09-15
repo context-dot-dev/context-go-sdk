@@ -32,9 +32,12 @@ func TestUtilityPrefetchWithOptionalParams(t *testing.T) {
 				Domain: "xxx",
 			},
 		},
-		Type:      contextdev.UtilityPrefetchParamsTypeBrand,
-		Tags:      []string{"production", "team-alpha"},
-		TimeoutMs: contextdev.Int(1000),
+		Type: contextdev.UtilityPrefetchParamsTypeBrand,
+		Tags: []string{"production", "team-alpha"},
+		TimeoutOpts: contextdev.UtilityPrefetchParamsTimeoutOpts{
+			Milliseconds: 1000,
+			Behavior:     "fail",
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error

@@ -64,6 +64,9 @@ type AIExtractProductResponse struct {
 	IsProductPage bool `json:"is_product_page"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata AIExtractProductResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and this response contains only usable
+	// results completed so far. Unfinished results are omitted.
+	Partial bool `json:"partial"`
 	// The detected ecommerce platform, or null if not a product page
 	//
 	// Any of "amazon", "tiktok_shop", "etsy", "generic".
@@ -76,6 +79,7 @@ type AIExtractProductResponse struct {
 		RequestID     respjson.Field
 		IsProductPage respjson.Field
 		KeyMetadata   respjson.Field
+		Partial       respjson.Field
 		Platform      respjson.Field
 		Product       respjson.Field
 		ExtraFields   map[string]respjson.Field
@@ -229,6 +233,10 @@ type AIExtractProductsResponse struct {
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata AIExtractProductsResponseKeyMetadata `json:"key_metadata"`
+	// True when timeoutOpts.behavior=return-partial returned the usable results
+	// collected before the deadline. Partial collections are not cached as complete
+	// results.
+	Partial bool `json:"partial"`
 	// Array of products extracted from the website
 	Products []AIExtractProductsResponseProduct `json:"products"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -236,6 +244,7 @@ type AIExtractProductsResponse struct {
 		CacheMetadata respjson.Field
 		RequestID     respjson.Field
 		KeyMetadata   respjson.Field
+		Partial       respjson.Field
 		Products      respjson.Field
 		ExtraFields   map[string]respjson.Field
 		raw           string
@@ -374,12 +383,12 @@ type AIExtractProductParams struct {
 	// younger than this many milliseconds. Defaults to 7 days (604800000 ms) when
 	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts AIExtractProductParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -389,6 +398,38 @@ func (r AIExtractProductParams) MarshalJSON() (data []byte, err error) {
 }
 func (r *AIExtractProductParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type AIExtractProductParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r AIExtractProductParamsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow AIExtractProductParamsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *AIExtractProductParamsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[AIExtractProductParamsTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
 }
 
 type AIExtractProductsParams struct {
@@ -422,12 +463,12 @@ type AIExtractProductsParamsBodyByDomain struct {
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Maximum number of products to extract.
 	MaxProducts param.Opt[int64] `json:"maxProducts,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts AIExtractProductsParamsBodyByDomainTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -437,6 +478,38 @@ func (r AIExtractProductsParamsBodyByDomain) MarshalJSON() (data []byte, err err
 }
 func (r *AIExtractProductsParamsBodyByDomain) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type AIExtractProductsParamsBodyByDomainTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r AIExtractProductsParamsBodyByDomainTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow AIExtractProductsParamsBodyByDomainTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *AIExtractProductsParamsBodyByDomainTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[AIExtractProductsParamsBodyByDomainTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
 }
 
 // The property DirectURL is required.
@@ -450,12 +523,12 @@ type AIExtractProductsParamsBodyByDirectURL struct {
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Maximum number of products to extract.
 	MaxProducts param.Opt[int64] `json:"maxProducts,omitzero"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs param.Opt[int64] `json:"timeoutMS,omitzero"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts AIExtractProductsParamsBodyByDirectURLTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -465,4 +538,36 @@ func (r AIExtractProductsParamsBodyByDirectURL) MarshalJSON() (data []byte, err 
 }
 func (r *AIExtractProductsParamsBodyByDirectURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type AIExtractProductsParamsBodyByDirectURLTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r AIExtractProductsParamsBodyByDirectURLTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow AIExtractProductsParamsBodyByDirectURLTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *AIExtractProductsParamsBodyByDirectURLTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[AIExtractProductsParamsBodyByDirectURLTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
 }

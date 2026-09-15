@@ -54,11 +54,15 @@ type PersonEnrichResponse struct {
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata PersonEnrichResponseKeyMetadata `json:"key_metadata"`
+	// True when the timeout ended processing and this response contains the usable
+	// data completed so far. Unfinished fields are omitted.
+	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Match       respjson.Field
 		RequestID   respjson.Field
 		KeyMetadata respjson.Field
+		Partial     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -656,11 +660,7 @@ func (r *PersonEnrichResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type PersonEnrichParams struct {
-	Email param.Opt[string] `json:"email,omitzero" format:"email"`
-	// Optional timeout in milliseconds for the request. If the request takes longer
-	// than this value, it will be aborted with a 408 status code. Maximum allowed
-	// value is 300000ms (5 minutes).
-	TimeoutMs  param.Opt[int64]              `json:"timeoutMS,omitzero"`
+	Email      param.Opt[string]             `json:"email,omitzero" format:"email"`
 	Company    PersonEnrichParamsCompany     `json:"company,omitzero"`
 	Education  []PersonEnrichParamsEducation `json:"education,omitzero"`
 	Location   PersonEnrichParamsLocation    `json:"location,omitzero"`
@@ -668,6 +668,10 @@ type PersonEnrichParams struct {
 	SocialURLs []string                      `json:"social_urls,omitzero" format:"uri"`
 	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
 	Tags []string `json:"tags,omitzero"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts PersonEnrichParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
 
@@ -750,4 +754,36 @@ func (r PersonEnrichParamsName) MarshalJSON() (data []byte, err error) {
 }
 func (r *PersonEnrichParamsName) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type PersonEnrichParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `json:"behavior,omitzero"`
+	paramObj
+}
+
+func (r PersonEnrichParamsTimeoutOpts) MarshalJSON() (data []byte, err error) {
+	type shadow PersonEnrichParamsTimeoutOpts
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *PersonEnrichParamsTimeoutOpts) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[PersonEnrichParamsTimeoutOpts](
+		"behavior", "fail", "return-partial",
+	)
 }

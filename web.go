@@ -1594,7 +1594,8 @@ func (r *WebSearchResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebSearchResponseResult struct {
-	// Snippet excerpt from the page.
+	// Snippet excerpt from the page. Empty string when the search provider does not
+	// supply a snippet.
 	Description string `json:"description" api:"required"`
 	// Markdown scrape status and content for this result.
 	Markdown WebSearchResponseResultMarkdown `json:"markdown" api:"required"`

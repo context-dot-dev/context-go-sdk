@@ -109,6 +109,23 @@ func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, o
 	return res, err
 }
 
+// Downloads a resource and returns its bytes as base64. Supports images, PDFs,
+// HTML pages, and any other content type without image conversion, text
+// extraction, or character-encoding changes. HTTP compression is decoded before
+// base64 encoding. HTML is the original HTTP response; JavaScript is not rendered.
+// Follows public redirects and retries failed downloads through ISP and
+// residential proxies, with a direct fallback. When country is specified, only a
+// residential proxy in that country is used. Supply headers such as Referer for
+// images that require a referring page. Downloads are not cached. Maximum decoded
+// resource size: 20 MiB (20971520 bytes), before base64 encoding. Successful
+// requests cost 1 credit; errors are not billed.
+func (r *WebService) WebScrapeBytes(ctx context.Context, query WebWebScrapeBytesParams, opts ...option.RequestOption) (res *WebWebScrapeBytesResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "web/scrape/bytes"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	return res, err
+}
+
 // Scrapes the given URL and returns the raw HTML content of the page. The base
 // request costs 1 credit; requests with browser actions cost 2 credits.
 func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLParams, opts ...option.RequestOption) (res *WebWebScrapeHTMLResponse, err error) {
@@ -1933,6 +1950,80 @@ type WebWebCrawlMdResponseKeyMetadata struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebCrawlMdResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
 func (r *WebWebCrawlMdResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeBytesResponse struct {
+	// Base64-encoded resource bytes, without a data URI prefix. Decode this field to
+	// recover the downloaded file.
+	Bytes string `json:"bytes" api:"required" format:"byte"`
+	// Number of decoded resource bytes, before base64 encoding.
+	ContentLength int64 `json:"contentLength" api:"required"`
+	// The Content-Type returned by the origin, including any charset. Defaults to
+	// application/octet-stream when absent.
+	ContentType string `json:"contentType" api:"required"`
+	// Any of "base64".
+	Encoding WebWebScrapeBytesResponseEncoding `json:"encoding" api:"required"`
+	// The resource URL after redirects.
+	FinalURL string `json:"finalUrl" api:"required" format:"uri"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
+	// HTTP status returned by the origin.
+	StatusCode int64 `json:"statusCode" api:"required"`
+	// Any of true.
+	Success bool `json:"success" api:"required"`
+	// The requested resource URL.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Credit usage, included whenever a valid API key is provided.
+	KeyMetadata WebWebScrapeBytesResponseKeyMetadata `json:"key_metadata"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Bytes         respjson.Field
+		ContentLength respjson.Field
+		ContentType   respjson.Field
+		Encoding      respjson.Field
+		FinalURL      respjson.Field
+		RequestID     respjson.Field
+		StatusCode    respjson.Field
+		Success       respjson.Field
+		URL           respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeBytesResponse) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeBytesResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeBytesResponseEncoding string
+
+const (
+	WebWebScrapeBytesResponseEncodingBase64 WebWebScrapeBytesResponseEncoding = "base64"
+)
+
+// Credit usage, included whenever a valid API key is provided.
+type WebWebScrapeBytesResponseKeyMetadata struct {
+	// Credits used by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// Credits remaining for your organization.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeBytesResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeBytesResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -4421,6 +4512,283 @@ type WebWebCrawlMdParamsZdr string
 const (
 	WebWebCrawlMdParamsZdrEnabled  WebWebCrawlMdParamsZdr = "enabled"
 	WebWebCrawlMdParamsZdrDisabled WebWebCrawlMdParamsZdr = "disabled"
+)
+
+type WebWebScrapeBytesParams struct {
+	// Full HTTP(S) URL of the resource to download, such as an image, PDF, or page.
+	URL string `query:"url" api:"required" format:"uri" json:"-"`
+	// Optional timeout in milliseconds for the request. If the request takes longer
+	// than this value, it will be aborted with a 408 status code. Maximum allowed
+	// value is 300000ms (5 minutes).
+	TimeoutMs param.Opt[int64] `query:"timeoutMS,omitzero" json:"-"`
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country WebWebScrapeBytesParamsCountry `query:"country,omitzero" json:"-"`
+	// Optional outbound HTTP headers, such as Referer, Cookie, or Authorization. Send
+	// as a JSON object or deep-object query params such as
+	// headers[Referer]=https://example.com/. Host, Content-Length, and hop-by-hop
+	// transport headers are rejected. Authorization and cookies are removed when a
+	// redirect changes origin.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Requires zero data retention to be enabled for your
+	// organization (contact support@context.dev), otherwise the request fails with
+	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeBytesParamsZdr `query:"zdr,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeBytesParams]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeBytesParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Fetch the target page through a residential proxy in this country (ISO 3166-1
+// alpha-2).
+type WebWebScrapeBytesParamsCountry string
+
+const (
+	WebWebScrapeBytesParamsCountryAd WebWebScrapeBytesParamsCountry = "ad"
+	WebWebScrapeBytesParamsCountryAe WebWebScrapeBytesParamsCountry = "ae"
+	WebWebScrapeBytesParamsCountryAf WebWebScrapeBytesParamsCountry = "af"
+	WebWebScrapeBytesParamsCountryAg WebWebScrapeBytesParamsCountry = "ag"
+	WebWebScrapeBytesParamsCountryAI WebWebScrapeBytesParamsCountry = "ai"
+	WebWebScrapeBytesParamsCountryAl WebWebScrapeBytesParamsCountry = "al"
+	WebWebScrapeBytesParamsCountryAm WebWebScrapeBytesParamsCountry = "am"
+	WebWebScrapeBytesParamsCountryAo WebWebScrapeBytesParamsCountry = "ao"
+	WebWebScrapeBytesParamsCountryAr WebWebScrapeBytesParamsCountry = "ar"
+	WebWebScrapeBytesParamsCountryAt WebWebScrapeBytesParamsCountry = "at"
+	WebWebScrapeBytesParamsCountryAu WebWebScrapeBytesParamsCountry = "au"
+	WebWebScrapeBytesParamsCountryAw WebWebScrapeBytesParamsCountry = "aw"
+	WebWebScrapeBytesParamsCountryAz WebWebScrapeBytesParamsCountry = "az"
+	WebWebScrapeBytesParamsCountryBa WebWebScrapeBytesParamsCountry = "ba"
+	WebWebScrapeBytesParamsCountryBb WebWebScrapeBytesParamsCountry = "bb"
+	WebWebScrapeBytesParamsCountryBd WebWebScrapeBytesParamsCountry = "bd"
+	WebWebScrapeBytesParamsCountryBe WebWebScrapeBytesParamsCountry = "be"
+	WebWebScrapeBytesParamsCountryBf WebWebScrapeBytesParamsCountry = "bf"
+	WebWebScrapeBytesParamsCountryBg WebWebScrapeBytesParamsCountry = "bg"
+	WebWebScrapeBytesParamsCountryBh WebWebScrapeBytesParamsCountry = "bh"
+	WebWebScrapeBytesParamsCountryBi WebWebScrapeBytesParamsCountry = "bi"
+	WebWebScrapeBytesParamsCountryBj WebWebScrapeBytesParamsCountry = "bj"
+	WebWebScrapeBytesParamsCountryBm WebWebScrapeBytesParamsCountry = "bm"
+	WebWebScrapeBytesParamsCountryBn WebWebScrapeBytesParamsCountry = "bn"
+	WebWebScrapeBytesParamsCountryBo WebWebScrapeBytesParamsCountry = "bo"
+	WebWebScrapeBytesParamsCountryBq WebWebScrapeBytesParamsCountry = "bq"
+	WebWebScrapeBytesParamsCountryBr WebWebScrapeBytesParamsCountry = "br"
+	WebWebScrapeBytesParamsCountryBs WebWebScrapeBytesParamsCountry = "bs"
+	WebWebScrapeBytesParamsCountryBw WebWebScrapeBytesParamsCountry = "bw"
+	WebWebScrapeBytesParamsCountryBy WebWebScrapeBytesParamsCountry = "by"
+	WebWebScrapeBytesParamsCountryBz WebWebScrapeBytesParamsCountry = "bz"
+	WebWebScrapeBytesParamsCountryCa WebWebScrapeBytesParamsCountry = "ca"
+	WebWebScrapeBytesParamsCountryCd WebWebScrapeBytesParamsCountry = "cd"
+	WebWebScrapeBytesParamsCountryCf WebWebScrapeBytesParamsCountry = "cf"
+	WebWebScrapeBytesParamsCountryCg WebWebScrapeBytesParamsCountry = "cg"
+	WebWebScrapeBytesParamsCountryCh WebWebScrapeBytesParamsCountry = "ch"
+	WebWebScrapeBytesParamsCountryCi WebWebScrapeBytesParamsCountry = "ci"
+	WebWebScrapeBytesParamsCountryCl WebWebScrapeBytesParamsCountry = "cl"
+	WebWebScrapeBytesParamsCountryCm WebWebScrapeBytesParamsCountry = "cm"
+	WebWebScrapeBytesParamsCountryCn WebWebScrapeBytesParamsCountry = "cn"
+	WebWebScrapeBytesParamsCountryCo WebWebScrapeBytesParamsCountry = "co"
+	WebWebScrapeBytesParamsCountryCr WebWebScrapeBytesParamsCountry = "cr"
+	WebWebScrapeBytesParamsCountryCv WebWebScrapeBytesParamsCountry = "cv"
+	WebWebScrapeBytesParamsCountryCw WebWebScrapeBytesParamsCountry = "cw"
+	WebWebScrapeBytesParamsCountryCy WebWebScrapeBytesParamsCountry = "cy"
+	WebWebScrapeBytesParamsCountryCz WebWebScrapeBytesParamsCountry = "cz"
+	WebWebScrapeBytesParamsCountryDe WebWebScrapeBytesParamsCountry = "de"
+	WebWebScrapeBytesParamsCountryDj WebWebScrapeBytesParamsCountry = "dj"
+	WebWebScrapeBytesParamsCountryDk WebWebScrapeBytesParamsCountry = "dk"
+	WebWebScrapeBytesParamsCountryDm WebWebScrapeBytesParamsCountry = "dm"
+	WebWebScrapeBytesParamsCountryDo WebWebScrapeBytesParamsCountry = "do"
+	WebWebScrapeBytesParamsCountryDz WebWebScrapeBytesParamsCountry = "dz"
+	WebWebScrapeBytesParamsCountryEc WebWebScrapeBytesParamsCountry = "ec"
+	WebWebScrapeBytesParamsCountryEe WebWebScrapeBytesParamsCountry = "ee"
+	WebWebScrapeBytesParamsCountryEg WebWebScrapeBytesParamsCountry = "eg"
+	WebWebScrapeBytesParamsCountryEs WebWebScrapeBytesParamsCountry = "es"
+	WebWebScrapeBytesParamsCountryEt WebWebScrapeBytesParamsCountry = "et"
+	WebWebScrapeBytesParamsCountryFi WebWebScrapeBytesParamsCountry = "fi"
+	WebWebScrapeBytesParamsCountryFj WebWebScrapeBytesParamsCountry = "fj"
+	WebWebScrapeBytesParamsCountryFr WebWebScrapeBytesParamsCountry = "fr"
+	WebWebScrapeBytesParamsCountryGa WebWebScrapeBytesParamsCountry = "ga"
+	WebWebScrapeBytesParamsCountryGB WebWebScrapeBytesParamsCountry = "gb"
+	WebWebScrapeBytesParamsCountryGd WebWebScrapeBytesParamsCountry = "gd"
+	WebWebScrapeBytesParamsCountryGe WebWebScrapeBytesParamsCountry = "ge"
+	WebWebScrapeBytesParamsCountryGf WebWebScrapeBytesParamsCountry = "gf"
+	WebWebScrapeBytesParamsCountryGg WebWebScrapeBytesParamsCountry = "gg"
+	WebWebScrapeBytesParamsCountryGh WebWebScrapeBytesParamsCountry = "gh"
+	WebWebScrapeBytesParamsCountryGm WebWebScrapeBytesParamsCountry = "gm"
+	WebWebScrapeBytesParamsCountryGn WebWebScrapeBytesParamsCountry = "gn"
+	WebWebScrapeBytesParamsCountryGp WebWebScrapeBytesParamsCountry = "gp"
+	WebWebScrapeBytesParamsCountryGq WebWebScrapeBytesParamsCountry = "gq"
+	WebWebScrapeBytesParamsCountryGr WebWebScrapeBytesParamsCountry = "gr"
+	WebWebScrapeBytesParamsCountryGt WebWebScrapeBytesParamsCountry = "gt"
+	WebWebScrapeBytesParamsCountryGu WebWebScrapeBytesParamsCountry = "gu"
+	WebWebScrapeBytesParamsCountryGw WebWebScrapeBytesParamsCountry = "gw"
+	WebWebScrapeBytesParamsCountryGy WebWebScrapeBytesParamsCountry = "gy"
+	WebWebScrapeBytesParamsCountryHk WebWebScrapeBytesParamsCountry = "hk"
+	WebWebScrapeBytesParamsCountryHn WebWebScrapeBytesParamsCountry = "hn"
+	WebWebScrapeBytesParamsCountryHr WebWebScrapeBytesParamsCountry = "hr"
+	WebWebScrapeBytesParamsCountryHt WebWebScrapeBytesParamsCountry = "ht"
+	WebWebScrapeBytesParamsCountryHu WebWebScrapeBytesParamsCountry = "hu"
+	WebWebScrapeBytesParamsCountryID WebWebScrapeBytesParamsCountry = "id"
+	WebWebScrapeBytesParamsCountryIe WebWebScrapeBytesParamsCountry = "ie"
+	WebWebScrapeBytesParamsCountryIl WebWebScrapeBytesParamsCountry = "il"
+	WebWebScrapeBytesParamsCountryIm WebWebScrapeBytesParamsCountry = "im"
+	WebWebScrapeBytesParamsCountryIn WebWebScrapeBytesParamsCountry = "in"
+	WebWebScrapeBytesParamsCountryIq WebWebScrapeBytesParamsCountry = "iq"
+	WebWebScrapeBytesParamsCountryIr WebWebScrapeBytesParamsCountry = "ir"
+	WebWebScrapeBytesParamsCountryIs WebWebScrapeBytesParamsCountry = "is"
+	WebWebScrapeBytesParamsCountryIt WebWebScrapeBytesParamsCountry = "it"
+	WebWebScrapeBytesParamsCountryJe WebWebScrapeBytesParamsCountry = "je"
+	WebWebScrapeBytesParamsCountryJm WebWebScrapeBytesParamsCountry = "jm"
+	WebWebScrapeBytesParamsCountryJo WebWebScrapeBytesParamsCountry = "jo"
+	WebWebScrapeBytesParamsCountryJp WebWebScrapeBytesParamsCountry = "jp"
+	WebWebScrapeBytesParamsCountryKe WebWebScrapeBytesParamsCountry = "ke"
+	WebWebScrapeBytesParamsCountryKg WebWebScrapeBytesParamsCountry = "kg"
+	WebWebScrapeBytesParamsCountryKh WebWebScrapeBytesParamsCountry = "kh"
+	WebWebScrapeBytesParamsCountryKn WebWebScrapeBytesParamsCountry = "kn"
+	WebWebScrapeBytesParamsCountryKr WebWebScrapeBytesParamsCountry = "kr"
+	WebWebScrapeBytesParamsCountryKw WebWebScrapeBytesParamsCountry = "kw"
+	WebWebScrapeBytesParamsCountryKy WebWebScrapeBytesParamsCountry = "ky"
+	WebWebScrapeBytesParamsCountryKz WebWebScrapeBytesParamsCountry = "kz"
+	WebWebScrapeBytesParamsCountryLa WebWebScrapeBytesParamsCountry = "la"
+	WebWebScrapeBytesParamsCountryLb WebWebScrapeBytesParamsCountry = "lb"
+	WebWebScrapeBytesParamsCountryLc WebWebScrapeBytesParamsCountry = "lc"
+	WebWebScrapeBytesParamsCountryLk WebWebScrapeBytesParamsCountry = "lk"
+	WebWebScrapeBytesParamsCountryLr WebWebScrapeBytesParamsCountry = "lr"
+	WebWebScrapeBytesParamsCountryLs WebWebScrapeBytesParamsCountry = "ls"
+	WebWebScrapeBytesParamsCountryLt WebWebScrapeBytesParamsCountry = "lt"
+	WebWebScrapeBytesParamsCountryLu WebWebScrapeBytesParamsCountry = "lu"
+	WebWebScrapeBytesParamsCountryLv WebWebScrapeBytesParamsCountry = "lv"
+	WebWebScrapeBytesParamsCountryLy WebWebScrapeBytesParamsCountry = "ly"
+	WebWebScrapeBytesParamsCountryMa WebWebScrapeBytesParamsCountry = "ma"
+	WebWebScrapeBytesParamsCountryMc WebWebScrapeBytesParamsCountry = "mc"
+	WebWebScrapeBytesParamsCountryMd WebWebScrapeBytesParamsCountry = "md"
+	WebWebScrapeBytesParamsCountryMe WebWebScrapeBytesParamsCountry = "me"
+	WebWebScrapeBytesParamsCountryMf WebWebScrapeBytesParamsCountry = "mf"
+	WebWebScrapeBytesParamsCountryMg WebWebScrapeBytesParamsCountry = "mg"
+	WebWebScrapeBytesParamsCountryMk WebWebScrapeBytesParamsCountry = "mk"
+	WebWebScrapeBytesParamsCountryMl WebWebScrapeBytesParamsCountry = "ml"
+	WebWebScrapeBytesParamsCountryMm WebWebScrapeBytesParamsCountry = "mm"
+	WebWebScrapeBytesParamsCountryMn WebWebScrapeBytesParamsCountry = "mn"
+	WebWebScrapeBytesParamsCountryMo WebWebScrapeBytesParamsCountry = "mo"
+	WebWebScrapeBytesParamsCountryMq WebWebScrapeBytesParamsCountry = "mq"
+	WebWebScrapeBytesParamsCountryMr WebWebScrapeBytesParamsCountry = "mr"
+	WebWebScrapeBytesParamsCountryMt WebWebScrapeBytesParamsCountry = "mt"
+	WebWebScrapeBytesParamsCountryMu WebWebScrapeBytesParamsCountry = "mu"
+	WebWebScrapeBytesParamsCountryMv WebWebScrapeBytesParamsCountry = "mv"
+	WebWebScrapeBytesParamsCountryMw WebWebScrapeBytesParamsCountry = "mw"
+	WebWebScrapeBytesParamsCountryMx WebWebScrapeBytesParamsCountry = "mx"
+	WebWebScrapeBytesParamsCountryMy WebWebScrapeBytesParamsCountry = "my"
+	WebWebScrapeBytesParamsCountryMz WebWebScrapeBytesParamsCountry = "mz"
+	WebWebScrapeBytesParamsCountryNa WebWebScrapeBytesParamsCountry = "na"
+	WebWebScrapeBytesParamsCountryNc WebWebScrapeBytesParamsCountry = "nc"
+	WebWebScrapeBytesParamsCountryNe WebWebScrapeBytesParamsCountry = "ne"
+	WebWebScrapeBytesParamsCountryNg WebWebScrapeBytesParamsCountry = "ng"
+	WebWebScrapeBytesParamsCountryNi WebWebScrapeBytesParamsCountry = "ni"
+	WebWebScrapeBytesParamsCountryNl WebWebScrapeBytesParamsCountry = "nl"
+	WebWebScrapeBytesParamsCountryNo WebWebScrapeBytesParamsCountry = "no"
+	WebWebScrapeBytesParamsCountryNp WebWebScrapeBytesParamsCountry = "np"
+	WebWebScrapeBytesParamsCountryNz WebWebScrapeBytesParamsCountry = "nz"
+	WebWebScrapeBytesParamsCountryOm WebWebScrapeBytesParamsCountry = "om"
+	WebWebScrapeBytesParamsCountryPa WebWebScrapeBytesParamsCountry = "pa"
+	WebWebScrapeBytesParamsCountryPe WebWebScrapeBytesParamsCountry = "pe"
+	WebWebScrapeBytesParamsCountryPf WebWebScrapeBytesParamsCountry = "pf"
+	WebWebScrapeBytesParamsCountryPg WebWebScrapeBytesParamsCountry = "pg"
+	WebWebScrapeBytesParamsCountryPh WebWebScrapeBytesParamsCountry = "ph"
+	WebWebScrapeBytesParamsCountryPk WebWebScrapeBytesParamsCountry = "pk"
+	WebWebScrapeBytesParamsCountryPl WebWebScrapeBytesParamsCountry = "pl"
+	WebWebScrapeBytesParamsCountryPr WebWebScrapeBytesParamsCountry = "pr"
+	WebWebScrapeBytesParamsCountryPs WebWebScrapeBytesParamsCountry = "ps"
+	WebWebScrapeBytesParamsCountryPt WebWebScrapeBytesParamsCountry = "pt"
+	WebWebScrapeBytesParamsCountryPy WebWebScrapeBytesParamsCountry = "py"
+	WebWebScrapeBytesParamsCountryQa WebWebScrapeBytesParamsCountry = "qa"
+	WebWebScrapeBytesParamsCountryRe WebWebScrapeBytesParamsCountry = "re"
+	WebWebScrapeBytesParamsCountryRo WebWebScrapeBytesParamsCountry = "ro"
+	WebWebScrapeBytesParamsCountryRs WebWebScrapeBytesParamsCountry = "rs"
+	WebWebScrapeBytesParamsCountryRu WebWebScrapeBytesParamsCountry = "ru"
+	WebWebScrapeBytesParamsCountryRw WebWebScrapeBytesParamsCountry = "rw"
+	WebWebScrapeBytesParamsCountrySa WebWebScrapeBytesParamsCountry = "sa"
+	WebWebScrapeBytesParamsCountrySc WebWebScrapeBytesParamsCountry = "sc"
+	WebWebScrapeBytesParamsCountrySd WebWebScrapeBytesParamsCountry = "sd"
+	WebWebScrapeBytesParamsCountrySe WebWebScrapeBytesParamsCountry = "se"
+	WebWebScrapeBytesParamsCountrySg WebWebScrapeBytesParamsCountry = "sg"
+	WebWebScrapeBytesParamsCountrySi WebWebScrapeBytesParamsCountry = "si"
+	WebWebScrapeBytesParamsCountrySk WebWebScrapeBytesParamsCountry = "sk"
+	WebWebScrapeBytesParamsCountrySl WebWebScrapeBytesParamsCountry = "sl"
+	WebWebScrapeBytesParamsCountrySm WebWebScrapeBytesParamsCountry = "sm"
+	WebWebScrapeBytesParamsCountrySn WebWebScrapeBytesParamsCountry = "sn"
+	WebWebScrapeBytesParamsCountrySo WebWebScrapeBytesParamsCountry = "so"
+	WebWebScrapeBytesParamsCountrySr WebWebScrapeBytesParamsCountry = "sr"
+	WebWebScrapeBytesParamsCountrySS WebWebScrapeBytesParamsCountry = "ss"
+	WebWebScrapeBytesParamsCountrySt WebWebScrapeBytesParamsCountry = "st"
+	WebWebScrapeBytesParamsCountrySv WebWebScrapeBytesParamsCountry = "sv"
+	WebWebScrapeBytesParamsCountrySx WebWebScrapeBytesParamsCountry = "sx"
+	WebWebScrapeBytesParamsCountrySy WebWebScrapeBytesParamsCountry = "sy"
+	WebWebScrapeBytesParamsCountrySz WebWebScrapeBytesParamsCountry = "sz"
+	WebWebScrapeBytesParamsCountryTc WebWebScrapeBytesParamsCountry = "tc"
+	WebWebScrapeBytesParamsCountryTd WebWebScrapeBytesParamsCountry = "td"
+	WebWebScrapeBytesParamsCountryTg WebWebScrapeBytesParamsCountry = "tg"
+	WebWebScrapeBytesParamsCountryTh WebWebScrapeBytesParamsCountry = "th"
+	WebWebScrapeBytesParamsCountryTj WebWebScrapeBytesParamsCountry = "tj"
+	WebWebScrapeBytesParamsCountryTl WebWebScrapeBytesParamsCountry = "tl"
+	WebWebScrapeBytesParamsCountryTm WebWebScrapeBytesParamsCountry = "tm"
+	WebWebScrapeBytesParamsCountryTn WebWebScrapeBytesParamsCountry = "tn"
+	WebWebScrapeBytesParamsCountryTr WebWebScrapeBytesParamsCountry = "tr"
+	WebWebScrapeBytesParamsCountryTt WebWebScrapeBytesParamsCountry = "tt"
+	WebWebScrapeBytesParamsCountryTw WebWebScrapeBytesParamsCountry = "tw"
+	WebWebScrapeBytesParamsCountryTz WebWebScrapeBytesParamsCountry = "tz"
+	WebWebScrapeBytesParamsCountryUa WebWebScrapeBytesParamsCountry = "ua"
+	WebWebScrapeBytesParamsCountryUg WebWebScrapeBytesParamsCountry = "ug"
+	WebWebScrapeBytesParamsCountryUs WebWebScrapeBytesParamsCountry = "us"
+	WebWebScrapeBytesParamsCountryUy WebWebScrapeBytesParamsCountry = "uy"
+	WebWebScrapeBytesParamsCountryUz WebWebScrapeBytesParamsCountry = "uz"
+	WebWebScrapeBytesParamsCountryVc WebWebScrapeBytesParamsCountry = "vc"
+	WebWebScrapeBytesParamsCountryVe WebWebScrapeBytesParamsCountry = "ve"
+	WebWebScrapeBytesParamsCountryVg WebWebScrapeBytesParamsCountry = "vg"
+	WebWebScrapeBytesParamsCountryVi WebWebScrapeBytesParamsCountry = "vi"
+	WebWebScrapeBytesParamsCountryVn WebWebScrapeBytesParamsCountry = "vn"
+	WebWebScrapeBytesParamsCountryYe WebWebScrapeBytesParamsCountry = "ye"
+	WebWebScrapeBytesParamsCountryYt WebWebScrapeBytesParamsCountry = "yt"
+	WebWebScrapeBytesParamsCountryZa WebWebScrapeBytesParamsCountry = "za"
+	WebWebScrapeBytesParamsCountryZm WebWebScrapeBytesParamsCountry = "zm"
+	WebWebScrapeBytesParamsCountryZw WebWebScrapeBytesParamsCountry = "zw"
+)
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Requires zero data retention to be enabled for your
+// organization (contact support@context.dev), otherwise the request fails with
+// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeBytesParamsZdr string
+
+const (
+	WebWebScrapeBytesParamsZdrEnabled  WebWebScrapeBytesParamsZdr = "enabled"
+	WebWebScrapeBytesParamsZdrDisabled WebWebScrapeBytesParamsZdr = "disabled"
 )
 
 type WebWebScrapeHTMLParams struct {

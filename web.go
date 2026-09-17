@@ -3642,7 +3642,7 @@ type WebExtractFontsParamsTimeoutOpts struct {
 	// credits. "return-partial" returns usable results collected so far; if none are
 	// available, the request still fails without charging credits. Partial results are
 	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 15000.
+	// least 5000.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -3718,7 +3718,7 @@ type WebExtractStyleguideParamsTimeoutOpts struct {
 	// credits. "return-partial" returns usable results collected so far; if none are
 	// available, the request still fails without charging credits. Partial results are
 	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 15000.
+	// least 5000.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -4097,7 +4097,7 @@ type WebScreenshotParamsTimeoutOpts struct {
 	// credits. "return-partial" returns usable results collected so far; if none are
 	// available, the request still fails without charging credits. Partial results are
 	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 15000.
+	// least 5000.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -4527,7 +4527,7 @@ type WebSearchParamsMarkdownOptionsTimeoutOpts struct {
 	// credits. "return-partial" returns usable results collected so far; if none are
 	// available, the request still fails without charging credits. Partial results are
 	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 15000.
+	// least 5000.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -5704,7 +5704,7 @@ type WebWebScrapeHTMLParamsTimeoutOpts struct {
 	// credits. "return-partial" returns usable results collected so far; if none are
 	// available, the request still fails without charging credits. Partial results are
 	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 15000.
+	// least 5000.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -5919,7 +5919,7 @@ type WebWebScrapeImagesParamsTimeoutOpts struct {
 	// credits. "return-partial" returns usable results collected so far; if none are
 	// available, the request still fails without charging credits. Partial results are
 	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 15000.
+	// least 5000.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -6388,7 +6388,7 @@ type WebWebScrapeMdParamsTimeoutOpts struct {
 	// credits. "return-partial" returns usable results collected so far; if none are
 	// available, the request still fails without charging credits. Partial results are
 	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 15000.
+	// least 5000.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`

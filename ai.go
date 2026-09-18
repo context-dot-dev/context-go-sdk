@@ -193,6 +193,10 @@ type AIExtractProductResponseProduct struct {
 	RegularPrice float64 `json:"regular_price" api:"nullable"`
 	// URL to the product page
 	URL string `json:"url" api:"nullable"`
+	// Product variations, such as different colors or sizes, with their attributes and
+	// images. Empty if none are found. May not include every variation offered by the
+	// store.
+	Variants []AIExtractProductResponseProductVariant `json:"variants"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description      respjson.Field
@@ -212,6 +216,7 @@ type AIExtractProductResponseProduct struct {
 		PricingModel     respjson.Field
 		RegularPrice     respjson.Field
 		URL              respjson.Field
+		Variants         respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string
 	} `json:"-"`
@@ -220,6 +225,32 @@ type AIExtractProductResponseProduct struct {
 // Returns the unmodified JSON received from the API
 func (r AIExtractProductResponseProduct) RawJSON() string { return r.JSON.raw }
 func (r *AIExtractProductResponseProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type AIExtractProductResponseProductVariant struct {
+	// Explicit variant attributes such as color, size, material, pattern and
+	// properties declared by page.
+	Attributes map[string]string `json:"attributes" api:"required"`
+	// Original source image URLs explicitly attached to this variant.
+	Images []string `json:"images" api:"required"`
+	SKU    string   `json:"sku" api:"required"`
+	// Variant or offer URL when provided by the source. May be shared by variants.
+	URL string `json:"url" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Attributes  respjson.Field
+		Images      respjson.Field
+		SKU         respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r AIExtractProductResponseProductVariant) RawJSON() string { return r.JSON.raw }
+func (r *AIExtractProductResponseProductVariant) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -346,6 +377,10 @@ type AIExtractProductsResponseProduct struct {
 	RegularPrice float64 `json:"regular_price" api:"nullable"`
 	// URL to the product page
 	URL string `json:"url" api:"nullable"`
+	// Product variations, such as different colors or sizes, with their attributes and
+	// images. Empty if none are found. May not include every variation offered by the
+	// store.
+	Variants []AIExtractProductsResponseProductVariant `json:"variants"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description      respjson.Field
@@ -365,6 +400,7 @@ type AIExtractProductsResponseProduct struct {
 		PricingModel     respjson.Field
 		RegularPrice     respjson.Field
 		URL              respjson.Field
+		Variants         respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string
 	} `json:"-"`
@@ -373,6 +409,32 @@ type AIExtractProductsResponseProduct struct {
 // Returns the unmodified JSON received from the API
 func (r AIExtractProductsResponseProduct) RawJSON() string { return r.JSON.raw }
 func (r *AIExtractProductsResponseProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type AIExtractProductsResponseProductVariant struct {
+	// Explicit variant attributes such as color, size, material, pattern and
+	// properties declared by page.
+	Attributes map[string]string `json:"attributes" api:"required"`
+	// Original source image URLs explicitly attached to this variant.
+	Images []string `json:"images" api:"required"`
+	SKU    string   `json:"sku" api:"required"`
+	// Variant or offer URL when provided by the source. May be shared by variants.
+	URL string `json:"url" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Attributes  respjson.Field
+		Images      respjson.Field
+		SKU         respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r AIExtractProductsResponseProductVariant) RawJSON() string { return r.JSON.raw }
+func (r *AIExtractProductsResponseProductVariant) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

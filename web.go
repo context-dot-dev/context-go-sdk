@@ -127,12 +127,16 @@ func (r *WebService) WebScrapeBytes(ctx context.Context, query WebWebScrapeBytes
 	return res, err
 }
 
-// Scrapes the given URL and returns the raw HTML content of the page. The base
-// request costs 1 credit; requests with browser actions cost 2 credits. A request
-// that hits its timeoutOpts.milliseconds deadline fails with 408 and is not
-// billed, unless timeoutOpts.behavior=return-partial is set — then the page as
-// rendered so far is returned with `finalDOMState: "still-loading"` and billed at
-// the base cost of 1 credit.
+// Scrapes the given URL and returns the HTML content of the page. Optional
+// extractRules return deterministic structured data in extracted using CSS
+// selectors, attributes, lists, and nested rules, without an LLM or additional
+// credits. Rules run on the returned HTML after selector and main-content
+// filtering. Send extractRules as a JSON-encoded query parameter. The base request
+// costs 1 credit; requests with browser actions cost 2 credits. A request that
+// hits its timeoutOpts.milliseconds deadline fails with 408 and is not billed,
+// unless timeoutOpts.behavior=return-partial is set — then the page as rendered so
+// far is returned with `finalDOMState: "still-loading"` and billed at the base
+// cost of 1 credit.
 func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLParams, opts ...option.RequestOption) (res *WebWebScrapeHTMLResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/html"
@@ -2168,6 +2172,11 @@ type WebWebScrapeHTMLResponse struct {
 	// True when an action was applied but the returned content could not be refreshed
 	// afterward.
 	ActionsHTMLStale bool `json:"actionsHtmlStale"`
+	// Present only when extractRules is supplied. Keys match the requested fields.
+	// Values are normalized text, raw attribute strings, outer HTML, nested objects,
+	// or lists. Missing items are null; lists with no matches are empty. Rules run on
+	// the returned HTML after filtering.
+	Extracted map[string]*WebWebScrapeHTMLResponseExtractedUnion `json:"extracted"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeHTMLResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -2182,6 +2191,7 @@ type WebWebScrapeHTMLResponse struct {
 		URL              respjson.Field
 		ActionsApplied   respjson.Field
 		ActionsHTMLStale respjson.Field
+		Extracted        respjson.Field
 		KeyMetadata      respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string
@@ -2516,6 +2526,42 @@ type WebWebScrapeHTMLResponseActionsApplied struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeHTMLResponseActionsApplied) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeHTMLResponseActionsApplied) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeHTMLResponseExtractedUnion contains all possible properties and
+// values from [string], [[]\*any].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfWebWebScrapeHTMLResponseExtractedArrayItemArray]
+type WebWebScrapeHTMLResponseExtractedUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]\*any] instead of an object.
+	OfWebWebScrapeHTMLResponseExtractedArrayItemArray []*any `json:",inline"`
+	JSON                                              struct {
+		OfString                                          respjson.Field
+		OfWebWebScrapeHTMLResponseExtractedArrayItemArray respjson.Field
+		raw                                               string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeHTMLResponseExtractedUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeHTMLResponseExtractedUnion) AsWebWebScrapeHTMLResponseExtractedArrayItemArray() (v []*any) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeHTMLResponseExtractedUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeHTMLResponseExtractedUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3253,6 +3299,14 @@ type WebAnswersParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts WebAnswersParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebAnswersParamsZdr `json:"zdr,omitzero"`
 	paramObj
 }
 
@@ -3305,6 +3359,18 @@ func init() {
 		"behavior", "fail", "return-partial",
 	)
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type WebAnswersParamsZdr string
+
+const (
+	WebAnswersParamsZdrEnabled  WebAnswersParamsZdr = "enabled"
+	WebAnswersParamsZdrDisabled WebAnswersParamsZdr = "disabled"
+)
 
 type WebExtractParams struct {
 	// JSON Schema for the returned data object. Image fields such as `image_urls` or
@@ -3361,6 +3427,14 @@ type WebExtractParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts WebExtractParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebExtractParamsZdr `json:"zdr,omitzero"`
 	paramObj
 }
 
@@ -3546,6 +3620,18 @@ func init() {
 	)
 }
 
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type WebExtractParamsZdr string
+
+const (
+	WebExtractParamsZdrEnabled  WebExtractParamsZdr = "enabled"
+	WebExtractParamsZdrDisabled WebExtractParamsZdr = "disabled"
+)
+
 type WebExtractCompetitorsParams struct {
 	// Company domain to analyze, such as `stripe.com`. Full http(s) URLs are accepted
 	// and normalized to their domain.
@@ -3559,6 +3645,14 @@ type WebExtractCompetitorsParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts WebExtractCompetitorsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebExtractCompetitorsParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3597,6 +3691,18 @@ func (r WebExtractCompetitorsParamsTimeoutOpts) URLQuery() (v url.Values, err er
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type WebExtractCompetitorsParamsZdr string
+
+const (
+	WebExtractCompetitorsParamsZdrEnabled  WebExtractCompetitorsParamsZdr = "enabled"
+	WebExtractCompetitorsParamsZdrDisabled WebExtractCompetitorsParamsZdr = "disabled"
+)
 
 type WebExtractFontsParams struct {
 	// Maximum age in milliseconds for cached brand data before the API performs a hard
@@ -3685,6 +3791,14 @@ type WebExtractStyleguideParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts WebExtractStyleguideParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebExtractStyleguideParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -3733,6 +3847,18 @@ func (r WebExtractStyleguideParamsTimeoutOpts) URLQuery() (v url.Values, err err
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type WebExtractStyleguideParamsZdr string
+
+const (
+	WebExtractStyleguideParamsZdrEnabled  WebExtractStyleguideParamsZdr = "enabled"
+	WebExtractStyleguideParamsZdrDisabled WebExtractStyleguideParamsZdr = "disabled"
+)
 
 type WebScreenshotParams struct {
 	// Return a cached screenshot if a prior screenshot for the same parameters exists
@@ -3820,9 +3946,10 @@ type WebScreenshotParams struct {
 	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 	Viewport WebScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Requires zero data retention to be enabled for your
-	// organization (contact support@context.dev), otherwise the request fails with
-	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebScreenshotParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -4132,9 +4259,10 @@ func (r WebScreenshotParamsViewport) URLQuery() (v url.Values, err error) {
 }
 
 // Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Requires zero data retention to be enabled for your
-// organization (contact support@context.dev), otherwise the request fails with
-// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
 type WebScreenshotParamsZdr string
 
 const (
@@ -4191,6 +4319,14 @@ type WebSearchParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts WebSearchParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebSearchParamsZdr `json:"zdr,omitzero"`
 	paramObj
 }
 
@@ -4579,6 +4715,18 @@ func init() {
 		"behavior", "fail", "return-partial",
 	)
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type WebSearchParamsZdr string
+
+const (
+	WebSearchParamsZdrEnabled  WebSearchParamsZdr = "enabled"
+	WebSearchParamsZdrDisabled WebSearchParamsZdr = "disabled"
+)
 
 type WebWebCrawlMdParams struct {
 	// The starting URL for the crawl (must include http:// or https:// protocol)
@@ -4997,9 +5145,10 @@ type WebWebScrapeBytesParams struct {
 	// timeoutOpts object.
 	TimeoutOpts WebWebScrapeBytesParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Requires zero data retention to be enabled for your
-	// organization (contact support@context.dev), otherwise the request fails with
-	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebWebScrapeBytesParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -5252,9 +5401,10 @@ func (r WebWebScrapeBytesParamsTimeoutOpts) URLQuery() (v url.Values, err error)
 }
 
 // Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Requires zero data retention to be enabled for your
-// organization (contact support@context.dev), otherwise the request fails with
-// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
 type WebWebScrapeBytesParamsZdr string
 
 const (
@@ -5315,6 +5465,14 @@ type WebWebScrapeHTMLParams struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country WebWebScrapeHTMLParamsCountry `query:"country,omitzero" json:"-"`
+	// Optional CSS extraction rules applied to the returned HTML after selector and
+	// main-content filtering. Use selector strings ("h1", "a@href") or objects with
+	// selector, type (item or list), and output (text, html, @attribute, or nested
+	// rules). Text whitespace is normalized; html includes the matched element;
+	// attributes are returned as written. Missing items are null and missing lists are
+	// empty. CSS only; XPath is not supported. Maximum: 100 fields across 5 levels.
+	// Send a JSON-encoded string in the extractRules query parameter.
+	ExtractRules map[string]WebWebScrapeHTMLParamsExtractRuleUnion `query:"extractRules,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
@@ -5330,9 +5488,10 @@ type WebWebScrapeHTMLParams struct {
 	// timeoutOpts object.
 	TimeoutOpts WebWebScrapeHTMLParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Requires zero data retention to be enabled for your
-	// organization (contact support@context.dev), otherwise the request fails with
-	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebWebScrapeHTMLParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -5664,6 +5823,80 @@ const (
 	WebWebScrapeHTMLParamsCountryZw WebWebScrapeHTMLParamsCountry = "zw"
 )
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsExtractRuleUnion struct {
+	OfString                             param.Opt[string]                        `query:",omitzero,inline"`
+	OfWebWebScrapeHTMLsExtractRuleObject *WebWebScrapeHTMLParamsExtractRuleObject `query:",omitzero,inline"`
+	paramUnion
+}
+
+// The property Selector is required.
+type WebWebScrapeHTMLParamsExtractRuleObject struct {
+	Selector string                                             `query:"selector" api:"required" json:"-"`
+	Output   WebWebScrapeHTMLParamsExtractRuleObjectOutputUnion `query:"output,omitzero" json:"-"`
+	// Any of "item", "list".
+	Type string `query:"type,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsExtractRuleObject]'s query parameters
+// as `url.Values`.
+func (r WebWebScrapeHTMLParamsExtractRuleObject) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputUnion struct {
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsExtractRuleObjectOutputString)
+	OfWebWebScrapeHTMLsExtractRuleObjectOutputString              param.Opt[string]                                                               `query:",omitzero,inline"`
+	OfString                                                      param.Opt[string]                                                               `query:",omitzero,inline"`
+	OfWebWebScrapeHTMLsExtractRuleObjectOutputHTMLExtractionRules map[string]WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleUnion `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputString string
+
+const (
+	WebWebScrapeHTMLParamsExtractRuleObjectOutputStringText WebWebScrapeHTMLParamsExtractRuleObjectOutputString = "text"
+	WebWebScrapeHTMLParamsExtractRuleObjectOutputStringHTML WebWebScrapeHTMLParamsExtractRuleObjectOutputString = "html"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleUnion struct {
+	OfString                                                           param.Opt[string]                                                      `query:",omitzero,inline"`
+	OfWebWebScrapeHTMLsExtractRuleObjectOutputHTMLExtractionRuleObject *WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject `query:",omitzero,inline"`
+	paramUnion
+}
+
+// The property Selector is required.
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject struct {
+	Selector string `query:"selector" api:"required" json:"-"`
+	Output   string `query:"output,omitzero" json:"-"`
+	// Any of "item", "list".
+	Type string `query:"type,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes
+// [WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject]'s query
+// parameters as `url.Values`.
+func (r WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
 // PDF parsing controls. Use start/end to limit text extraction and embedded-image
 // detection/OCR to an inclusive 1-based page range.
 type WebWebScrapeHTMLParamsPdf struct {
@@ -5721,9 +5954,10 @@ func (r WebWebScrapeHTMLParamsTimeoutOpts) URLQuery() (v url.Values, err error) 
 }
 
 // Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Requires zero data retention to be enabled for your
-// organization (contact support@context.dev), otherwise the request fails with
-// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
 type WebWebScrapeHTMLParamsZdr string
 
 const (
@@ -5765,6 +5999,14 @@ type WebWebScrapeImagesParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts WebWebScrapeImagesParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeImagesParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -5889,7 +6131,7 @@ type WebWebScrapeImagesParamsEnrichment struct {
 	// Classify each image by visual asset type.
 	Classification param.Opt[bool] `query:"classification,omitzero" json:"-"`
 	// Host materializable images on the Brand.dev CDN and return their URL and MIME
-	// type.
+	// type. Ignored when zero data retention is enabled.
 	HostedURL param.Opt[bool] `query:"hostedUrl,omitzero" json:"-"`
 	// Per-image enrichment timeout in milliseconds. Default: 30000. Maximum: 60000.
 	MaxTimePerMs param.Opt[int64] `query:"maxTimePerMs,omitzero" json:"-"`
@@ -5934,6 +6176,18 @@ func (r WebWebScrapeImagesParamsTimeoutOpts) URLQuery() (v url.Values, err error
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeImagesParamsZdr string
+
+const (
+	WebWebScrapeImagesParamsZdrEnabled  WebWebScrapeImagesParamsZdr = "enabled"
+	WebWebScrapeImagesParamsZdrDisabled WebWebScrapeImagesParamsZdr = "disabled"
+)
 
 type WebWebScrapeMdParams struct {
 	// Full URL to scrape into LLM usable Markdown (must include http:// or https://
@@ -6014,9 +6268,10 @@ type WebWebScrapeMdParams struct {
 	// timeoutOpts object.
 	TimeoutOpts WebWebScrapeMdParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Requires zero data retention to be enabled for your
-	// organization (contact support@context.dev), otherwise the request fails with
-	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebWebScrapeMdParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -6405,9 +6660,10 @@ func (r WebWebScrapeMdParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 }
 
 // Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Requires zero data retention to be enabled for your
-// organization (contact support@context.dev), otherwise the request fails with
-// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
 type WebWebScrapeMdParamsZdr string
 
 const (
@@ -6446,9 +6702,10 @@ type WebWebScrapeSitemapParams struct {
 	// timeoutOpts object.
 	TimeoutOpts WebWebScrapeSitemapParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Requires zero data retention to be enabled for your
-	// organization (contact support@context.dev), otherwise the request fails with
-	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebWebScrapeSitemapParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -6492,9 +6749,10 @@ func (r WebWebScrapeSitemapParamsTimeoutOpts) URLQuery() (v url.Values, err erro
 }
 
 // Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Requires zero data retention to be enabled for your
-// organization (contact support@context.dev), otherwise the request fails with
-// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
 type WebWebScrapeSitemapParamsZdr string
 
 const (

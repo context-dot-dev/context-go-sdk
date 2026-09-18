@@ -672,6 +672,14 @@ type PersonEnrichParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts PersonEnrichParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr PersonEnrichParamsZdr `json:"zdr,omitzero"`
 	paramObj
 }
 
@@ -787,3 +795,15 @@ func init() {
 		"behavior", "fail", "return-partial",
 	)
 }
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type PersonEnrichParamsZdr string
+
+const (
+	PersonEnrichParamsZdrEnabled  PersonEnrichParamsZdr = "enabled"
+	PersonEnrichParamsZdrDisabled PersonEnrichParamsZdr = "disabled"
+)

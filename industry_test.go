@@ -35,6 +35,7 @@ func TestIndustryGetNaicsWithOptionalParams(t *testing.T) {
 			Milliseconds: 1000,
 			Behavior:     "fail",
 		},
+		Zdr: contextdev.IndustryGetNaicsParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -68,6 +69,7 @@ func TestIndustryGetSicWithOptionalParams(t *testing.T) {
 			Behavior:     "fail",
 		},
 		Type: contextdev.IndustryGetSicParamsTypeOriginalSic,
+		Zdr:  contextdev.IndustryGetSicParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

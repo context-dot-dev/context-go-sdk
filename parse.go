@@ -189,9 +189,10 @@ type ParseHandleParams struct {
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Requires zero data retention to be enabled for your
-	// organization (contact support@context.dev), otherwise the request fails with
-	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
 	//
 	// Any of "enabled", "disabled".
 	Zdr ParseHandleParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -320,9 +321,10 @@ func (r ParseHandleParamsPdf) URLQuery() (v url.Values, err error) {
 }
 
 // Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Requires zero data retention to be enabled for your
-// organization (contact support@context.dev), otherwise the request fails with
-// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
 type ParseHandleParamsZdr string
 
 const (

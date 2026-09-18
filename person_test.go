@@ -56,6 +56,7 @@ func TestPersonEnrichWithOptionalParams(t *testing.T) {
 			Milliseconds: 1000,
 			Behavior:     "fail",
 		},
+		Zdr: contextdev.PersonEnrichParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

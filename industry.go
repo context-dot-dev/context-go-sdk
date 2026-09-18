@@ -263,6 +263,14 @@ type IndustryGetNaicsParams struct {
 	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
 	// timeoutOpts object.
 	TimeoutOpts IndustryGetNaicsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr IndustryGetNaicsParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -301,6 +309,18 @@ func (r IndustryGetNaicsParamsTimeoutOpts) URLQuery() (v url.Values, err error) 
 	})
 }
 
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type IndustryGetNaicsParamsZdr string
+
+const (
+	IndustryGetNaicsParamsZdrEnabled  IndustryGetNaicsParamsZdr = "enabled"
+	IndustryGetNaicsParamsZdrDisabled IndustryGetNaicsParamsZdr = "disabled"
+)
+
 type IndustryGetSicParams struct {
 	// Brand domain or title to retrieve SIC code for. If a valid domain is provided,
 	// it will be used for classification, otherwise, we will search for the brand
@@ -323,6 +343,14 @@ type IndustryGetSicParams struct {
 	//
 	// Any of "original_sic", "latest_sec".
 	Type IndustryGetSicParamsType `query:"type,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr IndustryGetSicParamsZdr `query:"zdr,omitzero" json:"-"`
 	paramObj
 }
 
@@ -369,4 +397,16 @@ type IndustryGetSicParamsType string
 const (
 	IndustryGetSicParamsTypeOriginalSic IndustryGetSicParamsType = "original_sic"
 	IndustryGetSicParamsTypeLatestSec   IndustryGetSicParamsType = "latest_sec"
+)
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type IndustryGetSicParamsZdr string
+
+const (
+	IndustryGetSicParamsZdrEnabled  IndustryGetSicParamsZdr = "enabled"
+	IndustryGetSicParamsZdrDisabled IndustryGetSicParamsZdr = "disabled"
 )

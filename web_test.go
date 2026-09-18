@@ -410,6 +410,11 @@ func TestWebWebScrapeHTMLWithOptionalParams(t *testing.T) {
 		}},
 		Country:          contextdev.WebWebScrapeHTMLParamsCountryDe,
 		ExcludeSelectors: []string{"x"},
+		ExtractRules: map[string]contextdev.WebWebScrapeHTMLParamsExtractRuleUnion{
+			"foo": {
+				OfString: contextdev.String("x"),
+			},
+		},
 		Headers: map[string]string{
 			"foo": "J!",
 		},

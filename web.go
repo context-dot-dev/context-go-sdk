@@ -127,12 +127,16 @@ func (r *WebService) WebScrapeBytes(ctx context.Context, query WebWebScrapeBytes
 	return res, err
 }
 
-// Scrapes the given URL and returns the raw HTML content of the page. The base
-// request costs 1 credit; requests with browser actions cost 2 credits. A request
-// that hits its timeoutOpts.milliseconds deadline fails with 408 and is not
-// billed, unless timeoutOpts.behavior=return-partial is set — then the page as
-// rendered so far is returned with `finalDOMState: "still-loading"` and billed at
-// the base cost of 1 credit.
+// Scrapes the given URL and returns the HTML content of the page. Optional
+// extractRules return deterministic structured data in extracted using CSS
+// selectors, attributes, lists, and nested rules, without an LLM or additional
+// credits. Rules run on the returned HTML after selector and main-content
+// filtering. Send extractRules as a JSON-encoded query parameter. The base request
+// costs 1 credit; requests with browser actions cost 2 credits. A request that
+// hits its timeoutOpts.milliseconds deadline fails with 408 and is not billed,
+// unless timeoutOpts.behavior=return-partial is set — then the page as rendered so
+// far is returned with `finalDOMState: "still-loading"` and billed at the base
+// cost of 1 credit.
 func (r *WebService) WebScrapeHTML(ctx context.Context, query WebWebScrapeHTMLParams, opts ...option.RequestOption) (res *WebWebScrapeHTMLResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/html"
@@ -2168,6 +2172,11 @@ type WebWebScrapeHTMLResponse struct {
 	// True when an action was applied but the returned content could not be refreshed
 	// afterward.
 	ActionsHTMLStale bool `json:"actionsHtmlStale"`
+	// Present only when extractRules is supplied. Keys match the requested fields.
+	// Values are normalized text, raw attribute strings, outer HTML, nested objects,
+	// or lists. Missing items are null; lists with no matches are empty. Rules run on
+	// the returned HTML after filtering.
+	Extracted map[string]*WebWebScrapeHTMLResponseExtractedUnion `json:"extracted"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebWebScrapeHTMLResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -2182,6 +2191,7 @@ type WebWebScrapeHTMLResponse struct {
 		URL              respjson.Field
 		ActionsApplied   respjson.Field
 		ActionsHTMLStale respjson.Field
+		Extracted        respjson.Field
 		KeyMetadata      respjson.Field
 		ExtraFields      map[string]respjson.Field
 		raw              string
@@ -2516,6 +2526,42 @@ type WebWebScrapeHTMLResponseActionsApplied struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeHTMLResponseActionsApplied) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeHTMLResponseActionsApplied) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebWebScrapeHTMLResponseExtractedUnion contains all possible properties and
+// values from [string], [[]\*any].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfWebWebScrapeHTMLResponseExtractedArrayItemArray]
+type WebWebScrapeHTMLResponseExtractedUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]\*any] instead of an object.
+	OfWebWebScrapeHTMLResponseExtractedArrayItemArray []*any `json:",inline"`
+	JSON                                              struct {
+		OfString                                          respjson.Field
+		OfWebWebScrapeHTMLResponseExtractedArrayItemArray respjson.Field
+		raw                                               string
+	} `json:"-"`
+}
+
+func (u WebWebScrapeHTMLResponseExtractedUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebWebScrapeHTMLResponseExtractedUnion) AsWebWebScrapeHTMLResponseExtractedArrayItemArray() (v []*any) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebWebScrapeHTMLResponseExtractedUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebWebScrapeHTMLResponseExtractedUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -5315,6 +5361,14 @@ type WebWebScrapeHTMLParams struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country WebWebScrapeHTMLParamsCountry `query:"country,omitzero" json:"-"`
+	// Optional CSS extraction rules applied to the returned HTML after selector and
+	// main-content filtering. Use selector strings ("h1", "a@href") or objects with
+	// selector, type (item or list), and output (text, html, @attribute, or nested
+	// rules). Text whitespace is normalized; html includes the matched element;
+	// attributes are returned as written. Missing items are null and missing lists are
+	// empty. CSS only; XPath is not supported. Maximum: 100 fields across 5 levels.
+	// Send a JSON-encoded string in the extractRules query parameter.
+	ExtractRules map[string]WebWebScrapeHTMLParamsExtractRuleUnion `query:"extractRules,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
@@ -5663,6 +5717,80 @@ const (
 	WebWebScrapeHTMLParamsCountryZm WebWebScrapeHTMLParamsCountry = "zm"
 	WebWebScrapeHTMLParamsCountryZw WebWebScrapeHTMLParamsCountry = "zw"
 )
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsExtractRuleUnion struct {
+	OfString                             param.Opt[string]                        `query:",omitzero,inline"`
+	OfWebWebScrapeHTMLsExtractRuleObject *WebWebScrapeHTMLParamsExtractRuleObject `query:",omitzero,inline"`
+	paramUnion
+}
+
+// The property Selector is required.
+type WebWebScrapeHTMLParamsExtractRuleObject struct {
+	Selector string                                             `query:"selector" api:"required" json:"-"`
+	Output   WebWebScrapeHTMLParamsExtractRuleObjectOutputUnion `query:"output,omitzero" json:"-"`
+	// Any of "item", "list".
+	Type string `query:"type,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeHTMLParamsExtractRuleObject]'s query parameters
+// as `url.Values`.
+func (r WebWebScrapeHTMLParamsExtractRuleObject) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputUnion struct {
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebScrapeHTMLsExtractRuleObjectOutputString)
+	OfWebWebScrapeHTMLsExtractRuleObjectOutputString              param.Opt[string]                                                               `query:",omitzero,inline"`
+	OfString                                                      param.Opt[string]                                                               `query:",omitzero,inline"`
+	OfWebWebScrapeHTMLsExtractRuleObjectOutputHTMLExtractionRules map[string]WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleUnion `query:",omitzero,inline"`
+	paramUnion
+}
+
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputString string
+
+const (
+	WebWebScrapeHTMLParamsExtractRuleObjectOutputStringText WebWebScrapeHTMLParamsExtractRuleObjectOutputString = "text"
+	WebWebScrapeHTMLParamsExtractRuleObjectOutputStringHTML WebWebScrapeHTMLParamsExtractRuleObjectOutputString = "html"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleUnion struct {
+	OfString                                                           param.Opt[string]                                                      `query:",omitzero,inline"`
+	OfWebWebScrapeHTMLsExtractRuleObjectOutputHTMLExtractionRuleObject *WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject `query:",omitzero,inline"`
+	paramUnion
+}
+
+// The property Selector is required.
+type WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject struct {
+	Selector string `query:"selector" api:"required" json:"-"`
+	Output   string `query:"output,omitzero" json:"-"`
+	// Any of "item", "list".
+	Type string `query:"type,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes
+// [WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject]'s query
+// parameters as `url.Values`.
+func (r WebWebScrapeHTMLParamsExtractRuleObjectOutputHTMLExtractionRuleObject) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
 
 // PDF parsing controls. Use start/end to limit text extraction and embedded-image
 // detection/OCR to an inclusive 1-based page range.

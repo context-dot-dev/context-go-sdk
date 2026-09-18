@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.19.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.18.0...v2.19.0) (2026-09-18)
+
+
+### Features
+
+* **billing:** charge for 404s and skip fraud accounting ([#1152](https://github.com/context-dot-dev/context-go-sdk/issues/1152)) ([525c932](https://github.com/context-dot-dev/context-go-sdk/commit/525c932dd8cd47684f6f2efbebc7444d0633b331))
+
 ## [2.18.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.17.1...v2.18.0) (2026-09-18)
 
 

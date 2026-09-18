@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.18.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.17.1...v2.18.0) (2026-09-18)
+
+
+### Features
+
+* **api:** enable ZDR on remaining AI endpoints via OpenAI ([#1099](https://github.com/context-dot-dev/context-go-sdk/issues/1099)) ([eb9b85a](https://github.com/context-dot-dev/context-go-sdk/commit/eb9b85a0f2547d9b9735bdc61ef14a416bcb286b))
+* **products:** extract ProductGroup variants with images ([#1124](https://github.com/context-dot-dev/context-go-sdk/issues/1124)) ([9f390a9](https://github.com/context-dot-dev/context-go-sdk/commit/9f390a9c04ee0131146ae3dbd777e1ebcb2858d0))
+* **scrape:** add CSS extraction rules to HTML scraping ([#1146](https://github.com/context-dot-dev/context-go-sdk/issues/1146)) ([09afaf5](https://github.com/context-dot-dev/context-go-sdk/commit/09afaf5ab115cc7fca6c11740e4b3acc949ff626))
+* **web:** add URL-based scrape screenshot endpoint ([#1150](https://github.com/context-dot-dev/context-go-sdk/issues/1150)) ([b559ff7](https://github.com/context-dot-dev/context-go-sdk/commit/b559ff71e64cfadcca87199422b6604c1ad9fe78))
+
+
+### Bug Fixes
+
+* **api:** lower partial scrape timeout minimum to five seconds ([#1118](https://github.com/context-dot-dev/context-go-sdk/issues/1118)) ([a984bc2](https://github.com/context-dot-dev/context-go-sdk/commit/a984bc28d902351f3d85cd2953cbd0c110fe5ff9))
+
 ## [2.17.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.17.0...v2.17.1) (2026-09-15)
 
 

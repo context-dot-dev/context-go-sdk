@@ -34,6 +34,7 @@ func TestAIExtractProductWithOptionalParams(t *testing.T) {
 			Milliseconds: 1000,
 			Behavior:     "fail",
 		},
+		Zdr: contextdev.AIExtractProductParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

@@ -38,6 +38,7 @@ func TestWebAnswersWithOptionalParams(t *testing.T) {
 			Milliseconds: 1000,
 			Behavior:     "fail",
 		},
+		Zdr: contextdev.WebAnswersParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -94,6 +95,7 @@ func TestWebExtractWithOptionalParams(t *testing.T) {
 			Behavior:     "fail",
 		},
 		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebExtractParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -125,6 +127,7 @@ func TestWebExtractCompetitorsWithOptionalParams(t *testing.T) {
 			Milliseconds: 1000,
 			Behavior:     "fail",
 		},
+		Zdr: contextdev.WebExtractCompetitorsParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -190,6 +193,7 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 			Milliseconds: 1,
 			Behavior:     "fail",
 		},
+		Zdr: contextdev.WebExtractStyleguideParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -290,6 +294,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 			Milliseconds: 1000,
 			Behavior:     "fail",
 		},
+		Zdr: contextdev.WebSearchParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -483,6 +488,7 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 			Behavior:     "fail",
 		},
 		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeImagesParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

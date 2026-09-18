@@ -556,6 +556,49 @@ func TestWebWebScrapeMdWithOptionalParams(t *testing.T) {
 	}
 }
 
+func TestWebWebScrapeScreenshotWithOptionalParams(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Web.WebScrapeScreenshot(context.TODO(), contextdev.WebWebScrapeScreenshotParams{
+		URL:               "https://example.com",
+		ClearPopups:       contextdev.Bool(true),
+		ColorScheme:       contextdev.WebWebScrapeScreenshotParamsColorSchemeLight,
+		Country:           contextdev.WebWebScrapeScreenshotParamsCountryDe,
+		FullScreenshot:    contextdev.WebWebScrapeScreenshotParamsFullScreenshotTrue,
+		HandleCookiePopup: contextdev.Bool(true),
+		MaxAgeMs:          contextdev.Int(0),
+		ScrollOffset:      contextdev.Int(0),
+		Tags:              []string{"production", "team-alpha"},
+		TimeoutOpts: contextdev.WebWebScrapeScreenshotParamsTimeoutOpts{
+			Milliseconds: 1,
+			Behavior:     "fail",
+		},
+		Viewport: contextdev.WebWebScrapeScreenshotParamsViewport{
+			Height: contextdev.Int(240),
+			Width:  contextdev.Int(240),
+		},
+		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeScreenshotParamsZdrEnabled,
+	})
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
 func TestWebWebScrapeSitemapWithOptionalParams(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"

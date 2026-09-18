@@ -192,6 +192,19 @@ func (r *WebService) WebScrapeMd(ctx context.Context, query WebWebScrapeMdParams
 	return res, err
 }
 
+// Capture the given HTTP or HTTPS URL with configurable viewport, full-page
+// capture, wait time, popup handling, theme, scroll offset, cache age, country,
+// and request timeout. Defaults to a 1920x1080 viewport, a 3-second wait, and a
+// cache age of 1 day. With timeoutOpts.behavior=return-partial, a screenshot of
+// the page rendered so far may be returned; inspect finalDOMState to identify an
+// incomplete render. Successful requests cost 1 credit; errors are not billed.
+func (r *WebService) WebScrapeScreenshot(ctx context.Context, query WebWebScrapeScreenshotParams, opts ...option.RequestOption) (res *WebWebScrapeScreenshotResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "web/scrape/screenshot"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	return res, err
+}
+
 // Crawl an entire website's sitemap and return all discovered page URLs. Set
 // `includeSubdomains=true` to also discover public pages and sitemaps on child
 // hosts such as `docs.example.com` or `brand.example.com`. Pass `search` to have
@@ -3185,6 +3198,113 @@ type WebWebScrapeMdResponseKeyMetadata struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeMdResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeMdResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebWebScrapeScreenshotResponse struct {
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebWebScrapeScreenshotResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Height of the returned image in pixels.
+	Height int64 `json:"height" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
+	// Public image URL for standard requests, or an in-memory data URL when ZDR is
+	// enabled.
+	Screenshot string `json:"screenshot" api:"required" format:"uri"`
+	// The requested page URL.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Width of the returned image in pixels.
+	Width int64 `json:"width" api:"required"`
+	// How complete the returned content is. `loaded` means the page finished the waits
+	// the request asked for. `still-loading` only occurs with
+	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+	// reached first, so the content reflects the DOM at that moment and late-rendering
+	// parts may be missing. Partial results are billed at the base request cost.
+	//
+	// Any of "loaded", "still-loading".
+	FinalDomState WebWebScrapeScreenshotResponseFinalDomState `json:"finalDOMState"`
+	// Credit usage, included whenever a valid API key is provided.
+	KeyMetadata WebWebScrapeScreenshotResponseKeyMetadata `json:"key_metadata"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CacheMetadata respjson.Field
+		Height        respjson.Field
+		RequestID     respjson.Field
+		Screenshot    respjson.Field
+		URL           respjson.Field
+		Width         respjson.Field
+		FinalDomState respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeScreenshotResponse) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeScreenshotResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebWebScrapeScreenshotResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeScreenshotResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeScreenshotResponseCacheMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// How complete the returned content is. `loaded` means the page finished the waits
+// the request asked for. `still-loading` only occurs with
+// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
+// reached first, so the content reflects the DOM at that moment and late-rendering
+// parts may be missing. Partial results are billed at the base request cost.
+type WebWebScrapeScreenshotResponseFinalDomState string
+
+const (
+	WebWebScrapeScreenshotResponseFinalDomStateLoaded       WebWebScrapeScreenshotResponseFinalDomState = "loaded"
+	WebWebScrapeScreenshotResponseFinalDomStateStillLoading WebWebScrapeScreenshotResponseFinalDomState = "still-loading"
+)
+
+// Credit usage, included whenever a valid API key is provided.
+type WebWebScrapeScreenshotResponseKeyMetadata struct {
+	// Credits used by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// Credits remaining for your organization.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeScreenshotResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeScreenshotResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -6669,6 +6789,383 @@ type WebWebScrapeMdParamsZdr string
 const (
 	WebWebScrapeMdParamsZdrEnabled  WebWebScrapeMdParamsZdr = "enabled"
 	WebWebScrapeMdParamsZdrDisabled WebWebScrapeMdParamsZdr = "disabled"
+)
+
+type WebWebScrapeScreenshotParams struct {
+	URL string `query:"url" api:"required" format:"uri" json:"-"`
+	// Return a cached screenshot if a prior screenshot for the same parameters exists
+	// and is younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
+	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always capture fresh.
+	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// Optional vertical scroll offset in pixels for capturing a long page in
+	// viewport-sized chunks. When provided, the full page is captured once and the
+	// returned image is the viewport-sized slice that begins at this Y offset (e.g.
+	// request scrollOffset=0, then 1080, then 2160 to walk a 1920x1080 landing page
+	// top to bottom). The final slice may be shorter than the viewport height. Takes
+	// precedence over fullScreenshot. Max: 100000.
+	ScrollOffset param.Opt[int64] `query:"scrollOffset,omitzero" json:"-"`
+	// Optional browser wait time in milliseconds after initial page load before taking
+	// the screenshot. Min: 0. Max: 30000 (30 seconds). Defaults to 3000 ms when
+	// omitted. When combined with timeoutOpts, timeoutOpts.milliseconds must be at
+	// least waitForMs + 10000 ms; a shorter deadline is rejected with 400
+	// TIMEOUT_TOO_SHORT_FOR_WAIT.
+	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
+	// Optional parameter for comprehensive popup cleanup. If 'true', the browser
+	// dismisses detected cookie/consent UI and clears other detected obstructive
+	// popups and overlays before capture. If 'false' or not provided, this parameter
+	// requests no cleanup; handleCookiePopup can still request cookie/consent handling
+	// independently.
+	ClearPopups param.Opt[bool] `query:"clearPopups,omitzero" json:"-"`
+	// Optional parameter to control cookie/consent popup handling. If 'true', we
+	// dismiss cookie banner before capture. If 'false' or not provided, captures the
+	// page without that step.
+	HandleCookiePopup param.Opt[bool] `query:"handleCookiePopup,omitzero" json:"-"`
+	// Optional parameter to choose the site's visual theme in the screenshot. Use
+	// 'light' or 'dark' when the site offers both appearances.
+	//
+	// Any of "light", "dark".
+	ColorScheme WebWebScrapeScreenshotParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country WebWebScrapeScreenshotParamsCountry `query:"country,omitzero" json:"-"`
+	// Optional parameter to determine screenshot type. If 'true', takes a full page
+	// screenshot capturing all content. If 'false' or not provided, takes a viewport
+	// screenshot (standard browser view).
+	//
+	// Any of "true", "false".
+	FullScreenshot WebWebScrapeScreenshotParamsFullScreenshot `query:"fullScreenshot,omitzero" json:"-"`
+	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
+	// characters.
+	Tags []string `query:"tags,omitzero" json:"-"`
+	// Optional request deadline and behavior on timeout. For GET requests, use
+	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+	// timeoutOpts object.
+	TimeoutOpts WebWebScrapeScreenshotParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
+	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
+	Viewport WebWebScrapeScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
+	// Set to enabled to bypass shared caches and omit request and response content
+	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+	// omitted. Requires zero data retention to be enabled for your organization
+	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+	// Successful ZDR responses include X-Context-ZDR: true.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebWebScrapeScreenshotParamsZdr `query:"zdr,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeScreenshotParams]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeScreenshotParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional parameter to choose the site's visual theme in the screenshot. Use
+// 'light' or 'dark' when the site offers both appearances.
+type WebWebScrapeScreenshotParamsColorScheme string
+
+const (
+	WebWebScrapeScreenshotParamsColorSchemeLight WebWebScrapeScreenshotParamsColorScheme = "light"
+	WebWebScrapeScreenshotParamsColorSchemeDark  WebWebScrapeScreenshotParamsColorScheme = "dark"
+)
+
+// Fetch the target page through a residential proxy in this country (ISO 3166-1
+// alpha-2).
+type WebWebScrapeScreenshotParamsCountry string
+
+const (
+	WebWebScrapeScreenshotParamsCountryAd WebWebScrapeScreenshotParamsCountry = "ad"
+	WebWebScrapeScreenshotParamsCountryAe WebWebScrapeScreenshotParamsCountry = "ae"
+	WebWebScrapeScreenshotParamsCountryAf WebWebScrapeScreenshotParamsCountry = "af"
+	WebWebScrapeScreenshotParamsCountryAg WebWebScrapeScreenshotParamsCountry = "ag"
+	WebWebScrapeScreenshotParamsCountryAI WebWebScrapeScreenshotParamsCountry = "ai"
+	WebWebScrapeScreenshotParamsCountryAl WebWebScrapeScreenshotParamsCountry = "al"
+	WebWebScrapeScreenshotParamsCountryAm WebWebScrapeScreenshotParamsCountry = "am"
+	WebWebScrapeScreenshotParamsCountryAo WebWebScrapeScreenshotParamsCountry = "ao"
+	WebWebScrapeScreenshotParamsCountryAr WebWebScrapeScreenshotParamsCountry = "ar"
+	WebWebScrapeScreenshotParamsCountryAt WebWebScrapeScreenshotParamsCountry = "at"
+	WebWebScrapeScreenshotParamsCountryAu WebWebScrapeScreenshotParamsCountry = "au"
+	WebWebScrapeScreenshotParamsCountryAw WebWebScrapeScreenshotParamsCountry = "aw"
+	WebWebScrapeScreenshotParamsCountryAz WebWebScrapeScreenshotParamsCountry = "az"
+	WebWebScrapeScreenshotParamsCountryBa WebWebScrapeScreenshotParamsCountry = "ba"
+	WebWebScrapeScreenshotParamsCountryBb WebWebScrapeScreenshotParamsCountry = "bb"
+	WebWebScrapeScreenshotParamsCountryBd WebWebScrapeScreenshotParamsCountry = "bd"
+	WebWebScrapeScreenshotParamsCountryBe WebWebScrapeScreenshotParamsCountry = "be"
+	WebWebScrapeScreenshotParamsCountryBf WebWebScrapeScreenshotParamsCountry = "bf"
+	WebWebScrapeScreenshotParamsCountryBg WebWebScrapeScreenshotParamsCountry = "bg"
+	WebWebScrapeScreenshotParamsCountryBh WebWebScrapeScreenshotParamsCountry = "bh"
+	WebWebScrapeScreenshotParamsCountryBi WebWebScrapeScreenshotParamsCountry = "bi"
+	WebWebScrapeScreenshotParamsCountryBj WebWebScrapeScreenshotParamsCountry = "bj"
+	WebWebScrapeScreenshotParamsCountryBm WebWebScrapeScreenshotParamsCountry = "bm"
+	WebWebScrapeScreenshotParamsCountryBn WebWebScrapeScreenshotParamsCountry = "bn"
+	WebWebScrapeScreenshotParamsCountryBo WebWebScrapeScreenshotParamsCountry = "bo"
+	WebWebScrapeScreenshotParamsCountryBq WebWebScrapeScreenshotParamsCountry = "bq"
+	WebWebScrapeScreenshotParamsCountryBr WebWebScrapeScreenshotParamsCountry = "br"
+	WebWebScrapeScreenshotParamsCountryBs WebWebScrapeScreenshotParamsCountry = "bs"
+	WebWebScrapeScreenshotParamsCountryBw WebWebScrapeScreenshotParamsCountry = "bw"
+	WebWebScrapeScreenshotParamsCountryBy WebWebScrapeScreenshotParamsCountry = "by"
+	WebWebScrapeScreenshotParamsCountryBz WebWebScrapeScreenshotParamsCountry = "bz"
+	WebWebScrapeScreenshotParamsCountryCa WebWebScrapeScreenshotParamsCountry = "ca"
+	WebWebScrapeScreenshotParamsCountryCd WebWebScrapeScreenshotParamsCountry = "cd"
+	WebWebScrapeScreenshotParamsCountryCf WebWebScrapeScreenshotParamsCountry = "cf"
+	WebWebScrapeScreenshotParamsCountryCg WebWebScrapeScreenshotParamsCountry = "cg"
+	WebWebScrapeScreenshotParamsCountryCh WebWebScrapeScreenshotParamsCountry = "ch"
+	WebWebScrapeScreenshotParamsCountryCi WebWebScrapeScreenshotParamsCountry = "ci"
+	WebWebScrapeScreenshotParamsCountryCl WebWebScrapeScreenshotParamsCountry = "cl"
+	WebWebScrapeScreenshotParamsCountryCm WebWebScrapeScreenshotParamsCountry = "cm"
+	WebWebScrapeScreenshotParamsCountryCn WebWebScrapeScreenshotParamsCountry = "cn"
+	WebWebScrapeScreenshotParamsCountryCo WebWebScrapeScreenshotParamsCountry = "co"
+	WebWebScrapeScreenshotParamsCountryCr WebWebScrapeScreenshotParamsCountry = "cr"
+	WebWebScrapeScreenshotParamsCountryCv WebWebScrapeScreenshotParamsCountry = "cv"
+	WebWebScrapeScreenshotParamsCountryCw WebWebScrapeScreenshotParamsCountry = "cw"
+	WebWebScrapeScreenshotParamsCountryCy WebWebScrapeScreenshotParamsCountry = "cy"
+	WebWebScrapeScreenshotParamsCountryCz WebWebScrapeScreenshotParamsCountry = "cz"
+	WebWebScrapeScreenshotParamsCountryDe WebWebScrapeScreenshotParamsCountry = "de"
+	WebWebScrapeScreenshotParamsCountryDj WebWebScrapeScreenshotParamsCountry = "dj"
+	WebWebScrapeScreenshotParamsCountryDk WebWebScrapeScreenshotParamsCountry = "dk"
+	WebWebScrapeScreenshotParamsCountryDm WebWebScrapeScreenshotParamsCountry = "dm"
+	WebWebScrapeScreenshotParamsCountryDo WebWebScrapeScreenshotParamsCountry = "do"
+	WebWebScrapeScreenshotParamsCountryDz WebWebScrapeScreenshotParamsCountry = "dz"
+	WebWebScrapeScreenshotParamsCountryEc WebWebScrapeScreenshotParamsCountry = "ec"
+	WebWebScrapeScreenshotParamsCountryEe WebWebScrapeScreenshotParamsCountry = "ee"
+	WebWebScrapeScreenshotParamsCountryEg WebWebScrapeScreenshotParamsCountry = "eg"
+	WebWebScrapeScreenshotParamsCountryEs WebWebScrapeScreenshotParamsCountry = "es"
+	WebWebScrapeScreenshotParamsCountryEt WebWebScrapeScreenshotParamsCountry = "et"
+	WebWebScrapeScreenshotParamsCountryFi WebWebScrapeScreenshotParamsCountry = "fi"
+	WebWebScrapeScreenshotParamsCountryFj WebWebScrapeScreenshotParamsCountry = "fj"
+	WebWebScrapeScreenshotParamsCountryFr WebWebScrapeScreenshotParamsCountry = "fr"
+	WebWebScrapeScreenshotParamsCountryGa WebWebScrapeScreenshotParamsCountry = "ga"
+	WebWebScrapeScreenshotParamsCountryGB WebWebScrapeScreenshotParamsCountry = "gb"
+	WebWebScrapeScreenshotParamsCountryGd WebWebScrapeScreenshotParamsCountry = "gd"
+	WebWebScrapeScreenshotParamsCountryGe WebWebScrapeScreenshotParamsCountry = "ge"
+	WebWebScrapeScreenshotParamsCountryGf WebWebScrapeScreenshotParamsCountry = "gf"
+	WebWebScrapeScreenshotParamsCountryGg WebWebScrapeScreenshotParamsCountry = "gg"
+	WebWebScrapeScreenshotParamsCountryGh WebWebScrapeScreenshotParamsCountry = "gh"
+	WebWebScrapeScreenshotParamsCountryGm WebWebScrapeScreenshotParamsCountry = "gm"
+	WebWebScrapeScreenshotParamsCountryGn WebWebScrapeScreenshotParamsCountry = "gn"
+	WebWebScrapeScreenshotParamsCountryGp WebWebScrapeScreenshotParamsCountry = "gp"
+	WebWebScrapeScreenshotParamsCountryGq WebWebScrapeScreenshotParamsCountry = "gq"
+	WebWebScrapeScreenshotParamsCountryGr WebWebScrapeScreenshotParamsCountry = "gr"
+	WebWebScrapeScreenshotParamsCountryGt WebWebScrapeScreenshotParamsCountry = "gt"
+	WebWebScrapeScreenshotParamsCountryGu WebWebScrapeScreenshotParamsCountry = "gu"
+	WebWebScrapeScreenshotParamsCountryGw WebWebScrapeScreenshotParamsCountry = "gw"
+	WebWebScrapeScreenshotParamsCountryGy WebWebScrapeScreenshotParamsCountry = "gy"
+	WebWebScrapeScreenshotParamsCountryHk WebWebScrapeScreenshotParamsCountry = "hk"
+	WebWebScrapeScreenshotParamsCountryHn WebWebScrapeScreenshotParamsCountry = "hn"
+	WebWebScrapeScreenshotParamsCountryHr WebWebScrapeScreenshotParamsCountry = "hr"
+	WebWebScrapeScreenshotParamsCountryHt WebWebScrapeScreenshotParamsCountry = "ht"
+	WebWebScrapeScreenshotParamsCountryHu WebWebScrapeScreenshotParamsCountry = "hu"
+	WebWebScrapeScreenshotParamsCountryID WebWebScrapeScreenshotParamsCountry = "id"
+	WebWebScrapeScreenshotParamsCountryIe WebWebScrapeScreenshotParamsCountry = "ie"
+	WebWebScrapeScreenshotParamsCountryIl WebWebScrapeScreenshotParamsCountry = "il"
+	WebWebScrapeScreenshotParamsCountryIm WebWebScrapeScreenshotParamsCountry = "im"
+	WebWebScrapeScreenshotParamsCountryIn WebWebScrapeScreenshotParamsCountry = "in"
+	WebWebScrapeScreenshotParamsCountryIq WebWebScrapeScreenshotParamsCountry = "iq"
+	WebWebScrapeScreenshotParamsCountryIr WebWebScrapeScreenshotParamsCountry = "ir"
+	WebWebScrapeScreenshotParamsCountryIs WebWebScrapeScreenshotParamsCountry = "is"
+	WebWebScrapeScreenshotParamsCountryIt WebWebScrapeScreenshotParamsCountry = "it"
+	WebWebScrapeScreenshotParamsCountryJe WebWebScrapeScreenshotParamsCountry = "je"
+	WebWebScrapeScreenshotParamsCountryJm WebWebScrapeScreenshotParamsCountry = "jm"
+	WebWebScrapeScreenshotParamsCountryJo WebWebScrapeScreenshotParamsCountry = "jo"
+	WebWebScrapeScreenshotParamsCountryJp WebWebScrapeScreenshotParamsCountry = "jp"
+	WebWebScrapeScreenshotParamsCountryKe WebWebScrapeScreenshotParamsCountry = "ke"
+	WebWebScrapeScreenshotParamsCountryKg WebWebScrapeScreenshotParamsCountry = "kg"
+	WebWebScrapeScreenshotParamsCountryKh WebWebScrapeScreenshotParamsCountry = "kh"
+	WebWebScrapeScreenshotParamsCountryKn WebWebScrapeScreenshotParamsCountry = "kn"
+	WebWebScrapeScreenshotParamsCountryKr WebWebScrapeScreenshotParamsCountry = "kr"
+	WebWebScrapeScreenshotParamsCountryKw WebWebScrapeScreenshotParamsCountry = "kw"
+	WebWebScrapeScreenshotParamsCountryKy WebWebScrapeScreenshotParamsCountry = "ky"
+	WebWebScrapeScreenshotParamsCountryKz WebWebScrapeScreenshotParamsCountry = "kz"
+	WebWebScrapeScreenshotParamsCountryLa WebWebScrapeScreenshotParamsCountry = "la"
+	WebWebScrapeScreenshotParamsCountryLb WebWebScrapeScreenshotParamsCountry = "lb"
+	WebWebScrapeScreenshotParamsCountryLc WebWebScrapeScreenshotParamsCountry = "lc"
+	WebWebScrapeScreenshotParamsCountryLk WebWebScrapeScreenshotParamsCountry = "lk"
+	WebWebScrapeScreenshotParamsCountryLr WebWebScrapeScreenshotParamsCountry = "lr"
+	WebWebScrapeScreenshotParamsCountryLs WebWebScrapeScreenshotParamsCountry = "ls"
+	WebWebScrapeScreenshotParamsCountryLt WebWebScrapeScreenshotParamsCountry = "lt"
+	WebWebScrapeScreenshotParamsCountryLu WebWebScrapeScreenshotParamsCountry = "lu"
+	WebWebScrapeScreenshotParamsCountryLv WebWebScrapeScreenshotParamsCountry = "lv"
+	WebWebScrapeScreenshotParamsCountryLy WebWebScrapeScreenshotParamsCountry = "ly"
+	WebWebScrapeScreenshotParamsCountryMa WebWebScrapeScreenshotParamsCountry = "ma"
+	WebWebScrapeScreenshotParamsCountryMc WebWebScrapeScreenshotParamsCountry = "mc"
+	WebWebScrapeScreenshotParamsCountryMd WebWebScrapeScreenshotParamsCountry = "md"
+	WebWebScrapeScreenshotParamsCountryMe WebWebScrapeScreenshotParamsCountry = "me"
+	WebWebScrapeScreenshotParamsCountryMf WebWebScrapeScreenshotParamsCountry = "mf"
+	WebWebScrapeScreenshotParamsCountryMg WebWebScrapeScreenshotParamsCountry = "mg"
+	WebWebScrapeScreenshotParamsCountryMk WebWebScrapeScreenshotParamsCountry = "mk"
+	WebWebScrapeScreenshotParamsCountryMl WebWebScrapeScreenshotParamsCountry = "ml"
+	WebWebScrapeScreenshotParamsCountryMm WebWebScrapeScreenshotParamsCountry = "mm"
+	WebWebScrapeScreenshotParamsCountryMn WebWebScrapeScreenshotParamsCountry = "mn"
+	WebWebScrapeScreenshotParamsCountryMo WebWebScrapeScreenshotParamsCountry = "mo"
+	WebWebScrapeScreenshotParamsCountryMq WebWebScrapeScreenshotParamsCountry = "mq"
+	WebWebScrapeScreenshotParamsCountryMr WebWebScrapeScreenshotParamsCountry = "mr"
+	WebWebScrapeScreenshotParamsCountryMt WebWebScrapeScreenshotParamsCountry = "mt"
+	WebWebScrapeScreenshotParamsCountryMu WebWebScrapeScreenshotParamsCountry = "mu"
+	WebWebScrapeScreenshotParamsCountryMv WebWebScrapeScreenshotParamsCountry = "mv"
+	WebWebScrapeScreenshotParamsCountryMw WebWebScrapeScreenshotParamsCountry = "mw"
+	WebWebScrapeScreenshotParamsCountryMx WebWebScrapeScreenshotParamsCountry = "mx"
+	WebWebScrapeScreenshotParamsCountryMy WebWebScrapeScreenshotParamsCountry = "my"
+	WebWebScrapeScreenshotParamsCountryMz WebWebScrapeScreenshotParamsCountry = "mz"
+	WebWebScrapeScreenshotParamsCountryNa WebWebScrapeScreenshotParamsCountry = "na"
+	WebWebScrapeScreenshotParamsCountryNc WebWebScrapeScreenshotParamsCountry = "nc"
+	WebWebScrapeScreenshotParamsCountryNe WebWebScrapeScreenshotParamsCountry = "ne"
+	WebWebScrapeScreenshotParamsCountryNg WebWebScrapeScreenshotParamsCountry = "ng"
+	WebWebScrapeScreenshotParamsCountryNi WebWebScrapeScreenshotParamsCountry = "ni"
+	WebWebScrapeScreenshotParamsCountryNl WebWebScrapeScreenshotParamsCountry = "nl"
+	WebWebScrapeScreenshotParamsCountryNo WebWebScrapeScreenshotParamsCountry = "no"
+	WebWebScrapeScreenshotParamsCountryNp WebWebScrapeScreenshotParamsCountry = "np"
+	WebWebScrapeScreenshotParamsCountryNz WebWebScrapeScreenshotParamsCountry = "nz"
+	WebWebScrapeScreenshotParamsCountryOm WebWebScrapeScreenshotParamsCountry = "om"
+	WebWebScrapeScreenshotParamsCountryPa WebWebScrapeScreenshotParamsCountry = "pa"
+	WebWebScrapeScreenshotParamsCountryPe WebWebScrapeScreenshotParamsCountry = "pe"
+	WebWebScrapeScreenshotParamsCountryPf WebWebScrapeScreenshotParamsCountry = "pf"
+	WebWebScrapeScreenshotParamsCountryPg WebWebScrapeScreenshotParamsCountry = "pg"
+	WebWebScrapeScreenshotParamsCountryPh WebWebScrapeScreenshotParamsCountry = "ph"
+	WebWebScrapeScreenshotParamsCountryPk WebWebScrapeScreenshotParamsCountry = "pk"
+	WebWebScrapeScreenshotParamsCountryPl WebWebScrapeScreenshotParamsCountry = "pl"
+	WebWebScrapeScreenshotParamsCountryPr WebWebScrapeScreenshotParamsCountry = "pr"
+	WebWebScrapeScreenshotParamsCountryPs WebWebScrapeScreenshotParamsCountry = "ps"
+	WebWebScrapeScreenshotParamsCountryPt WebWebScrapeScreenshotParamsCountry = "pt"
+	WebWebScrapeScreenshotParamsCountryPy WebWebScrapeScreenshotParamsCountry = "py"
+	WebWebScrapeScreenshotParamsCountryQa WebWebScrapeScreenshotParamsCountry = "qa"
+	WebWebScrapeScreenshotParamsCountryRe WebWebScrapeScreenshotParamsCountry = "re"
+	WebWebScrapeScreenshotParamsCountryRo WebWebScrapeScreenshotParamsCountry = "ro"
+	WebWebScrapeScreenshotParamsCountryRs WebWebScrapeScreenshotParamsCountry = "rs"
+	WebWebScrapeScreenshotParamsCountryRu WebWebScrapeScreenshotParamsCountry = "ru"
+	WebWebScrapeScreenshotParamsCountryRw WebWebScrapeScreenshotParamsCountry = "rw"
+	WebWebScrapeScreenshotParamsCountrySa WebWebScrapeScreenshotParamsCountry = "sa"
+	WebWebScrapeScreenshotParamsCountrySc WebWebScrapeScreenshotParamsCountry = "sc"
+	WebWebScrapeScreenshotParamsCountrySd WebWebScrapeScreenshotParamsCountry = "sd"
+	WebWebScrapeScreenshotParamsCountrySe WebWebScrapeScreenshotParamsCountry = "se"
+	WebWebScrapeScreenshotParamsCountrySg WebWebScrapeScreenshotParamsCountry = "sg"
+	WebWebScrapeScreenshotParamsCountrySi WebWebScrapeScreenshotParamsCountry = "si"
+	WebWebScrapeScreenshotParamsCountrySk WebWebScrapeScreenshotParamsCountry = "sk"
+	WebWebScrapeScreenshotParamsCountrySl WebWebScrapeScreenshotParamsCountry = "sl"
+	WebWebScrapeScreenshotParamsCountrySm WebWebScrapeScreenshotParamsCountry = "sm"
+	WebWebScrapeScreenshotParamsCountrySn WebWebScrapeScreenshotParamsCountry = "sn"
+	WebWebScrapeScreenshotParamsCountrySo WebWebScrapeScreenshotParamsCountry = "so"
+	WebWebScrapeScreenshotParamsCountrySr WebWebScrapeScreenshotParamsCountry = "sr"
+	WebWebScrapeScreenshotParamsCountrySS WebWebScrapeScreenshotParamsCountry = "ss"
+	WebWebScrapeScreenshotParamsCountrySt WebWebScrapeScreenshotParamsCountry = "st"
+	WebWebScrapeScreenshotParamsCountrySv WebWebScrapeScreenshotParamsCountry = "sv"
+	WebWebScrapeScreenshotParamsCountrySx WebWebScrapeScreenshotParamsCountry = "sx"
+	WebWebScrapeScreenshotParamsCountrySy WebWebScrapeScreenshotParamsCountry = "sy"
+	WebWebScrapeScreenshotParamsCountrySz WebWebScrapeScreenshotParamsCountry = "sz"
+	WebWebScrapeScreenshotParamsCountryTc WebWebScrapeScreenshotParamsCountry = "tc"
+	WebWebScrapeScreenshotParamsCountryTd WebWebScrapeScreenshotParamsCountry = "td"
+	WebWebScrapeScreenshotParamsCountryTg WebWebScrapeScreenshotParamsCountry = "tg"
+	WebWebScrapeScreenshotParamsCountryTh WebWebScrapeScreenshotParamsCountry = "th"
+	WebWebScrapeScreenshotParamsCountryTj WebWebScrapeScreenshotParamsCountry = "tj"
+	WebWebScrapeScreenshotParamsCountryTl WebWebScrapeScreenshotParamsCountry = "tl"
+	WebWebScrapeScreenshotParamsCountryTm WebWebScrapeScreenshotParamsCountry = "tm"
+	WebWebScrapeScreenshotParamsCountryTn WebWebScrapeScreenshotParamsCountry = "tn"
+	WebWebScrapeScreenshotParamsCountryTr WebWebScrapeScreenshotParamsCountry = "tr"
+	WebWebScrapeScreenshotParamsCountryTt WebWebScrapeScreenshotParamsCountry = "tt"
+	WebWebScrapeScreenshotParamsCountryTw WebWebScrapeScreenshotParamsCountry = "tw"
+	WebWebScrapeScreenshotParamsCountryTz WebWebScrapeScreenshotParamsCountry = "tz"
+	WebWebScrapeScreenshotParamsCountryUa WebWebScrapeScreenshotParamsCountry = "ua"
+	WebWebScrapeScreenshotParamsCountryUg WebWebScrapeScreenshotParamsCountry = "ug"
+	WebWebScrapeScreenshotParamsCountryUs WebWebScrapeScreenshotParamsCountry = "us"
+	WebWebScrapeScreenshotParamsCountryUy WebWebScrapeScreenshotParamsCountry = "uy"
+	WebWebScrapeScreenshotParamsCountryUz WebWebScrapeScreenshotParamsCountry = "uz"
+	WebWebScrapeScreenshotParamsCountryVc WebWebScrapeScreenshotParamsCountry = "vc"
+	WebWebScrapeScreenshotParamsCountryVe WebWebScrapeScreenshotParamsCountry = "ve"
+	WebWebScrapeScreenshotParamsCountryVg WebWebScrapeScreenshotParamsCountry = "vg"
+	WebWebScrapeScreenshotParamsCountryVi WebWebScrapeScreenshotParamsCountry = "vi"
+	WebWebScrapeScreenshotParamsCountryVn WebWebScrapeScreenshotParamsCountry = "vn"
+	WebWebScrapeScreenshotParamsCountryYe WebWebScrapeScreenshotParamsCountry = "ye"
+	WebWebScrapeScreenshotParamsCountryYt WebWebScrapeScreenshotParamsCountry = "yt"
+	WebWebScrapeScreenshotParamsCountryZa WebWebScrapeScreenshotParamsCountry = "za"
+	WebWebScrapeScreenshotParamsCountryZm WebWebScrapeScreenshotParamsCountry = "zm"
+	WebWebScrapeScreenshotParamsCountryZw WebWebScrapeScreenshotParamsCountry = "zw"
+)
+
+// Optional parameter to determine screenshot type. If 'true', takes a full page
+// screenshot capturing all content. If 'false' or not provided, takes a viewport
+// screenshot (standard browser view).
+type WebWebScrapeScreenshotParamsFullScreenshot string
+
+const (
+	WebWebScrapeScreenshotParamsFullScreenshotTrue  WebWebScrapeScreenshotParamsFullScreenshot = "true"
+	WebWebScrapeScreenshotParamsFullScreenshotFalse WebWebScrapeScreenshotParamsFullScreenshot = "false"
+)
+
+// Optional request deadline and behavior on timeout. For GET requests, use
+// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
+// timeoutOpts object.
+//
+// The property Milliseconds is required.
+type WebWebScrapeScreenshotParamsTimeoutOpts struct {
+	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
+	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
+	// credits. "return-partial" returns usable results collected so far; if none are
+	// available, the request still fails without charging credits. Partial results are
+	// not cached as complete results. "return-partial" requires milliseconds of at
+	// least 5000.
+	//
+	// Any of "fail", "return-partial".
+	Behavior string `query:"behavior,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeScreenshotParamsTimeoutOpts]'s query parameters
+// as `url.Values`.
+func (r WebWebScrapeScreenshotParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
+type WebWebScrapeScreenshotParamsViewport struct {
+	// Viewport height in pixels.
+	Height param.Opt[int64] `query:"height,omitzero" json:"-"`
+	// Viewport width in pixels.
+	Width param.Opt[int64] `query:"width,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [WebWebScrapeScreenshotParamsViewport]'s query parameters as
+// `url.Values`.
+func (r WebWebScrapeScreenshotParamsViewport) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatComma,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Set to enabled to bypass shared caches and omit request and response content
+// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
+// omitted. Requires zero data retention to be enabled for your organization
+// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
+// Successful ZDR responses include X-Context-ZDR: true.
+type WebWebScrapeScreenshotParamsZdr string
+
+const (
+	WebWebScrapeScreenshotParamsZdrEnabled  WebWebScrapeScreenshotParamsZdr = "enabled"
+	WebWebScrapeScreenshotParamsZdrDisabled WebWebScrapeScreenshotParamsZdr = "disabled"
 )
 
 type WebWebScrapeSitemapParams struct {

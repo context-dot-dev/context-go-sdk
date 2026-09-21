@@ -382,7 +382,8 @@ func TestWebWebScrapeBytesWithOptionalParams(t *testing.T) {
 			Milliseconds: 1,
 			Behavior:     "fail",
 		},
-		Zdr: contextdev.WebWebScrapeBytesParamsZdrEnabled,
+		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeBytesParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

@@ -204,6 +204,105 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 	}
 }
 
+func TestWebScrapeWithOptionalParams(t *testing.T) {
+	t.Skip("Mock server tests are disabled")
+	baseURL := "http://localhost:4010"
+	if envURL, ok := os.LookupEnv("TEST_API_BASE_URL"); ok {
+		baseURL = envURL
+	}
+	if !testutil.CheckTestServer(t, baseURL) {
+		return
+	}
+	client := contextdev.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey("My API Key"),
+	)
+	_, err := client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
+		Formats: contextdev.WebScrapeParamsFormats{
+			Bytes:      contextdev.Bool(true),
+			HTML:       contextdev.Bool(true),
+			Images:     contextdev.Bool(true),
+			Markdown:   contextdev.Bool(true),
+			Parse:      contextdev.Bool(true),
+			Screenshot: contextdev.Bool(true),
+		},
+		URL: "https://example.com",
+		ImageParams: contextdev.WebScrapeParamsImageParams{
+			Dedupe: "none",
+			Enrich: []string{"dimensions"},
+		},
+		MarkdownParams: contextdev.WebScrapeParamsMarkdownParams{
+			IncludeImages: contextdev.Bool(true),
+			IncludeLinks:  contextdev.Bool(true),
+			InlineImages:  "placeholder",
+		},
+		MaxAgeMs: contextdev.Int(0),
+		ParseParams: contextdev.WebScrapeParamsParseParams{
+			Rules: map[string]contextdev.WebScrapeParamsParseParamsRuleUnion{
+				"title": {
+					OfString: contextdev.String("h1"),
+				},
+				"links": {
+					OfWebScrapesParseParamsRuleObject: &contextdev.WebScrapeParamsParseParamsRuleObject{
+						Selector: "a",
+						Output:   "text",
+						Type:     "list",
+					},
+				},
+			},
+		},
+		ScreenshotParams: contextdev.WebScrapeParamsScreenshotParams{
+			Area: contextdev.WebScrapeParamsScreenshotParamsAreaUnion{
+				OfPage: contextdev.String("viewport"),
+			},
+			Format: "png",
+		},
+		SharedParams: contextdev.WebScrapeParamsSharedParams{
+			Actions: []contextdev.WebScrapeParamsSharedParamsActionUnion{{
+				OfPerform: &contextdev.WebScrapeParamsSharedParamsActionPerform{
+					Action: "Click the product details tab",
+				},
+			}},
+			Country:          contextdev.String("US"),
+			DismissCookies:   contextdev.Bool(true),
+			DismissPopups:    contextdev.Bool(true),
+			ExcludeSelectors: []string{"P"},
+			Headers: map[string]string{
+				"Accept-Language": "en-US",
+			},
+			IncludeFrames:    contextdev.Bool(true),
+			IncludeSelectors: []string{"P"},
+			MainContentOnly:  contextdev.Bool(true),
+			Parsers: contextdev.WebScrapeParamsSharedParamsParsers{
+				Pdf: contextdev.WebScrapeParamsSharedParamsParsersPdf{
+					EndPage:   contextdev.Int(1),
+					Ocr:       "off",
+					StartPage: contextdev.Int(1),
+				},
+			},
+			SettleAnimations: contextdev.Bool(true),
+			Theme:            "light",
+			Viewport: contextdev.WebScrapeParamsSharedParamsViewport{
+				Height: contextdev.Int(240),
+				Width:  contextdev.Int(240),
+			},
+			WaitFor: contextdev.WebScrapeParamsSharedParamsWaitForUnion{
+				OfInt: contextdev.Int(500),
+			},
+		},
+		Tags:      []string{"production", "team-alpha"},
+		TimeoutMs: contextdev.Int(1),
+		Zdr:       contextdev.WebScrapeParamsZdrEnabled,
+	})
+	if err != nil {
+		var apierr *contextdev.Error
+		if errors.As(err, &apierr) {
+			t.Log(string(apierr.DumpRequest(true)))
+		}
+		t.Fatalf("err should be nil: %s", err.Error())
+	}
+}
+
 func TestWebScreenshotWithOptionalParams(t *testing.T) {
 	t.Skip("Mock server tests are disabled")
 	baseURL := "http://localhost:4010"

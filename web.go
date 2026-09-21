@@ -1448,8 +1448,8 @@ type WebScreenshotResponse struct {
 	Height int64 `json:"height"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebScreenshotResponseKeyMetadata `json:"key_metadata"`
-	// Public image URL for standard requests, or an in-memory data URL when ZDR is
-	// enabled.
+	// Public image URL for standard requests, or an in-memory data URL when ZDR or
+	// non-empty custom headers are supplied.
 	Screenshot string `json:"screenshot"`
 	// Type of screenshot that was captured
 	//
@@ -3213,8 +3213,8 @@ type WebWebScrapeScreenshotResponse struct {
 	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
 	// it when contacting support about a failed request.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Public image URL for standard requests, or an in-memory data URL when ZDR is
-	// enabled.
+	// Public image URL for standard requests, or an in-memory data URL when ZDR or
+	// non-empty custom headers are supplied.
 	Screenshot string `json:"screenshot" api:"required" format:"uri"`
 	// The requested page URL.
 	URL string `json:"url" api:"required" format:"uri"`
@@ -4049,6 +4049,14 @@ type WebScreenshotParams struct {
 	//
 	// Any of "true", "false".
 	FullScreenshot WebScreenshotParamsFullScreenshot `query:"fullScreenshot,omitzero" json:"-"`
+	// Optional outbound HTTP headers, using the same JSON object or deep-object query
+	// format as other scrape endpoints (for example headers[Authorization]=Bearer
+	// token). Headers are scoped to the target origin during capture. For domain/page
+	// requests, discovery receives no custom headers and only pages on the resolved
+	// origin are eligible. Non-empty headers bypass screenshot caching and return an
+	// in-memory data URL; no screenshot is uploaded. Empty objects behave like omitted
+	// headers.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// Optional parameter to specify which page type to screenshot. If provided, the
 	// system will scrape the domain's links and use heuristics to find the most
 	// appropriate URL for the specified page type (30 supported languages). If not
@@ -6860,6 +6868,14 @@ type WebWebScrapeScreenshotParams struct {
 	//
 	// Any of "true", "false".
 	FullScreenshot WebWebScrapeScreenshotParamsFullScreenshot `query:"fullScreenshot,omitzero" json:"-"`
+	// Optional outbound HTTP headers, using the same JSON object or deep-object query
+	// format as other scrape endpoints (for example headers[Authorization]=Bearer
+	// token). Headers are scoped to the target origin during capture. For domain/page
+	// requests, discovery receives no custom headers and only pages on the resolved
+	// origin are eligible. Non-empty headers bypass screenshot caching and return an
+	// in-memory data URL; no screenshot is uploaded. Empty objects behave like omitted
+	// headers.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`

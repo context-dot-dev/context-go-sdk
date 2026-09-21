@@ -225,10 +225,13 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		Domain:            contextdev.String("xxx"),
 		FullScreenshot:    contextdev.WebScreenshotParamsFullScreenshotTrue,
 		HandleCookiePopup: contextdev.Bool(true),
-		MaxAgeMs:          contextdev.Int(0),
-		Page:              contextdev.WebScreenshotParamsPageLogin,
-		ScrollOffset:      contextdev.Int(0),
-		Tags:              []string{"production", "team-alpha"},
+		Headers: map[string]string{
+			"foo": "J!",
+		},
+		MaxAgeMs:     contextdev.Int(0),
+		Page:         contextdev.WebScreenshotParamsPageLogin,
+		ScrollOffset: contextdev.Int(0),
+		Tags:         []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebScreenshotParamsTimeoutOpts{
 			Milliseconds: 1,
 			Behavior:     "fail",
@@ -577,9 +580,12 @@ func TestWebWebScrapeScreenshotWithOptionalParams(t *testing.T) {
 		Country:           contextdev.WebWebScrapeScreenshotParamsCountryDe,
 		FullScreenshot:    contextdev.WebWebScrapeScreenshotParamsFullScreenshotTrue,
 		HandleCookiePopup: contextdev.Bool(true),
-		MaxAgeMs:          contextdev.Int(0),
-		ScrollOffset:      contextdev.Int(0),
-		Tags:              []string{"production", "team-alpha"},
+		Headers: map[string]string{
+			"foo": "J!",
+		},
+		MaxAgeMs:     contextdev.Int(0),
+		ScrollOffset: contextdev.Int(0),
+		Tags:         []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebWebScrapeScreenshotParamsTimeoutOpts{
 			Milliseconds: 1,
 			Behavior:     "fail",

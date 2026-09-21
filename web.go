@@ -110,16 +110,23 @@ func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, o
 	return res, err
 }
 
-// Downloads a resource and returns its bytes as base64. Supports images, PDFs,
-// HTML pages, and any other content type without image conversion, text
-// extraction, or character-encoding changes. HTTP compression is decoded before
-// base64 encoding. HTML is the original HTTP response; JavaScript is not rendered.
+// Downloads a resource and returns its bytes as base64. Without waitForMs, returns
+// the original HTTP response without image conversion, text extraction, or
+// character-encoding changes. HTTP compression is decoded before base64 encoding.
+// Supply waitForMs to render HTML with JavaScript in the browser and return the
+// resulting HTML as UTF-8 bytes after the wait. Non-HTML resources, including
+// images and PDFs, keep their original bytes and do not incur a browser wait.
 // Follows public redirects and retries failed downloads through ISP and
 // residential proxies, with a direct fallback. When country is specified, only a
 // residential proxy in that country is used. Supply headers such as Referer for
-// images that require a referring page. Downloads are not cached. Maximum decoded
-// resource size: 20 MiB (20971520 bytes), before base64 encoding. Successful
-// requests cost 1 credit; errors are not billed.
+// images that require a referring page. Cached results are reused according to
+// maxAgeMs (default: 1 day; maximum: 30 days). Set maxAgeMs=0 to fetch fresh and
+// refresh the cache. Cache identity includes the exact URL, country, waitForMs,
+// and normalized outbound headers. Credential-bearing headers and zero data
+// retention bypass cache reads and writes. cache_metadata reports hit, miss, or
+// zdr and the cached result age in milliseconds. Maximum decoded resource size: 20
+// MiB (20971520 bytes), before base64 encoding. Successful requests cost 1 credit;
+// errors are not billed.
 func (r *WebService) WebScrapeBytes(ctx context.Context, query WebWebScrapeBytesParams, opts ...option.RequestOption) (res *WebWebScrapeBytesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape/bytes"
@@ -1446,8 +1453,8 @@ type WebScreenshotResponse struct {
 	Height int64 `json:"height"`
 	// Credit usage, included whenever a valid API key is provided.
 	KeyMetadata WebScreenshotResponseKeyMetadata `json:"key_metadata"`
-	// Public image URL for standard requests, or an in-memory data URL when ZDR is
-	// enabled.
+	// Public image URL for standard requests, or an in-memory data URL when ZDR or
+	// non-empty custom headers are supplied.
 	Screenshot string `json:"screenshot"`
 	// Type of screenshot that was captured
 	//
@@ -2074,6 +2081,10 @@ type WebWebScrapeBytesResponse struct {
 	// Base64-encoded resource bytes, without a data URI prefix. Decode this field to
 	// recover the downloaded file.
 	Bytes string `json:"bytes" api:"required" format:"byte"`
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebWebScrapeBytesResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Number of decoded resource bytes, before base64 encoding.
 	ContentLength int64 `json:"contentLength" api:"required"`
 	// The Content-Type returned by the origin, including any charset. Defaults to
@@ -2097,6 +2108,7 @@ type WebWebScrapeBytesResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Bytes         respjson.Field
+		CacheMetadata respjson.Field
 		ContentLength respjson.Field
 		ContentType   respjson.Field
 		Encoding      respjson.Field
@@ -2114,6 +2126,32 @@ type WebWebScrapeBytesResponse struct {
 // Returns the unmodified JSON received from the API
 func (r WebWebScrapeBytesResponse) RawJSON() string { return r.JSON.raw }
 func (r *WebWebScrapeBytesResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebWebScrapeBytesResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebWebScrapeBytesResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebWebScrapeBytesResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3211,8 +3249,8 @@ type WebWebScrapeScreenshotResponse struct {
 	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
 	// it when contacting support about a failed request.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Public image URL for standard requests, or an in-memory data URL when ZDR is
-	// enabled.
+	// Public image URL for standard requests, or an in-memory data URL when ZDR or
+	// non-empty custom headers are supplied.
 	Screenshot string `json:"screenshot" api:"required" format:"uri"`
 	// The requested page URL.
 	URL string `json:"url" api:"required" format:"uri"`
@@ -4047,6 +4085,14 @@ type WebScreenshotParams struct {
 	//
 	// Any of "true", "false".
 	FullScreenshot WebScreenshotParamsFullScreenshot `query:"fullScreenshot,omitzero" json:"-"`
+	// Optional outbound HTTP headers, using the same JSON object or deep-object query
+	// format as other scrape endpoints (for example headers[Authorization]=Bearer
+	// token). Headers are scoped to the target origin during capture. For domain/page
+	// requests, discovery receives no custom headers and only pages on the resolved
+	// origin are eligible. Non-empty headers bypass screenshot caching and return an
+	// in-memory data URL; no screenshot is uploaded. Empty objects behave like omitted
+	// headers.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// Optional parameter to specify which page type to screenshot. If provided, the
 	// system will scrape the domain's links and use heuristics to find the most
 	// appropriate URL for the specified page type (30 supported languages). If not
@@ -5231,6 +5277,17 @@ const (
 type WebWebScrapeBytesParams struct {
 	// Full HTTP(S) URL of the resource to download, such as an image, PDF, or page.
 	URL string `query:"url" api:"required" format:"uri" json:"-"`
+	// Return a cached result if a prior scrape for the same parameters exists and is
+	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
+	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
+	// Optional browser wait time after initial page load, in milliseconds (0–30000; 0
+	// uses 500). When supplied, HTML is rendered with JavaScript and returned as UTF-8
+	// bytes. Other resources keep their original bytes without a browser wait. Omit to
+	// download the original HTTP response. When combined with timeoutOpts,
+	// timeoutOpts.milliseconds must be at least waitForMs + 10000 ms; a shorter
+	// deadline is rejected with 400 TIMEOUT_TOO_SHORT_FOR_WAIT.
+	WaitForMs param.Opt[int64] `query:"waitForMs,omitzero" json:"-"`
 	// Fetch the target page through a residential proxy in this country (ISO 3166-1
 	// alpha-2).
 	//
@@ -5255,7 +5312,8 @@ type WebWebScrapeBytesParams struct {
 	// as a JSON object or deep-object query params such as
 	// headers[Referer]=https://example.com/. Host, Content-Length, and hop-by-hop
 	// transport headers are rejected. Authorization and cookies are removed when a
-	// redirect changes origin.
+	// redirect changes origin. Credential-bearing headers bypass cache reads and
+	// writes; other headers are included in the cache key.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
@@ -6108,6 +6166,26 @@ type WebWebScrapeImagesParams struct {
 	// Optional per-image processing, sent as deep-object query params such as
 	// enrichment[resolution]=true.
 	Enrichment WebWebScrapeImagesParamsEnrichment `query:"enrichment,omitzero" json:"-"`
+	// Fetch the target page through a residential proxy in this country (ISO 3166-1
+	// alpha-2).
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country WebWebScrapeImagesParamsCountry `query:"country,omitzero" json:"-"`
 	// Optional outbound HTTP headers forwarded only to the target URL, sent as
 	// deep-object query params such as headers[X-Custom]=value. When provided, caching
 	// is bypassed: the result is neither read from nor written to cache.
@@ -6243,6 +6321,217 @@ type WebWebScrapeImagesParamsActionScrollAmountString string
 const (
 	WebWebScrapeImagesParamsActionScrollAmountStringViewport WebWebScrapeImagesParamsActionScrollAmountString = "viewport"
 	WebWebScrapeImagesParamsActionScrollAmountStringMax      WebWebScrapeImagesParamsActionScrollAmountString = "max"
+)
+
+// Fetch the target page through a residential proxy in this country (ISO 3166-1
+// alpha-2).
+type WebWebScrapeImagesParamsCountry string
+
+const (
+	WebWebScrapeImagesParamsCountryAd WebWebScrapeImagesParamsCountry = "ad"
+	WebWebScrapeImagesParamsCountryAe WebWebScrapeImagesParamsCountry = "ae"
+	WebWebScrapeImagesParamsCountryAf WebWebScrapeImagesParamsCountry = "af"
+	WebWebScrapeImagesParamsCountryAg WebWebScrapeImagesParamsCountry = "ag"
+	WebWebScrapeImagesParamsCountryAI WebWebScrapeImagesParamsCountry = "ai"
+	WebWebScrapeImagesParamsCountryAl WebWebScrapeImagesParamsCountry = "al"
+	WebWebScrapeImagesParamsCountryAm WebWebScrapeImagesParamsCountry = "am"
+	WebWebScrapeImagesParamsCountryAo WebWebScrapeImagesParamsCountry = "ao"
+	WebWebScrapeImagesParamsCountryAr WebWebScrapeImagesParamsCountry = "ar"
+	WebWebScrapeImagesParamsCountryAt WebWebScrapeImagesParamsCountry = "at"
+	WebWebScrapeImagesParamsCountryAu WebWebScrapeImagesParamsCountry = "au"
+	WebWebScrapeImagesParamsCountryAw WebWebScrapeImagesParamsCountry = "aw"
+	WebWebScrapeImagesParamsCountryAz WebWebScrapeImagesParamsCountry = "az"
+	WebWebScrapeImagesParamsCountryBa WebWebScrapeImagesParamsCountry = "ba"
+	WebWebScrapeImagesParamsCountryBb WebWebScrapeImagesParamsCountry = "bb"
+	WebWebScrapeImagesParamsCountryBd WebWebScrapeImagesParamsCountry = "bd"
+	WebWebScrapeImagesParamsCountryBe WebWebScrapeImagesParamsCountry = "be"
+	WebWebScrapeImagesParamsCountryBf WebWebScrapeImagesParamsCountry = "bf"
+	WebWebScrapeImagesParamsCountryBg WebWebScrapeImagesParamsCountry = "bg"
+	WebWebScrapeImagesParamsCountryBh WebWebScrapeImagesParamsCountry = "bh"
+	WebWebScrapeImagesParamsCountryBi WebWebScrapeImagesParamsCountry = "bi"
+	WebWebScrapeImagesParamsCountryBj WebWebScrapeImagesParamsCountry = "bj"
+	WebWebScrapeImagesParamsCountryBm WebWebScrapeImagesParamsCountry = "bm"
+	WebWebScrapeImagesParamsCountryBn WebWebScrapeImagesParamsCountry = "bn"
+	WebWebScrapeImagesParamsCountryBo WebWebScrapeImagesParamsCountry = "bo"
+	WebWebScrapeImagesParamsCountryBq WebWebScrapeImagesParamsCountry = "bq"
+	WebWebScrapeImagesParamsCountryBr WebWebScrapeImagesParamsCountry = "br"
+	WebWebScrapeImagesParamsCountryBs WebWebScrapeImagesParamsCountry = "bs"
+	WebWebScrapeImagesParamsCountryBw WebWebScrapeImagesParamsCountry = "bw"
+	WebWebScrapeImagesParamsCountryBy WebWebScrapeImagesParamsCountry = "by"
+	WebWebScrapeImagesParamsCountryBz WebWebScrapeImagesParamsCountry = "bz"
+	WebWebScrapeImagesParamsCountryCa WebWebScrapeImagesParamsCountry = "ca"
+	WebWebScrapeImagesParamsCountryCd WebWebScrapeImagesParamsCountry = "cd"
+	WebWebScrapeImagesParamsCountryCf WebWebScrapeImagesParamsCountry = "cf"
+	WebWebScrapeImagesParamsCountryCg WebWebScrapeImagesParamsCountry = "cg"
+	WebWebScrapeImagesParamsCountryCh WebWebScrapeImagesParamsCountry = "ch"
+	WebWebScrapeImagesParamsCountryCi WebWebScrapeImagesParamsCountry = "ci"
+	WebWebScrapeImagesParamsCountryCl WebWebScrapeImagesParamsCountry = "cl"
+	WebWebScrapeImagesParamsCountryCm WebWebScrapeImagesParamsCountry = "cm"
+	WebWebScrapeImagesParamsCountryCn WebWebScrapeImagesParamsCountry = "cn"
+	WebWebScrapeImagesParamsCountryCo WebWebScrapeImagesParamsCountry = "co"
+	WebWebScrapeImagesParamsCountryCr WebWebScrapeImagesParamsCountry = "cr"
+	WebWebScrapeImagesParamsCountryCv WebWebScrapeImagesParamsCountry = "cv"
+	WebWebScrapeImagesParamsCountryCw WebWebScrapeImagesParamsCountry = "cw"
+	WebWebScrapeImagesParamsCountryCy WebWebScrapeImagesParamsCountry = "cy"
+	WebWebScrapeImagesParamsCountryCz WebWebScrapeImagesParamsCountry = "cz"
+	WebWebScrapeImagesParamsCountryDe WebWebScrapeImagesParamsCountry = "de"
+	WebWebScrapeImagesParamsCountryDj WebWebScrapeImagesParamsCountry = "dj"
+	WebWebScrapeImagesParamsCountryDk WebWebScrapeImagesParamsCountry = "dk"
+	WebWebScrapeImagesParamsCountryDm WebWebScrapeImagesParamsCountry = "dm"
+	WebWebScrapeImagesParamsCountryDo WebWebScrapeImagesParamsCountry = "do"
+	WebWebScrapeImagesParamsCountryDz WebWebScrapeImagesParamsCountry = "dz"
+	WebWebScrapeImagesParamsCountryEc WebWebScrapeImagesParamsCountry = "ec"
+	WebWebScrapeImagesParamsCountryEe WebWebScrapeImagesParamsCountry = "ee"
+	WebWebScrapeImagesParamsCountryEg WebWebScrapeImagesParamsCountry = "eg"
+	WebWebScrapeImagesParamsCountryEs WebWebScrapeImagesParamsCountry = "es"
+	WebWebScrapeImagesParamsCountryEt WebWebScrapeImagesParamsCountry = "et"
+	WebWebScrapeImagesParamsCountryFi WebWebScrapeImagesParamsCountry = "fi"
+	WebWebScrapeImagesParamsCountryFj WebWebScrapeImagesParamsCountry = "fj"
+	WebWebScrapeImagesParamsCountryFr WebWebScrapeImagesParamsCountry = "fr"
+	WebWebScrapeImagesParamsCountryGa WebWebScrapeImagesParamsCountry = "ga"
+	WebWebScrapeImagesParamsCountryGB WebWebScrapeImagesParamsCountry = "gb"
+	WebWebScrapeImagesParamsCountryGd WebWebScrapeImagesParamsCountry = "gd"
+	WebWebScrapeImagesParamsCountryGe WebWebScrapeImagesParamsCountry = "ge"
+	WebWebScrapeImagesParamsCountryGf WebWebScrapeImagesParamsCountry = "gf"
+	WebWebScrapeImagesParamsCountryGg WebWebScrapeImagesParamsCountry = "gg"
+	WebWebScrapeImagesParamsCountryGh WebWebScrapeImagesParamsCountry = "gh"
+	WebWebScrapeImagesParamsCountryGm WebWebScrapeImagesParamsCountry = "gm"
+	WebWebScrapeImagesParamsCountryGn WebWebScrapeImagesParamsCountry = "gn"
+	WebWebScrapeImagesParamsCountryGp WebWebScrapeImagesParamsCountry = "gp"
+	WebWebScrapeImagesParamsCountryGq WebWebScrapeImagesParamsCountry = "gq"
+	WebWebScrapeImagesParamsCountryGr WebWebScrapeImagesParamsCountry = "gr"
+	WebWebScrapeImagesParamsCountryGt WebWebScrapeImagesParamsCountry = "gt"
+	WebWebScrapeImagesParamsCountryGu WebWebScrapeImagesParamsCountry = "gu"
+	WebWebScrapeImagesParamsCountryGw WebWebScrapeImagesParamsCountry = "gw"
+	WebWebScrapeImagesParamsCountryGy WebWebScrapeImagesParamsCountry = "gy"
+	WebWebScrapeImagesParamsCountryHk WebWebScrapeImagesParamsCountry = "hk"
+	WebWebScrapeImagesParamsCountryHn WebWebScrapeImagesParamsCountry = "hn"
+	WebWebScrapeImagesParamsCountryHr WebWebScrapeImagesParamsCountry = "hr"
+	WebWebScrapeImagesParamsCountryHt WebWebScrapeImagesParamsCountry = "ht"
+	WebWebScrapeImagesParamsCountryHu WebWebScrapeImagesParamsCountry = "hu"
+	WebWebScrapeImagesParamsCountryID WebWebScrapeImagesParamsCountry = "id"
+	WebWebScrapeImagesParamsCountryIe WebWebScrapeImagesParamsCountry = "ie"
+	WebWebScrapeImagesParamsCountryIl WebWebScrapeImagesParamsCountry = "il"
+	WebWebScrapeImagesParamsCountryIm WebWebScrapeImagesParamsCountry = "im"
+	WebWebScrapeImagesParamsCountryIn WebWebScrapeImagesParamsCountry = "in"
+	WebWebScrapeImagesParamsCountryIq WebWebScrapeImagesParamsCountry = "iq"
+	WebWebScrapeImagesParamsCountryIr WebWebScrapeImagesParamsCountry = "ir"
+	WebWebScrapeImagesParamsCountryIs WebWebScrapeImagesParamsCountry = "is"
+	WebWebScrapeImagesParamsCountryIt WebWebScrapeImagesParamsCountry = "it"
+	WebWebScrapeImagesParamsCountryJe WebWebScrapeImagesParamsCountry = "je"
+	WebWebScrapeImagesParamsCountryJm WebWebScrapeImagesParamsCountry = "jm"
+	WebWebScrapeImagesParamsCountryJo WebWebScrapeImagesParamsCountry = "jo"
+	WebWebScrapeImagesParamsCountryJp WebWebScrapeImagesParamsCountry = "jp"
+	WebWebScrapeImagesParamsCountryKe WebWebScrapeImagesParamsCountry = "ke"
+	WebWebScrapeImagesParamsCountryKg WebWebScrapeImagesParamsCountry = "kg"
+	WebWebScrapeImagesParamsCountryKh WebWebScrapeImagesParamsCountry = "kh"
+	WebWebScrapeImagesParamsCountryKn WebWebScrapeImagesParamsCountry = "kn"
+	WebWebScrapeImagesParamsCountryKr WebWebScrapeImagesParamsCountry = "kr"
+	WebWebScrapeImagesParamsCountryKw WebWebScrapeImagesParamsCountry = "kw"
+	WebWebScrapeImagesParamsCountryKy WebWebScrapeImagesParamsCountry = "ky"
+	WebWebScrapeImagesParamsCountryKz WebWebScrapeImagesParamsCountry = "kz"
+	WebWebScrapeImagesParamsCountryLa WebWebScrapeImagesParamsCountry = "la"
+	WebWebScrapeImagesParamsCountryLb WebWebScrapeImagesParamsCountry = "lb"
+	WebWebScrapeImagesParamsCountryLc WebWebScrapeImagesParamsCountry = "lc"
+	WebWebScrapeImagesParamsCountryLk WebWebScrapeImagesParamsCountry = "lk"
+	WebWebScrapeImagesParamsCountryLr WebWebScrapeImagesParamsCountry = "lr"
+	WebWebScrapeImagesParamsCountryLs WebWebScrapeImagesParamsCountry = "ls"
+	WebWebScrapeImagesParamsCountryLt WebWebScrapeImagesParamsCountry = "lt"
+	WebWebScrapeImagesParamsCountryLu WebWebScrapeImagesParamsCountry = "lu"
+	WebWebScrapeImagesParamsCountryLv WebWebScrapeImagesParamsCountry = "lv"
+	WebWebScrapeImagesParamsCountryLy WebWebScrapeImagesParamsCountry = "ly"
+	WebWebScrapeImagesParamsCountryMa WebWebScrapeImagesParamsCountry = "ma"
+	WebWebScrapeImagesParamsCountryMc WebWebScrapeImagesParamsCountry = "mc"
+	WebWebScrapeImagesParamsCountryMd WebWebScrapeImagesParamsCountry = "md"
+	WebWebScrapeImagesParamsCountryMe WebWebScrapeImagesParamsCountry = "me"
+	WebWebScrapeImagesParamsCountryMf WebWebScrapeImagesParamsCountry = "mf"
+	WebWebScrapeImagesParamsCountryMg WebWebScrapeImagesParamsCountry = "mg"
+	WebWebScrapeImagesParamsCountryMk WebWebScrapeImagesParamsCountry = "mk"
+	WebWebScrapeImagesParamsCountryMl WebWebScrapeImagesParamsCountry = "ml"
+	WebWebScrapeImagesParamsCountryMm WebWebScrapeImagesParamsCountry = "mm"
+	WebWebScrapeImagesParamsCountryMn WebWebScrapeImagesParamsCountry = "mn"
+	WebWebScrapeImagesParamsCountryMo WebWebScrapeImagesParamsCountry = "mo"
+	WebWebScrapeImagesParamsCountryMq WebWebScrapeImagesParamsCountry = "mq"
+	WebWebScrapeImagesParamsCountryMr WebWebScrapeImagesParamsCountry = "mr"
+	WebWebScrapeImagesParamsCountryMt WebWebScrapeImagesParamsCountry = "mt"
+	WebWebScrapeImagesParamsCountryMu WebWebScrapeImagesParamsCountry = "mu"
+	WebWebScrapeImagesParamsCountryMv WebWebScrapeImagesParamsCountry = "mv"
+	WebWebScrapeImagesParamsCountryMw WebWebScrapeImagesParamsCountry = "mw"
+	WebWebScrapeImagesParamsCountryMx WebWebScrapeImagesParamsCountry = "mx"
+	WebWebScrapeImagesParamsCountryMy WebWebScrapeImagesParamsCountry = "my"
+	WebWebScrapeImagesParamsCountryMz WebWebScrapeImagesParamsCountry = "mz"
+	WebWebScrapeImagesParamsCountryNa WebWebScrapeImagesParamsCountry = "na"
+	WebWebScrapeImagesParamsCountryNc WebWebScrapeImagesParamsCountry = "nc"
+	WebWebScrapeImagesParamsCountryNe WebWebScrapeImagesParamsCountry = "ne"
+	WebWebScrapeImagesParamsCountryNg WebWebScrapeImagesParamsCountry = "ng"
+	WebWebScrapeImagesParamsCountryNi WebWebScrapeImagesParamsCountry = "ni"
+	WebWebScrapeImagesParamsCountryNl WebWebScrapeImagesParamsCountry = "nl"
+	WebWebScrapeImagesParamsCountryNo WebWebScrapeImagesParamsCountry = "no"
+	WebWebScrapeImagesParamsCountryNp WebWebScrapeImagesParamsCountry = "np"
+	WebWebScrapeImagesParamsCountryNz WebWebScrapeImagesParamsCountry = "nz"
+	WebWebScrapeImagesParamsCountryOm WebWebScrapeImagesParamsCountry = "om"
+	WebWebScrapeImagesParamsCountryPa WebWebScrapeImagesParamsCountry = "pa"
+	WebWebScrapeImagesParamsCountryPe WebWebScrapeImagesParamsCountry = "pe"
+	WebWebScrapeImagesParamsCountryPf WebWebScrapeImagesParamsCountry = "pf"
+	WebWebScrapeImagesParamsCountryPg WebWebScrapeImagesParamsCountry = "pg"
+	WebWebScrapeImagesParamsCountryPh WebWebScrapeImagesParamsCountry = "ph"
+	WebWebScrapeImagesParamsCountryPk WebWebScrapeImagesParamsCountry = "pk"
+	WebWebScrapeImagesParamsCountryPl WebWebScrapeImagesParamsCountry = "pl"
+	WebWebScrapeImagesParamsCountryPr WebWebScrapeImagesParamsCountry = "pr"
+	WebWebScrapeImagesParamsCountryPs WebWebScrapeImagesParamsCountry = "ps"
+	WebWebScrapeImagesParamsCountryPt WebWebScrapeImagesParamsCountry = "pt"
+	WebWebScrapeImagesParamsCountryPy WebWebScrapeImagesParamsCountry = "py"
+	WebWebScrapeImagesParamsCountryQa WebWebScrapeImagesParamsCountry = "qa"
+	WebWebScrapeImagesParamsCountryRe WebWebScrapeImagesParamsCountry = "re"
+	WebWebScrapeImagesParamsCountryRo WebWebScrapeImagesParamsCountry = "ro"
+	WebWebScrapeImagesParamsCountryRs WebWebScrapeImagesParamsCountry = "rs"
+	WebWebScrapeImagesParamsCountryRu WebWebScrapeImagesParamsCountry = "ru"
+	WebWebScrapeImagesParamsCountryRw WebWebScrapeImagesParamsCountry = "rw"
+	WebWebScrapeImagesParamsCountrySa WebWebScrapeImagesParamsCountry = "sa"
+	WebWebScrapeImagesParamsCountrySc WebWebScrapeImagesParamsCountry = "sc"
+	WebWebScrapeImagesParamsCountrySd WebWebScrapeImagesParamsCountry = "sd"
+	WebWebScrapeImagesParamsCountrySe WebWebScrapeImagesParamsCountry = "se"
+	WebWebScrapeImagesParamsCountrySg WebWebScrapeImagesParamsCountry = "sg"
+	WebWebScrapeImagesParamsCountrySi WebWebScrapeImagesParamsCountry = "si"
+	WebWebScrapeImagesParamsCountrySk WebWebScrapeImagesParamsCountry = "sk"
+	WebWebScrapeImagesParamsCountrySl WebWebScrapeImagesParamsCountry = "sl"
+	WebWebScrapeImagesParamsCountrySm WebWebScrapeImagesParamsCountry = "sm"
+	WebWebScrapeImagesParamsCountrySn WebWebScrapeImagesParamsCountry = "sn"
+	WebWebScrapeImagesParamsCountrySo WebWebScrapeImagesParamsCountry = "so"
+	WebWebScrapeImagesParamsCountrySr WebWebScrapeImagesParamsCountry = "sr"
+	WebWebScrapeImagesParamsCountrySS WebWebScrapeImagesParamsCountry = "ss"
+	WebWebScrapeImagesParamsCountrySt WebWebScrapeImagesParamsCountry = "st"
+	WebWebScrapeImagesParamsCountrySv WebWebScrapeImagesParamsCountry = "sv"
+	WebWebScrapeImagesParamsCountrySx WebWebScrapeImagesParamsCountry = "sx"
+	WebWebScrapeImagesParamsCountrySy WebWebScrapeImagesParamsCountry = "sy"
+	WebWebScrapeImagesParamsCountrySz WebWebScrapeImagesParamsCountry = "sz"
+	WebWebScrapeImagesParamsCountryTc WebWebScrapeImagesParamsCountry = "tc"
+	WebWebScrapeImagesParamsCountryTd WebWebScrapeImagesParamsCountry = "td"
+	WebWebScrapeImagesParamsCountryTg WebWebScrapeImagesParamsCountry = "tg"
+	WebWebScrapeImagesParamsCountryTh WebWebScrapeImagesParamsCountry = "th"
+	WebWebScrapeImagesParamsCountryTj WebWebScrapeImagesParamsCountry = "tj"
+	WebWebScrapeImagesParamsCountryTl WebWebScrapeImagesParamsCountry = "tl"
+	WebWebScrapeImagesParamsCountryTm WebWebScrapeImagesParamsCountry = "tm"
+	WebWebScrapeImagesParamsCountryTn WebWebScrapeImagesParamsCountry = "tn"
+	WebWebScrapeImagesParamsCountryTr WebWebScrapeImagesParamsCountry = "tr"
+	WebWebScrapeImagesParamsCountryTt WebWebScrapeImagesParamsCountry = "tt"
+	WebWebScrapeImagesParamsCountryTw WebWebScrapeImagesParamsCountry = "tw"
+	WebWebScrapeImagesParamsCountryTz WebWebScrapeImagesParamsCountry = "tz"
+	WebWebScrapeImagesParamsCountryUa WebWebScrapeImagesParamsCountry = "ua"
+	WebWebScrapeImagesParamsCountryUg WebWebScrapeImagesParamsCountry = "ug"
+	WebWebScrapeImagesParamsCountryUs WebWebScrapeImagesParamsCountry = "us"
+	WebWebScrapeImagesParamsCountryUy WebWebScrapeImagesParamsCountry = "uy"
+	WebWebScrapeImagesParamsCountryUz WebWebScrapeImagesParamsCountry = "uz"
+	WebWebScrapeImagesParamsCountryVc WebWebScrapeImagesParamsCountry = "vc"
+	WebWebScrapeImagesParamsCountryVe WebWebScrapeImagesParamsCountry = "ve"
+	WebWebScrapeImagesParamsCountryVg WebWebScrapeImagesParamsCountry = "vg"
+	WebWebScrapeImagesParamsCountryVi WebWebScrapeImagesParamsCountry = "vi"
+	WebWebScrapeImagesParamsCountryVn WebWebScrapeImagesParamsCountry = "vn"
+	WebWebScrapeImagesParamsCountryYe WebWebScrapeImagesParamsCountry = "ye"
+	WebWebScrapeImagesParamsCountryYt WebWebScrapeImagesParamsCountry = "yt"
+	WebWebScrapeImagesParamsCountryZa WebWebScrapeImagesParamsCountry = "za"
+	WebWebScrapeImagesParamsCountryZm WebWebScrapeImagesParamsCountry = "zm"
+	WebWebScrapeImagesParamsCountryZw WebWebScrapeImagesParamsCountry = "zw"
 )
 
 // Optional per-image processing, sent as deep-object query params such as
@@ -6851,6 +7140,14 @@ type WebWebScrapeScreenshotParams struct {
 	//
 	// Any of "true", "false".
 	FullScreenshot WebWebScrapeScreenshotParamsFullScreenshot `query:"fullScreenshot,omitzero" json:"-"`
+	// Optional outbound HTTP headers, using the same JSON object or deep-object query
+	// format as other scrape endpoints (for example headers[Authorization]=Bearer
+	// token). Headers are scoped to the target origin during capture. For domain/page
+	// requests, discovery receives no custom headers and only pages on the resolved
+	// origin are eligible. Non-empty headers bypass screenshot caching and return an
+	// in-memory data URL; no screenshot is uploaded. Empty objects behave like omitted
+	// headers.
+	Headers map[string]string `query:"headers,omitzero" json:"-"`
 	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
 	// characters.
 	Tags []string `query:"tags,omitzero" json:"-"`

@@ -225,10 +225,13 @@ func TestWebScreenshotWithOptionalParams(t *testing.T) {
 		Domain:            contextdev.String("xxx"),
 		FullScreenshot:    contextdev.WebScreenshotParamsFullScreenshotTrue,
 		HandleCookiePopup: contextdev.Bool(true),
-		MaxAgeMs:          contextdev.Int(0),
-		Page:              contextdev.WebScreenshotParamsPageLogin,
-		ScrollOffset:      contextdev.Int(0),
-		Tags:              []string{"production", "team-alpha"},
+		Headers: map[string]string{
+			"foo": "J!",
+		},
+		MaxAgeMs:     contextdev.Int(0),
+		Page:         contextdev.WebScreenshotParamsPageLogin,
+		ScrollOffset: contextdev.Int(0),
+		Tags:         []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebScreenshotParamsTimeoutOpts{
 			Milliseconds: 1,
 			Behavior:     "fail",
@@ -377,12 +380,14 @@ func TestWebWebScrapeBytesWithOptionalParams(t *testing.T) {
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		Tags: []string{"production", "team-alpha"},
+		MaxAgeMs: contextdev.Int(0),
+		Tags:     []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebWebScrapeBytesParamsTimeoutOpts{
 			Milliseconds: 1,
 			Behavior:     "fail",
 		},
-		Zdr: contextdev.WebWebScrapeBytesParamsZdrEnabled,
+		WaitForMs: contextdev.Int(0),
+		Zdr:       contextdev.WebWebScrapeBytesParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -471,7 +476,8 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 				TimeMs: 0,
 			},
 		}},
-		Dedupe: contextdev.Bool(true),
+		Country: contextdev.WebWebScrapeImagesParamsCountryDe,
+		Dedupe:  contextdev.Bool(true),
 		Enrichment: contextdev.WebWebScrapeImagesParamsEnrichment{
 			Classification: contextdev.Bool(true),
 			HostedURL:      contextdev.Bool(true),
@@ -576,9 +582,12 @@ func TestWebWebScrapeScreenshotWithOptionalParams(t *testing.T) {
 		Country:           contextdev.WebWebScrapeScreenshotParamsCountryDe,
 		FullScreenshot:    contextdev.WebWebScrapeScreenshotParamsFullScreenshotTrue,
 		HandleCookiePopup: contextdev.Bool(true),
-		MaxAgeMs:          contextdev.Int(0),
-		ScrollOffset:      contextdev.Int(0),
-		Tags:              []string{"production", "team-alpha"},
+		Headers: map[string]string{
+			"foo": "J!",
+		},
+		MaxAgeMs:     contextdev.Int(0),
+		ScrollOffset: contextdev.Int(0),
+		Tags:         []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebWebScrapeScreenshotParamsTimeoutOpts{
 			Milliseconds: 1,
 			Behavior:     "fail",

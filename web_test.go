@@ -380,7 +380,8 @@ func TestWebWebScrapeBytesWithOptionalParams(t *testing.T) {
 		Headers: map[string]string{
 			"foo": "J!",
 		},
-		Tags: []string{"production", "team-alpha"},
+		MaxAgeMs: contextdev.Int(0),
+		Tags:     []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebWebScrapeBytesParamsTimeoutOpts{
 			Milliseconds: 1,
 			Behavior:     "fail",
@@ -475,7 +476,8 @@ func TestWebWebScrapeImagesWithOptionalParams(t *testing.T) {
 				TimeMs: 0,
 			},
 		}},
-		Dedupe: contextdev.Bool(true),
+		Country: contextdev.WebWebScrapeImagesParamsCountryDe,
+		Dedupe:  contextdev.Bool(true),
 		Enrichment: contextdev.WebWebScrapeImagesParamsEnrichment{
 			Classification: contextdev.Bool(true),
 			HostedURL:      contextdev.Bool(true),

@@ -47,6 +47,7 @@ type Sitemap string       // Always "sitemap"
 type StartURL string      // Always "start_url"
 type Ticker string        // Always "ticker"
 type Wait string          // Always "wait"
+type WaitFor string       // Always "waitFor"
 
 func (c Batch) Default() Batch                 { return "batch" }
 func (c ByDirectURL) Default() ByDirectURL     { return "by_direct_url" }
@@ -77,6 +78,7 @@ func (c Sitemap) Default() Sitemap             { return "sitemap" }
 func (c StartURL) Default() StartURL           { return "start_url" }
 func (c Ticker) Default() Ticker               { return "ticker" }
 func (c Wait) Default() Wait                   { return "wait" }
+func (c WaitFor) Default() WaitFor             { return "waitFor" }
 
 func (c Batch) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c ByDirectURL) MarshalJSON() ([]byte, error)   { return marshalString(c) }
@@ -107,6 +109,7 @@ func (c Sitemap) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c StartURL) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Ticker) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c Wait) MarshalJSON() ([]byte, error)          { return marshalString(c) }
+func (c WaitFor) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 
 type constant[T any] interface {
 	Constant[T]

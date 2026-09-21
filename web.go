@@ -85,6 +85,18 @@ func (r *WebService) ExtractStyleguide(ctx context.Context, query WebExtractStyl
 	return res, err
 }
 
+// Capture the requested formats from one page visit. Shared settings apply once.
+// HTML-only requests use the existing fast acquisition path. One credit per
+// capture, or two with browser actions; PDF OCR adds one credit per recovered
+// page. Original response bytes and screenshots are limited to 20 MiB each,
+// screenshots to 40 megapixels, and the combined browser capture to 60 MiB.
+func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "web/scrape"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	return res, err
+}
+
 // Capture a screenshot of a website.
 func (r *WebService) Screenshot(ctx context.Context, query WebScreenshotParams, opts ...option.RequestOption) (res *WebScreenshotResponse, err error) {
 	opts = slices.Concat(r.options, opts)
@@ -1426,6 +1438,495 @@ type WebExtractStyleguideResponseStyleguideTypographyP struct {
 // Returns the unmodified JSON received from the API
 func (r WebExtractStyleguideResponseStyleguideTypographyP) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractStyleguideResponseStyleguideTypographyP) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebScrapeResponse struct {
+	// Original HTTP response body. Waiting, actions, and content filters never change
+	// it.
+	Bytes WebScrapeResponseBytes `json:"bytes" api:"required"`
+	// Cache outcome for this response. Composite responses are hits only when every
+	// cache-controlled fetch contributing to the output was a hit; age_ms is the
+	// oldest contributing hit.
+	CacheMetadata WebScrapeResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Rendered HTML after content filters.
+	HTML WebScrapeResponseHTML `json:"html" api:"required"`
+	// Images after content filters. Empty when none are found.
+	Images WebScrapeResponseImages `json:"images" api:"required"`
+	// Markdown after content filters.
+	Markdown WebScrapeResponseMarkdown `json:"markdown" api:"required"`
+	// Page details, when available.
+	Metadata WebScrapeResponseMetadata `json:"metadata" api:"required"`
+	// Fields produced by parseParams.rules, after shared content filters.
+	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
+	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
+	// it when contacting support about a failed request.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
+	// An image data URL. Use directly as an image src.
+	Screenshot WebScrapeResponseScreenshot `json:"screenshot" api:"required"`
+	// Final URL after redirects and browser actions.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Credit usage, included whenever a valid API key is provided.
+	KeyMetadata WebScrapeResponseKeyMetadata `json:"key_metadata"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Bytes         respjson.Field
+		CacheMetadata respjson.Field
+		HTML          respjson.Field
+		Images        respjson.Field
+		Markdown      respjson.Field
+		Metadata      respjson.Field
+		Parsed        respjson.Field
+		RequestID     respjson.Field
+		Screenshot    respjson.Field
+		URL           respjson.Field
+		KeyMetadata   respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponse) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Original HTTP response body. Waiting, actions, and content filters never change
+// it.
+type WebScrapeResponseBytes struct {
+	Data      WebScrapeResponseBytesData `json:"data" api:"required"`
+	Requested bool                       `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseBytes) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseBytes) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebScrapeResponseBytesData struct {
+	// Original response body as base64, after HTTP decompression. Maximum decoded
+	// size: 20 MiB.
+	Base64      string `json:"base64" api:"required"`
+	ContentType string `json:"contentType" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Base64      respjson.Field
+		ContentType respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseBytesData) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseBytesData) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Cache outcome for this response. Composite responses are hits only when every
+// cache-controlled fetch contributing to the output was a hit; age_ms is the
+// oldest contributing hit.
+type WebScrapeResponseCacheMetadata struct {
+	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	AgeMs int64 `json:"age_ms" api:"required"`
+	// Whether the response was served from cache, required fresh work, or honored
+	// zero-data-retention cache bypass.
+	//
+	// Any of "hit", "miss", "zdr".
+	Status string `json:"status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AgeMs       respjson.Field
+		Status      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseCacheMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Rendered HTML after content filters.
+type WebScrapeResponseHTML struct {
+	Data      string `json:"data" api:"required"`
+	Requested bool   `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseHTML) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseHTML) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Images after content filters. Empty when none are found.
+type WebScrapeResponseImages struct {
+	Data      []WebScrapeResponseImagesData `json:"data" api:"required"`
+	Requested bool                          `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseImages) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseImages) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebScrapeResponseImagesData struct {
+	// Alt text, if present.
+	Alt string `json:"alt" api:"required"`
+	// Image URL, or a data URI for inline images.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Any of "photography", "illustration", "logo", "wordmark", "icon", "pattern",
+	// "graphic", "other".
+	Classification string `json:"classification"`
+	// Hosted copy when file enrichment is requested and zdr is disabled. Valid for 24
+	// hours from the original capture.
+	FileURL string `json:"fileUrl" format:"uri"`
+	Height  int64  `json:"height"`
+	Width   int64  `json:"width"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Alt            respjson.Field
+		URL            respjson.Field
+		Classification respjson.Field
+		FileURL        respjson.Field
+		Height         respjson.Field
+		Width          respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseImagesData) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseImagesData) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Markdown after content filters.
+type WebScrapeResponseMarkdown struct {
+	Data      string `json:"data" api:"required"`
+	Requested bool   `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseMarkdown) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseMarkdown) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Page details, when available.
+type WebScrapeResponseMetadata struct {
+	// Additional non-social meta tags not promoted to top-level metadata fields.
+	AdditionalMeta map[string]WebScrapeResponseMetadataAdditionalMetaUnion `json:"additionalMeta"`
+	// Resolved alternate links from link rel=alternate tags.
+	Alternates []WebScrapeResponseMetadataAlternate `json:"alternates"`
+	// Author metadata, when present.
+	Author string `json:"author"`
+	// Resolved canonical URL, when present.
+	CanonicalURL string `json:"canonicalUrl"`
+	// Best description extracted from standard, Open Graph, or Twitter metadata.
+	Description string `json:"description"`
+	// Resolved favicon URL, when present.
+	Favicon string `json:"favicon"`
+	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
+	// Capped at the first 500 headings. Omitted when the page has none.
+	Headings []WebScrapeResponseMetadataHeading `json:"headings"`
+	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
+	Image string `json:"image"`
+	// JSON-LD structured data blocks parsed from the page.
+	JsonLd []map[string]any `json:"jsonLd"`
+	// Keywords extracted from the page's keywords meta tag.
+	Keywords []string `json:"keywords"`
+	// Language extracted from html lang or language meta tags.
+	Language string `json:"language"`
+	// Modified timestamp/date from page metadata, when present.
+	ModifiedTime string `json:"modifiedTime"`
+	// Open Graph metadata with the og: prefix removed and keys camel-cased.
+	OpenGraph map[string]WebScrapeResponseMetadataOpenGraphUnion `json:"openGraph"`
+	// Published timestamp/date from page metadata, when present.
+	PublishedTime string `json:"publishedTime"`
+	// Robots meta directive, when present.
+	Robots string `json:"robots"`
+	// Site or application name from page metadata.
+	SiteName string `json:"siteName"`
+	// Best title extracted from the page.
+	Title string `json:"title"`
+	// Twitter card metadata with the twitter: prefix removed and keys camel-cased.
+	Twitter map[string]WebScrapeResponseMetadataTwitterUnion `json:"twitter"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		AdditionalMeta respjson.Field
+		Alternates     respjson.Field
+		Author         respjson.Field
+		CanonicalURL   respjson.Field
+		Description    respjson.Field
+		Favicon        respjson.Field
+		Headings       respjson.Field
+		Image          respjson.Field
+		JsonLd         respjson.Field
+		Keywords       respjson.Field
+		Language       respjson.Field
+		ModifiedTime   respjson.Field
+		OpenGraph      respjson.Field
+		PublishedTime  respjson.Field
+		Robots         respjson.Field
+		SiteName       respjson.Field
+		Title          respjson.Field
+		Twitter        respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebScrapeResponseMetadataAdditionalMetaUnion contains all possible properties
+// and values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebScrapeResponseMetadataAdditionalMetaUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebScrapeResponseMetadataAdditionalMetaUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebScrapeResponseMetadataAdditionalMetaUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebScrapeResponseMetadataAdditionalMetaUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebScrapeResponseMetadataAdditionalMetaUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebScrapeResponseMetadataAlternate struct {
+	// Resolved alternate URL.
+	Href string `json:"href" api:"required"`
+	// Language or locale for the alternate URL, when present.
+	Hreflang string `json:"hreflang"`
+	// Alternate resource title, when present.
+	Title string `json:"title"`
+	// Alternate resource MIME type, when present.
+	Type string `json:"type"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Href        respjson.Field
+		Hreflang    respjson.Field
+		Title       respjson.Field
+		Type        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseMetadataAlternate) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseMetadataAlternate) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebScrapeResponseMetadataHeading struct {
+	// Heading level, 1–6 (from h1–h6).
+	Level int64 `json:"level" api:"required"`
+	// Heading text with whitespace collapsed, truncated to 1000 characters.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Level       respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseMetadataHeading) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseMetadataHeading) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebScrapeResponseMetadataOpenGraphUnion contains all possible properties and
+// values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebScrapeResponseMetadataOpenGraphUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebScrapeResponseMetadataOpenGraphUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebScrapeResponseMetadataOpenGraphUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebScrapeResponseMetadataOpenGraphUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebScrapeResponseMetadataOpenGraphUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// WebScrapeResponseMetadataTwitterUnion contains all possible properties and
+// values from [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfStringArray]
+type WebScrapeResponseMetadataTwitterUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfStringArray []string `json:",inline"`
+	JSON          struct {
+		OfString      respjson.Field
+		OfStringArray respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+func (u WebScrapeResponseMetadataTwitterUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u WebScrapeResponseMetadataTwitterUnion) AsStringArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u WebScrapeResponseMetadataTwitterUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Fields produced by parseParams.rules, after shared content filters.
+type WebScrapeResponseParsed struct {
+	Data      map[string]any `json:"data" api:"required"`
+	Requested bool           `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseParsed) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseParsed) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// An image data URL. Use directly as an image src.
+type WebScrapeResponseScreenshot struct {
+	Data      string `json:"data" api:"required" format:"uri"`
+	Requested bool   `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseScreenshot) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseScreenshot) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Credit usage, included whenever a valid API key is provided.
+type WebScrapeResponseKeyMetadata struct {
+	// Credits used by this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// Credits remaining for your organization.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -4016,6 +4517,526 @@ type WebExtractStyleguideParamsZdr string
 const (
 	WebExtractStyleguideParamsZdrEnabled  WebExtractStyleguideParamsZdr = "enabled"
 	WebExtractStyleguideParamsZdrDisabled WebExtractStyleguideParamsZdr = "disabled"
+)
+
+type WebScrapeParams struct {
+	// Outputs to return. Enable at least one; omitted formats are false.
+	Formats WebScrapeParamsFormats `json:"formats,omitzero" api:"required"`
+	// The URL to scrape.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Maximum age for the entire capture, including bytes. Defaults to 1 day; 0
+	// fetches fresh. Captures with hosted image files refresh after 23 hours.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Total deadline, including navigation, actions, waiting, and all outputs.
+	TimeoutMs param.Opt[int64] `json:"timeoutMs,omitzero"`
+	// Image options. Requires formats.images: true.
+	ImageParams WebScrapeParamsImageParams `json:"imageParams,omitzero"`
+	// Markdown options. Requires formats.markdown: true.
+	MarkdownParams WebScrapeParamsMarkdownParams `json:"markdownParams,omitzero"`
+	// Required when formats.parse is true.
+	ParseParams WebScrapeParamsParseParams `json:"parseParams,omitzero"`
+	// Screenshot options. Requires formats.screenshot: true.
+	ScreenshotParams WebScrapeParamsScreenshotParams `json:"screenshotParams,omitzero"`
+	// Shared browser and content settings. Content filters leave screenshots and
+	// original bytes unchanged.
+	SharedParams WebScrapeParamsSharedParams `json:"sharedParams,omitzero"`
+	// Labels for tracking request usage. Not retained when zdr is enabled.
+	Tags []string `json:"tags,omitzero"`
+	// Zero data retention. Bypasses caches and uploads; excludes request/response
+	// content and tags from logs. Must be enabled for your organization.
+	//
+	// Any of "enabled", "disabled".
+	Zdr WebScrapeParamsZdr `json:"zdr,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Outputs to return. Enable at least one; omitted formats are false.
+type WebScrapeParamsFormats struct {
+	// The original HTTP response body.
+	Bytes param.Opt[bool] `json:"bytes,omitzero"`
+	// Rendered HTML.
+	HTML param.Opt[bool] `json:"html,omitzero"`
+	// Images found on the page.
+	Images param.Opt[bool] `json:"images,omitzero"`
+	// Page content as Markdown.
+	Markdown param.Opt[bool] `json:"markdown,omitzero"`
+	// Fields selected by parseParams.rules.
+	Parse param.Opt[bool] `json:"parse,omitzero"`
+	// An inline image of the page.
+	Screenshot param.Opt[bool] `json:"screenshot,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsFormats) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsFormats
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsFormats) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Image options. Requires formats.images: true.
+type WebScrapeParamsImageParams struct {
+	// For visual duplicates, keep the largest image.
+	//
+	// Any of "none", "visual".
+	Dedupe string `json:"dedupe,omitzero"`
+	// Add dimensions, a visual category, or a hosted file URL.
+	//
+	// Any of "dimensions", "classification", "file".
+	Enrich []string `json:"enrich,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsImageParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsImageParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsImageParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsImageParams](
+		"dedupe", "none", "visual",
+	)
+}
+
+// Markdown options. Requires formats.markdown: true.
+type WebScrapeParamsMarkdownParams struct {
+	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
+	IncludeLinks  param.Opt[bool] `json:"includeLinks,omitzero"`
+	// Base64 images use placeholders by default. Requires includeImages: true.
+	//
+	// Any of "placeholder", "preserve".
+	InlineImages string `json:"inlineImages,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsMarkdownParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsMarkdownParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsMarkdownParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsMarkdownParams](
+		"inlineImages", "placeholder", "preserve",
+	)
+}
+
+// Required when formats.parse is true.
+//
+// The property Rules is required.
+type WebScrapeParamsParseParams struct {
+	// Map field names to CSS selectors or rules. Missing items return null; missing
+	// lists return [].
+	Rules map[string]WebScrapeParamsParseParamsRuleUnion `json:"rules,omitzero" api:"required"`
+	paramObj
+}
+
+func (r WebScrapeParamsParseParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsParseParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsParseParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsParseParamsRuleUnion struct {
+	OfString                          param.Opt[string]                     `json:",omitzero,inline"`
+	OfWebScrapesParseParamsRuleObject *WebScrapeParamsParseParamsRuleObject `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsParseParamsRuleUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfString, u.OfWebScrapesParseParamsRuleObject)
+}
+func (u *WebScrapeParamsParseParamsRuleUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+// The property Selector is required.
+type WebScrapeParamsParseParamsRuleObject struct {
+	Selector string `json:"selector" api:"required"`
+	Output   string `json:"output,omitzero"`
+	// Any of "item", "list".
+	Type string `json:"type,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsParseParamsRuleObject) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsParseParamsRuleObject
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsParseParamsRuleObject) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsRuleObject](
+		"type", "item", "list",
+	)
+}
+
+// Screenshot options. Requires formats.screenshot: true.
+type WebScrapeParamsScreenshotParams struct {
+	// Viewport, full page, one visible element, or a rectangle. Maximum 40 megapixels.
+	Area WebScrapeParamsScreenshotParamsAreaUnion `json:"area,omitzero"`
+	// Any of "png", "jpeg", "webp".
+	Format string `json:"format,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsScreenshotParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsScreenshotParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsScreenshotParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsScreenshotParams](
+		"format", "png", "jpeg", "webp",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsScreenshotParamsAreaUnion struct {
+	// Check if union is this variant with !param.IsOmitted(union.OfPage)
+	OfPage      param.Opt[string]                             `json:",omitzero,inline"`
+	OfElement   *WebScrapeParamsScreenshotParamsAreaElement   `json:",omitzero,inline"`
+	OfRectangle *WebScrapeParamsScreenshotParamsAreaRectangle `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsScreenshotParamsAreaUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfPage, u.OfElement, u.OfRectangle)
+}
+func (u *WebScrapeParamsScreenshotParamsAreaUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type WebScrapeParamsScreenshotParamsAreaPage string
+
+const (
+	WebScrapeParamsScreenshotParamsAreaPageViewport WebScrapeParamsScreenshotParamsAreaPage = "viewport"
+	WebScrapeParamsScreenshotParamsAreaPageFullPage WebScrapeParamsScreenshotParamsAreaPage = "fullPage"
+)
+
+// The property Selector is required.
+type WebScrapeParamsScreenshotParamsAreaElement struct {
+	// Must match one visible element.
+	Selector string `json:"selector" api:"required"`
+	paramObj
+}
+
+func (r WebScrapeParamsScreenshotParamsAreaElement) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsScreenshotParamsAreaElement
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsScreenshotParamsAreaElement) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pixels from the document origin.
+//
+// The properties Height, Width, X, Y are required.
+type WebScrapeParamsScreenshotParamsAreaRectangle struct {
+	Height int64 `json:"height" api:"required"`
+	Width  int64 `json:"width" api:"required"`
+	X      int64 `json:"x" api:"required"`
+	Y      int64 `json:"y" api:"required"`
+	paramObj
+}
+
+func (r WebScrapeParamsScreenshotParamsAreaRectangle) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsScreenshotParamsAreaRectangle
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsScreenshotParamsAreaRectangle) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Shared browser and content settings. Content filters leave screenshots and
+// original bytes unchanged.
+type WebScrapeParamsSharedParams struct {
+	// Supported two-letter country code, case-insensitive. Applies to every output,
+	// including image downloads.
+	Country param.Opt[string] `json:"country,omitzero"`
+	// Dismiss cookie banners by accepting cookies before actions.
+	DismissCookies param.Opt[bool] `json:"dismissCookies,omitzero"`
+	// Dismiss other popups before actions.
+	DismissPopups param.Opt[bool] `json:"dismissPopups,omitzero"`
+	// Include iframe content in extraction. Screenshots show visible frames
+	// regardless.
+	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
+	// Keep only main content in HTML, Markdown, images, and parsed fields.
+	MainContentOnly param.Opt[bool] `json:"mainContentOnly,omitzero"`
+	// Settle animations before capture. Defaults to true with screenshots, otherwise
+	// false.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
+	// Run in order before capture. A failed action fails the request. Bypasses
+	// caching.
+	Actions []WebScrapeParamsSharedParamsActionUnion `json:"actions,omitzero"`
+	// Remove matching content. Exclusions win.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Headers for the target origin. Requests with custom headers bypass caching.
+	Headers map[string]string `json:"headers,omitzero"`
+	// Keep matching content after mainContentOnly.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
+	// Document parsing options.
+	Parsers WebScrapeParamsSharedParamsParsers `json:"parsers,omitzero"`
+	// Override the browser color scheme.
+	//
+	// Any of "light", "dark".
+	Theme string `json:"theme,omitzero"`
+	// Browser dimensions in pixels.
+	Viewport WebScrapeParamsSharedParamsViewport `json:"viewport,omitzero"`
+	// After actions, wait this many milliseconds or until a CSS selector is visible.
+	// Defaults to 500 ms, or 2000 ms with frames or an XML URL. Set 0 to skip.
+	WaitFor WebScrapeParamsSharedParamsWaitForUnion `json:"waitFor,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsSharedParams](
+		"theme", "light", "dark",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsSharedParamsActionUnion struct {
+	OfPerform *WebScrapeParamsSharedParamsActionPerform `json:",omitzero,inline"`
+	OfScroll  *WebScrapeParamsSharedParamsActionScroll  `json:",omitzero,inline"`
+	OfWait    *WebScrapeParamsSharedParamsActionWait    `json:",omitzero,inline"`
+	OfWaitFor *WebScrapeParamsSharedParamsActionWaitFor `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsSharedParamsActionUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfPerform, u.OfScroll, u.OfWait, u.OfWaitFor)
+}
+func (u *WebScrapeParamsSharedParamsActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[WebScrapeParamsSharedParamsActionUnion](
+		"type",
+		apijson.Discriminator[WebScrapeParamsSharedParamsActionPerform]("perform"),
+		apijson.Discriminator[WebScrapeParamsSharedParamsActionScroll]("scroll"),
+		apijson.Discriminator[WebScrapeParamsSharedParamsActionWait]("wait"),
+		apijson.Discriminator[WebScrapeParamsSharedParamsActionWaitFor]("waitFor"),
+	)
+}
+
+// The properties Action, Type are required.
+type WebScrapeParamsSharedParamsActionPerform struct {
+	Action string `json:"action" api:"required"`
+	// This field can be elided, and will marshal its zero value as "perform".
+	Type constant.Perform `json:"type" default:"perform"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsActionPerform) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsActionPerform
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The property Type is required.
+type WebScrapeParamsSharedParamsActionScroll struct {
+	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
+	// Scroll this container. Omit to scroll the page.
+	Selector param.Opt[string]                                  `json:"selector,omitzero"`
+	Amount   WebScrapeParamsSharedParamsActionScrollAmountUnion `json:"amount,omitzero"`
+	// Any of "down", "up", "left", "right".
+	Direction string `json:"direction,omitzero"`
+	// This field can be elided, and will marshal its zero value as "scroll".
+	Type constant.Scroll `json:"type" default:"scroll"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsActionScroll) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsActionScroll
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsSharedParamsActionScroll](
+		"direction", "down", "up", "left", "right",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsSharedParamsActionScrollAmountUnion struct {
+	OfInt param.Opt[int64] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebScrapesSharedParamsActionScrollAmountString)
+	OfWebScrapesSharedParamsActionScrollAmountString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsSharedParamsActionScrollAmountUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfInt, u.OfWebScrapesSharedParamsActionScrollAmountString)
+}
+func (u *WebScrapeParamsSharedParamsActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type WebScrapeParamsSharedParamsActionScrollAmountString string
+
+const (
+	WebScrapeParamsSharedParamsActionScrollAmountStringViewport WebScrapeParamsSharedParamsActionScrollAmountString = "viewport"
+	WebScrapeParamsSharedParamsActionScrollAmountStringMax      WebScrapeParamsSharedParamsActionScrollAmountString = "max"
+)
+
+// The properties Milliseconds, Type are required.
+type WebScrapeParamsSharedParamsActionWait struct {
+	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// This field can be elided, and will marshal its zero value as "wait".
+	Type constant.Wait `json:"type" default:"wait"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsActionWait) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsActionWait
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The properties Selector, Type are required.
+type WebScrapeParamsSharedParamsActionWaitFor struct {
+	Selector string `json:"selector" api:"required"`
+	// This field can be elided, and will marshal its zero value as "waitFor".
+	Type constant.WaitFor `json:"type" default:"waitFor"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsActionWaitFor) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsActionWaitFor
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsActionWaitFor) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Document parsing options.
+type WebScrapeParamsSharedParamsParsers struct {
+	// PDF text options for HTML, Markdown, and parsed fields.
+	Pdf WebScrapeParamsSharedParamsParsersPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsParsers) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsParsers
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsParsers) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// PDF text options for HTML, Markdown, and parsed fields.
+type WebScrapeParamsSharedParamsParsersPdf struct {
+	// Last page to parse. Must be at least startPage.
+	EndPage param.Opt[int64] `json:"endPage,omitzero"`
+	// First page to parse, starting at 1.
+	StartPage param.Opt[int64] `json:"startPage,omitzero"`
+	// Read text from scanned pages.
+	//
+	// Any of "off", "auto".
+	Ocr string `json:"ocr,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsParsersPdf) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsParsersPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsParsersPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsSharedParamsParsersPdf](
+		"ocr", "off", "auto",
+	)
+}
+
+// Browser dimensions in pixels.
+type WebScrapeParamsSharedParamsViewport struct {
+	Height param.Opt[int64] `json:"height,omitzero"`
+	Width  param.Opt[int64] `json:"width,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsViewport) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsViewport
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsViewport) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsSharedParamsWaitForUnion struct {
+	OfInt    param.Opt[int64]  `json:",omitzero,inline"`
+	OfString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsSharedParamsWaitForUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfInt, u.OfString)
+}
+func (u *WebScrapeParamsSharedParamsWaitForUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+// Zero data retention. Bypasses caches and uploads; excludes request/response
+// content and tags from logs. Must be enabled for your organization.
+type WebScrapeParamsZdr string
+
+const (
+	WebScrapeParamsZdrEnabled  WebScrapeParamsZdr = "enabled"
+	WebScrapeParamsZdrDisabled WebScrapeParamsZdr = "disabled"
 )
 
 type WebScreenshotParams struct {

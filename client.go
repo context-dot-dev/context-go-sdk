@@ -20,7 +20,6 @@ type Client struct {
 	options  []option.RequestOption
 	Parse    ParseService
 	Web      WebService
-	AI       AIService
 	Brand    BrandService
 	Industry IndustryService
 	Utility  UtilityService
@@ -72,7 +71,6 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 
 	r.Parse = NewParseService(opts...)
 	r.Web = NewWebService(opts...)
-	r.AI = NewAIService(opts...)
 	r.Brand = NewBrandService(opts...)
 	r.Industry = NewIndustryService(opts...)
 	r.Utility = NewUtilityService(opts...)

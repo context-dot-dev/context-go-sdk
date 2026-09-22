@@ -172,6 +172,37 @@ func (r *MonitorService) GetChange(ctx context.Context, changeID string, opts ..
 	return res, err
 }
 
+// Fetches one run for a monitor, including lifecycle status, timing, credits
+// charged, and any detected change.
+func (r *MonitorService) GetRun(ctx context.Context, runID string, query MonitorGetRunParams, opts ...option.RequestOption) (res *MonitorGetRunResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	if query.MonitorID == "" {
+		err = errors.New("missing required monitor_id parameter")
+		return nil, err
+	}
+	if runID == "" {
+		err = errors.New("missing required run_id parameter")
+		return nil, err
+	}
+	path := fmt.Sprintf("monitors/%s/runs/%s", url.PathEscape(query.MonitorID), url.PathEscape(runID))
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
+	return res, err
+}
+
+// Generates a new signing secret for the monitor's webhook and returns the updated
+// monitor (including the new `webhook.secret`). The previous secret stops signing
+// deliveries immediately, so update your endpoint before rotating.
+func (r *MonitorService) RotateWebhookSecret(ctx context.Context, monitorID string, opts ...option.RequestOption) (res *MonitorRotateWebhookSecretResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	if monitorID == "" {
+		err = errors.New("missing required monitor_id parameter")
+		return nil, err
+	}
+	path := fmt.Sprintf("monitors/%s/webhook/rotate-secret", url.PathEscape(monitorID))
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, nil, &res, opts...)
+	return res, err
+}
+
 // Triggers an immediate run of the monitor outside its normal schedule. The run is
 // queued and processed asynchronously.
 func (r *MonitorService) Run(ctx context.Context, monitorID string, opts ...option.RequestOption) (res *MonitorRunResponse, err error) {
@@ -3548,6 +3579,828 @@ const (
 	MonitorGetChangeResponseImportanceHigh   MonitorGetChangeResponseImportance = "high"
 )
 
+type MonitorGetRunResponse struct {
+	ID string `json:"id" api:"required"`
+	// True when this run established the monitor's initial baseline; baseline runs
+	// perform no change detection.
+	BaselineCreated bool `json:"baseline_created" api:"required"`
+	ChangeDetected  bool `json:"change_detected" api:"required"`
+	// Any of "exact", "semantic".
+	ChangeDetectionType MonitorGetRunResponseChangeDetectionType `json:"change_detection_type" api:"required"`
+	// Credits charged for this run (0 for skipped/failed runs).
+	CreditsCharged int64  `json:"credits_charged" api:"required"`
+	MonitorID      string `json:"monitor_id" api:"required"`
+	// The first run after monitor creation is a baseline run.
+	//
+	// Any of "baseline", "scheduled".
+	RunType MonitorGetRunResponseRunType `json:"run_type" api:"required"`
+	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	//
+	// Any of "queued", "running", "completed", "failed", "skipped".
+	Status MonitorGetRunResponseStatus `json:"status" api:"required"`
+	// Any of "page", "sitemap", "extract".
+	TargetType  MonitorGetRunResponseTargetType `json:"target_type" api:"required"`
+	ChangeID    string                          `json:"change_id" api:"nullable"`
+	CompletedAt time.Time                       `json:"completed_at" api:"nullable" format:"date-time"`
+	Error       MonitorGetRunResponseError      `json:"error" api:"nullable"`
+	// Why a skipped run never executed; null unless status is `skipped`.
+	//
+	// Any of "insufficient_credits", "monitor_paused", "superseded".
+	SkipReason MonitorGetRunResponseSkipReason `json:"skip_reason" api:"nullable"`
+	StartedAt  time.Time                       `json:"started_at" api:"nullable" format:"date-time"`
+	// All webhook deliveries attempted by this run — one per subscribed event that
+	// fired. Omitted when no webhook was attempted, including runs created before
+	// event selection was added.
+	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
+	// Deprecated: use `webhook_deliveries`, which records every attempt now that a run
+	// can deliver multiple events. Omitted when no webhook was attempted, including
+	// historical runs created before delivery tracking was added.
+	//
+	// Deprecated: deprecated
+	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
+	// Webhook delivery IDs for this run.
+	WebhookDeliveryIDs []string `json:"webhook_delivery_ids"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ID                  respjson.Field
+		BaselineCreated     respjson.Field
+		ChangeDetected      respjson.Field
+		ChangeDetectionType respjson.Field
+		CreditsCharged      respjson.Field
+		MonitorID           respjson.Field
+		RunType             respjson.Field
+		Status              respjson.Field
+		TargetType          respjson.Field
+		ChangeID            respjson.Field
+		CompletedAt         respjson.Field
+		Error               respjson.Field
+		SkipReason          respjson.Field
+		StartedAt           respjson.Field
+		WebhookDeliveries   respjson.Field
+		WebhookDelivery     respjson.Field
+		WebhookDeliveryIDs  respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetRunResponse) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetRunResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorGetRunResponseChangeDetectionType string
+
+const (
+	MonitorGetRunResponseChangeDetectionTypeExact    MonitorGetRunResponseChangeDetectionType = "exact"
+	MonitorGetRunResponseChangeDetectionTypeSemantic MonitorGetRunResponseChangeDetectionType = "semantic"
+)
+
+// The first run after monitor creation is a baseline run.
+type MonitorGetRunResponseRunType string
+
+const (
+	MonitorGetRunResponseRunTypeBaseline  MonitorGetRunResponseRunType = "baseline"
+	MonitorGetRunResponseRunTypeScheduled MonitorGetRunResponseRunType = "scheduled"
+)
+
+// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
+// (insufficient credits, monitor paused, or superseded by a concurrent run).
+type MonitorGetRunResponseStatus string
+
+const (
+	MonitorGetRunResponseStatusQueued    MonitorGetRunResponseStatus = "queued"
+	MonitorGetRunResponseStatusRunning   MonitorGetRunResponseStatus = "running"
+	MonitorGetRunResponseStatusCompleted MonitorGetRunResponseStatus = "completed"
+	MonitorGetRunResponseStatusFailed    MonitorGetRunResponseStatus = "failed"
+	MonitorGetRunResponseStatusSkipped   MonitorGetRunResponseStatus = "skipped"
+)
+
+type MonitorGetRunResponseTargetType string
+
+const (
+	MonitorGetRunResponseTargetTypePage    MonitorGetRunResponseTargetType = "page"
+	MonitorGetRunResponseTargetTypeSitemap MonitorGetRunResponseTargetType = "sitemap"
+	MonitorGetRunResponseTargetTypeExtract MonitorGetRunResponseTargetType = "extract"
+)
+
+type MonitorGetRunResponseError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetRunResponseError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetRunResponseError) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Why a skipped run never executed; null unless status is `skipped`.
+type MonitorGetRunResponseSkipReason string
+
+const (
+	MonitorGetRunResponseSkipReasonInsufficientCredits MonitorGetRunResponseSkipReason = "insufficient_credits"
+	MonitorGetRunResponseSkipReasonMonitorPaused       MonitorGetRunResponseSkipReason = "monitor_paused"
+	MonitorGetRunResponseSkipReasonSuperseded          MonitorGetRunResponseSkipReason = "superseded"
+)
+
+// A web monitor. `mode` is the constant `web`; behavior is described by `target`
+// (page/sitemap/extract) and `change_detection` (exact/semantic).
+type MonitorRotateWebhookSecretResponse struct {
+	ID string `json:"id" api:"required"`
+	// Discriminated union describing how changes are detected.
+	ChangeDetection MonitorRotateWebhookSecretResponseChangeDetectionUnion `json:"change_detection" api:"required"`
+	CreatedAt       time.Time                                              `json:"created_at" api:"required" format:"date-time"`
+	// Top-level monitor category. Always `web` today; the concrete behavior is
+	// described by `target` and `change_detection`.
+	//
+	// Any of "web".
+	Mode MonitorRotateWebhookSecretResponseMode `json:"mode" api:"required"`
+	Name string                                 `json:"name" api:"required"`
+	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
+	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
+	// between 10 minutes and 1 year.
+	Schedule MonitorRotateWebhookSecretResponseSchedule `json:"schedule" api:"required"`
+	// Monitor lifecycle status. `failed` means the most recent run failed (see the
+	// monitor's `last_error`); failed monitors keep running on schedule and flip back
+	// to `active` on the next successful run. Monitors are auto-`paused` after
+	// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+	// status to `active`.
+	//
+	// Any of "active", "paused", "failed".
+	Status MonitorRotateWebhookSecretResponseStatus `json:"status" api:"required"`
+	// Discriminated union describing what the monitor watches.
+	Target    MonitorRotateWebhookSecretResponseTargetUnion `json:"target" api:"required"`
+	UpdatedAt time.Time                                     `json:"updated_at" api:"required" format:"date-time"`
+	// Current baseline: the last observed value the monitor compares new snapshots
+	// against. Its shape follows `target.type` (page/sitemap/extract). Only populated
+	// on GET /monitors/{monitor_id}; null until the first baseline run completes (and
+	// after a target or change_detection update, which resets the baseline).
+	Baseline     MonitorRotateWebhookSecretResponseBaselineUnion `json:"baseline" api:"nullable"`
+	LastChangeAt time.Time                                       `json:"last_change_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run; null when the last run succeeded.
+	LastError MonitorRotateWebhookSecretResponseLastError `json:"last_error" api:"nullable"`
+	LastRunAt time.Time                                   `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due.
+	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
+	// User-defined tags for grouping and filtering monitors and their changes.
+	// Duplicates are removed.
+	Tags    []string                                  `json:"tags"`
+	Webhook MonitorRotateWebhookSecretResponseWebhook `json:"webhook" api:"nullable"`
+	// Present while webhook deliveries are failing consecutively; null when deliveries
+	// are healthy or no webhook is configured. Cleared on the next successful delivery
+	// and when the webhook URL changes.
+	WebhookFailure MonitorRotateWebhookSecretResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ID              respjson.Field
+		ChangeDetection respjson.Field
+		CreatedAt       respjson.Field
+		Mode            respjson.Field
+		Name            respjson.Field
+		Schedule        respjson.Field
+		Status          respjson.Field
+		Target          respjson.Field
+		UpdatedAt       respjson.Field
+		Baseline        respjson.Field
+		LastChangeAt    respjson.Field
+		LastError       respjson.Field
+		LastRunAt       respjson.Field
+		NextRunAt       respjson.Field
+		Tags            respjson.Field
+		Webhook         respjson.Field
+		WebhookFailure  respjson.Field
+		ExtraFields     map[string]respjson.Field
+		raw             string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponse) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorRotateWebhookSecretResponseChangeDetectionUnion contains all possible
+// properties and values from
+// [MonitorRotateWebhookSecretResponseChangeDetectionExact],
+// [MonitorRotateWebhookSecretResponseChangeDetectionSemantic].
+//
+// Use the [MonitorRotateWebhookSecretResponseChangeDetectionUnion.AsAny] method to
+// switch on the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorRotateWebhookSecretResponseChangeDetectionUnion struct {
+	// Any of "exact", "semantic".
+	Type string `json:"type"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseChangeDetectionSemantic].
+	ConfidenceThreshold float64 `json:"confidence_threshold"`
+	JSON                struct {
+		Type                respjson.Field
+		ConfidenceThreshold respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// anyMonitorRotateWebhookSecretResponseChangeDetection is implemented by each
+// variant of [MonitorRotateWebhookSecretResponseChangeDetectionUnion] to add type
+// safety for the return type of
+// [MonitorRotateWebhookSecretResponseChangeDetectionUnion.AsAny]
+type anyMonitorRotateWebhookSecretResponseChangeDetection interface {
+	implMonitorRotateWebhookSecretResponseChangeDetectionUnion()
+}
+
+func (MonitorRotateWebhookSecretResponseChangeDetectionExact) implMonitorRotateWebhookSecretResponseChangeDetectionUnion() {
+}
+func (MonitorRotateWebhookSecretResponseChangeDetectionSemantic) implMonitorRotateWebhookSecretResponseChangeDetectionUnion() {
+}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := MonitorRotateWebhookSecretResponseChangeDetectionUnion.AsAny().(type) {
+//	case contextdev.MonitorRotateWebhookSecretResponseChangeDetectionExact:
+//	case contextdev.MonitorRotateWebhookSecretResponseChangeDetectionSemantic:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u MonitorRotateWebhookSecretResponseChangeDetectionUnion) AsAny() anyMonitorRotateWebhookSecretResponseChangeDetection {
+	switch u.Type {
+	case "exact":
+		return u.AsExact()
+	case "semantic":
+		return u.AsSemantic()
+	}
+	return nil
+}
+
+func (u MonitorRotateWebhookSecretResponseChangeDetectionUnion) AsExact() (v MonitorRotateWebhookSecretResponseChangeDetectionExact) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseChangeDetectionUnion) AsSemantic() (v MonitorRotateWebhookSecretResponseChangeDetectionSemantic) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorRotateWebhookSecretResponseChangeDetectionUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorRotateWebhookSecretResponseChangeDetectionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Detect exact changes. For page targets, this means visible text diffs. For
+// sitemap targets, this means URL additions and removals.
+type MonitorRotateWebhookSecretResponseChangeDetectionExact struct {
+	Type constant.Exact `json:"type" default:"exact"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Type        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseChangeDetectionExact) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseChangeDetectionExact) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Detect meaning-level changes to page content, ignoring cosmetic or
+// instruction-irrelevant differences. Which changes are meaningful is judged
+// against the page or extract target's `instructions` (and an extract target's
+// `schema`, when provided).
+type MonitorRotateWebhookSecretResponseChangeDetectionSemantic struct {
+	Type                constant.Semantic `json:"type" default:"semantic"`
+	ConfidenceThreshold float64           `json:"confidence_threshold"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Type                respjson.Field
+		ConfidenceThreshold respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseChangeDetectionSemantic) RawJSON() string {
+	return r.JSON.raw
+}
+func (r *MonitorRotateWebhookSecretResponseChangeDetectionSemantic) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Top-level monitor category. Always `web` today; the concrete behavior is
+// described by `target` and `change_detection`.
+type MonitorRotateWebhookSecretResponseMode string
+
+const (
+	MonitorRotateWebhookSecretResponseModeWeb MonitorRotateWebhookSecretResponseMode = "web"
+)
+
+// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
+// every 6 hours or every 2 days. The total interval (frequency × unit) must be
+// between 10 minutes and 1 year.
+type MonitorRotateWebhookSecretResponseSchedule struct {
+	// Number of units between runs. The resulting interval (frequency × unit) must be
+	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
+	// maximum 365 when unit is days).
+	Frequency int64 `json:"frequency" api:"required"`
+	// Any of "interval".
+	Type string `json:"type" api:"required"`
+	// Any of "minutes", "hours", "days".
+	Unit string `json:"unit" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Frequency   respjson.Field
+		Type        respjson.Field
+		Unit        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseSchedule) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseSchedule) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Monitor lifecycle status. `failed` means the most recent run failed (see the
+// monitor's `last_error`); failed monitors keep running on schedule and flip back
+// to `active` on the next successful run. Monitors are auto-`paused` after
+// repeated consecutive failures or insufficient-credit skips; resume by PATCHing
+// status to `active`.
+type MonitorRotateWebhookSecretResponseStatus string
+
+const (
+	MonitorRotateWebhookSecretResponseStatusActive MonitorRotateWebhookSecretResponseStatus = "active"
+	MonitorRotateWebhookSecretResponseStatusPaused MonitorRotateWebhookSecretResponseStatus = "paused"
+	MonitorRotateWebhookSecretResponseStatusFailed MonitorRotateWebhookSecretResponseStatus = "failed"
+)
+
+// MonitorRotateWebhookSecretResponseTargetUnion contains all possible properties
+// and values from [MonitorRotateWebhookSecretResponseTargetPage],
+// [MonitorRotateWebhookSecretResponseTargetSitemap],
+// [MonitorRotateWebhookSecretResponseTargetExtract].
+//
+// Use the [MonitorRotateWebhookSecretResponseTargetUnion.AsAny] method to switch
+// on the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorRotateWebhookSecretResponseTargetUnion struct {
+	// Any of "page", "sitemap", "extract".
+	Type string `json:"type"`
+	URL  string `json:"url"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetPage].
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetPage].
+	IncludeSelectors []string `json:"include_selectors"`
+	Instructions     string   `json:"instructions"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetPage].
+	NormalizeWhitespace bool `json:"normalize_whitespace"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetSitemap].
+	Exclude []string `json:"exclude"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetSitemap].
+	Include []string `json:"include"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetSitemap].
+	MaxURLs int64 `json:"max_urls"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetExtract].
+	FollowSubdomains bool `json:"follow_subdomains"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetExtract].
+	MaxDepth int64 `json:"max_depth"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetExtract].
+	MaxPages int64 `json:"max_pages"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetExtract].
+	Schema map[string]any `json:"schema"`
+	JSON   struct {
+		Type                respjson.Field
+		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
+		Instructions        respjson.Field
+		NormalizeWhitespace respjson.Field
+		Exclude             respjson.Field
+		Include             respjson.Field
+		MaxURLs             respjson.Field
+		FollowSubdomains    respjson.Field
+		MaxDepth            respjson.Field
+		MaxPages            respjson.Field
+		Schema              respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// anyMonitorRotateWebhookSecretResponseTarget is implemented by each variant of
+// [MonitorRotateWebhookSecretResponseTargetUnion] to add type safety for the
+// return type of [MonitorRotateWebhookSecretResponseTargetUnion.AsAny]
+type anyMonitorRotateWebhookSecretResponseTarget interface {
+	implMonitorRotateWebhookSecretResponseTargetUnion()
+}
+
+func (MonitorRotateWebhookSecretResponseTargetPage) implMonitorRotateWebhookSecretResponseTargetUnion() {
+}
+func (MonitorRotateWebhookSecretResponseTargetSitemap) implMonitorRotateWebhookSecretResponseTargetUnion() {
+}
+func (MonitorRotateWebhookSecretResponseTargetExtract) implMonitorRotateWebhookSecretResponseTargetUnion() {
+}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := MonitorRotateWebhookSecretResponseTargetUnion.AsAny().(type) {
+//	case contextdev.MonitorRotateWebhookSecretResponseTargetPage:
+//	case contextdev.MonitorRotateWebhookSecretResponseTargetSitemap:
+//	case contextdev.MonitorRotateWebhookSecretResponseTargetExtract:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u MonitorRotateWebhookSecretResponseTargetUnion) AsAny() anyMonitorRotateWebhookSecretResponseTarget {
+	switch u.Type {
+	case "page":
+		return u.AsPage()
+	case "sitemap":
+		return u.AsSitemap()
+	case "extract":
+		return u.AsExtract()
+	}
+	return nil
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetUnion) AsPage() (v MonitorRotateWebhookSecretResponseTargetPage) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetUnion) AsSitemap() (v MonitorRotateWebhookSecretResponseTargetSitemap) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetUnion) AsExtract() (v MonitorRotateWebhookSecretResponseTargetExtract) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorRotateWebhookSecretResponseTargetUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorRotateWebhookSecretResponseTargetUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Watch a single web page. Exact detection reports visible-text diffs; semantic
+// detection judges confirmed stable diffs against `instructions`.
+type MonitorRotateWebhookSecretResponseTargetPage struct {
+	Type constant.Page `json:"type" default:"page"`
+	URL  string        `json:"url" api:"required" format:"uri"`
+	// CSS selectors for HTML regions to remove before text extraction. Applied after
+	// include_selectors; exclusion takes precedence when an element matches both. Omit
+	// or pass an empty array to apply no explicit exclusions. Changing these selectors
+	// creates a new baseline.
+	ExcludeSelectors []string `json:"exclude_selectors"`
+	// CSS selectors defining the HTML regions to monitor. Matching subtrees are
+	// combined in document order before text extraction, instead of automatic
+	// main-content selection. Omit or pass an empty array to use automatic
+	// main-content extraction. If the filtered page has no usable text, the run fails
+	// without replacing the baseline. Changing these selectors creates a new baseline.
+	IncludeSelectors []string `json:"include_selectors"`
+	// Plain-language goal describing which page changes matter. When provided without
+	// change_detection, semantic detection is inferred.
+	Instructions string `json:"instructions"`
+	// Normalize whitespace before comparing or analyzing text.
+	NormalizeWhitespace bool `json:"normalize_whitespace"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Type                respjson.Field
+		URL                 respjson.Field
+		ExcludeSelectors    respjson.Field
+		IncludeSelectors    respjson.Field
+		Instructions        respjson.Field
+		NormalizeWhitespace respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseTargetPage) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseTargetPage) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Watch a sitemap for URL additions and removals. Crawled URLs are normalized
+// (lowercased host, no trailing slash/fragment) and scoped to the monitored site
+// and its subdomains before comparison. On a detected difference the sitemap is
+// re-fetched within the same run and only URLs both observations agree on are
+// reported, suppressing transient crawl flaps.
+type MonitorRotateWebhookSecretResponseTargetSitemap struct {
+	Type constant.Sitemap `json:"type" default:"sitemap"`
+	// Sitemap URL to monitor.
+	URL string `json:"url" api:"required" format:"uri"`
+	// URL path patterns to exclude (max 50).
+	Exclude []string `json:"exclude"`
+	// URL path patterns to include (max 50).
+	Include []string `json:"include"`
+	// Maximum number of sitemap URLs to track (capped at 10,000).
+	MaxURLs int64 `json:"max_urls"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Type        respjson.Field
+		URL         respjson.Field
+		Exclude     respjson.Field
+		Include     respjson.Field
+		MaxURLs     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseTargetSitemap) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseTargetSitemap) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Watch the monitor-relevant pages of a site for meaningful changes. A crawl
+// guided by `schema`/`instructions` selects up to `max_pages` relevant pages to
+// track; each run re-checks exactly those pages, and confirmed content changes are
+// judged for relevance against the monitor's `instructions` (and `schema`, when
+// provided). The tracked page set is refreshed by a periodic re-discovery crawl.
+type MonitorRotateWebhookSecretResponseTargetExtract struct {
+	// Natural-language instructions guiding which pages and facts to track and which
+	// changes to report.
+	Instructions string           `json:"instructions" api:"required"`
+	Type         constant.Extract `json:"type" default:"extract"`
+	// Root URL to extract structured data from.
+	URL              string `json:"url" api:"required" format:"uri"`
+	FollowSubdomains bool   `json:"follow_subdomains"`
+	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	MaxDepth int64 `json:"max_depth"`
+	// Maximum number of pages to track.
+	MaxPages int64 `json:"max_pages"`
+	// JSON Schema describing the data you care about. It is used three ways: it guides
+	// which pages are selected for tracking, it gives the change judge extra context
+	// on which changes matter (alongside `instructions`), and it defines the shape of
+	// the baseline `data` snapshot on GET /monitors/{monitor_id} (refreshed at most
+	// about once a day). It is not a response format for changes: change events and
+	// webhook payloads always contain diffs, summaries, and evidence excerpts — never
+	// data in this schema's shape. If omitted, a default summary + key-points schema
+	// is used.
+	Schema map[string]any `json:"schema"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Instructions     respjson.Field
+		Type             respjson.Field
+		URL              respjson.Field
+		FollowSubdomains respjson.Field
+		MaxDepth         respjson.Field
+		MaxPages         respjson.Field
+		Schema           respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseTargetExtract) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseTargetExtract) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorRotateWebhookSecretResponseBaselineUnion contains all possible properties
+// and values from [MonitorRotateWebhookSecretResponseBaselinePageBaseline],
+// [MonitorRotateWebhookSecretResponseBaselineSitemapBaseline],
+// [MonitorRotateWebhookSecretResponseBaselineExtractBaseline].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorRotateWebhookSecretResponseBaselineUnion struct {
+	CapturedAt time.Time `json:"captured_at"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseBaselinePageBaseline].
+	Text string `json:"text"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseBaselineSitemapBaseline].
+	URLCount int64 `json:"url_count"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseBaselineSitemapBaseline].
+	URLs []string `json:"urls"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseBaselineExtractBaseline].
+	Data any `json:"data"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseBaselineExtractBaseline].
+	URLsAnalyzed []string `json:"urls_analyzed"`
+	JSON         struct {
+		CapturedAt   respjson.Field
+		Text         respjson.Field
+		URLCount     respjson.Field
+		URLs         respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+func (u MonitorRotateWebhookSecretResponseBaselineUnion) AsPageBaseline() (v MonitorRotateWebhookSecretResponseBaselinePageBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseBaselineUnion) AsSitemapBaseline() (v MonitorRotateWebhookSecretResponseBaselineSitemapBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseBaselineUnion) AsExtractBaseline() (v MonitorRotateWebhookSecretResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorRotateWebhookSecretResponseBaselineUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorRotateWebhookSecretResponseBaselineUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `page` monitor: the visible page text as last observed.
+type MonitorRotateWebhookSecretResponseBaselinePageBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The page's visible text as last observed.
+	Text string `json:"text" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Text        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseBaselinePageBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseBaselinePageBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `sitemap` monitor: the normalized URL set as last
+// observed.
+type MonitorRotateWebhookSecretResponseBaselineSitemapBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Number of URLs in the baseline.
+	URLCount int64 `json:"url_count" api:"required"`
+	// The sitemap URLs as last observed (sorted, normalized).
+	URLs []string `json:"urls" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		URLCount    respjson.Field
+		URLs        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseBaselineSitemapBaseline) RawJSON() string {
+	return r.JSON.raw
+}
+func (r *MonitorRotateWebhookSecretResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of an `extract` monitor: the pages it tracks and the structured
+// data as last extracted.
+type MonitorRotateWebhookSecretResponseBaselineExtractBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// The extracted structured data, matching the monitor's extraction schema (same
+	// shape as the /web/extract endpoint's `data`). Refreshed when the monitor
+	// re-discovers its page set (at most about once a day); `null` when no extraction
+	// has been captured yet.
+	Data any `json:"data" api:"required"`
+	// The page URLs the monitor tracks and analyzes for changes.
+	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt   respjson.Field
+		Data         respjson.Field
+		URLsAnalyzed respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseBaselineExtractBaseline) RawJSON() string {
+	return r.JSON.raw
+}
+func (r *MonitorRotateWebhookSecretResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Error from the most recent failed run; null when the last run succeeded.
+type MonitorRotateWebhookSecretResponseLastError struct {
+	Code    string `json:"code" api:"required"`
+	Message string `json:"message" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Message     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseLastError) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseLastError) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorRotateWebhookSecretResponseWebhook struct {
+	// Webhook URL events are delivered to. Slack incoming webhook URLs are
+	// automatically formatted as Slack messages.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Events delivered to this endpoint. `change.detected` fires only when a run
+	// detects a change; `run.completed` fires on every completed run — including runs
+	// that detected no change — and embeds the change when one was detected. Defaults
+	// to `["change.detected"]` when omitted.
+	//
+	// Any of "change.detected", "run.completed".
+	Events []string `json:"events"`
+	// Webhook retry settings. Use {} for the default schedule.
+	Retry RetryConfig `json:"retry"`
+	// Signing secret used to verify webhook authenticity. Omitted unless the API key
+	// has monitors:write permission or full access. Each delivery includes an
+	// `X-Context-Signature: t=<unix>,v1=<hmac>` header, where the HMAC is SHA-256 over
+	// `"{t}.{rawRequestBody}"` keyed by this secret. Recompute it with a constant-time
+	// compare and reject stale timestamps to prevent replay. Generated by the API;
+	// cannot be set by clients.
+	Secret string `json:"secret"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		URL         respjson.Field
+		Events      respjson.Field
+		Retry       respjson.Field
+		Secret      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseWebhook) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseWebhook) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Present while webhook deliveries are failing consecutively; null when deliveries
+// are healthy or no webhook is configured. Cleared on the next successful delivery
+// and when the webhook URL changes.
+type MonitorRotateWebhookSecretResponseWebhookFailure struct {
+	// Number of consecutive delivery attempts that did not succeed.
+	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
+	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable description of the most recent failure.
+	LastMessage string `json:"last_message" api:"required"`
+	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
+	// failed means no HTTP response was received; skipped_unsafe_url means the URL
+	// failed the public-endpoint safety check.
+	//
+	// Any of "rejected", "failed", "skipped_unsafe_url".
+	LastStatus string `json:"last_status" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ConsecutiveFailures respjson.Field
+		LastFailedAt        respjson.Field
+		LastMessage         respjson.Field
+		LastStatus          respjson.Field
+		ExtraFields         map[string]respjson.Field
+		raw                 string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseWebhookFailure) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseWebhookFailure) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type MonitorRunResponse struct {
 	MonitorID string `json:"monitor_id" api:"required"`
 	Queued    bool   `json:"queued" api:"required"`
@@ -4392,3 +5245,8 @@ const (
 	MonitorListRunsParamsStatusFailed    MonitorListRunsParamsStatus = "failed"
 	MonitorListRunsParamsStatusSkipped   MonitorListRunsParamsStatus = "skipped"
 )
+
+type MonitorGetRunParams struct {
+	MonitorID string `path:"monitor_id" api:"required" json:"-"`
+	paramObj
+}

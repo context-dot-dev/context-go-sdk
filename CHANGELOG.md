@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.19.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.18.0...v2.19.0) (2026-09-22)
+
+
+### Features
+
+* **billing:** charge for 404s and skip fraud accounting ([#1152](https://github.com/context-dot-dev/context-go-sdk/issues/1152)) ([525c932](https://github.com/context-dot-dev/context-go-sdk/commit/525c932dd8cd47684f6f2efbebc7444d0633b331))
+* **scrape:** add cache age support to byte downloads ([#1171](https://github.com/context-dot-dev/context-go-sdk/issues/1171)) ([0ba45ff](https://github.com/context-dot-dev/context-go-sdk/commit/0ba45ff9fd363925c83db4fb3fce0bda6a42ad65))
+* **scrape:** add unified scrape API ([#1182](https://github.com/context-dot-dev/context-go-sdk/issues/1182)) ([6c65b87](https://github.com/context-dot-dev/context-go-sdk/commit/6c65b871698ab3564c4ed69b6d9ffe000b61d830))
+* **scrape:** align timeout options and public SDK methods ([#1207](https://github.com/context-dot-dev/context-go-sdk/issues/1207)) ([449e902](https://github.com/context-dot-dev/context-go-sdk/commit/449e902e37f7be4c7347d0831ddc70145a39021c))
+* **scrape:** support country for image scraping ([#1172](https://github.com/context-dot-dev/context-go-sdk/issues/1172)) ([0ba45ff](https://github.com/context-dot-dev/context-go-sdk/commit/0ba45ff9fd363925c83db4fb3fce0bda6a42ad65))
+* **scrape:** support custom screenshot headers ([#1169](https://github.com/context-dot-dev/context-go-sdk/issues/1169)) ([c674b6d](https://github.com/context-dot-dev/context-go-sdk/commit/c674b6d274bd2b4a2381c8f72b2383a63c376464))
+* **scrape:** support waitForMs for byte downloads ([#1170](https://github.com/context-dot-dev/context-go-sdk/issues/1170)) ([16ac0d7](https://github.com/context-dot-dev/context-go-sdk/commit/16ac0d769c5253594b5464a6dd079043a1c5c60d))
+
+
+### Bug Fixes
+
+* **scrape:** reuse legacy caches across all output formats ([#1197](https://github.com/context-dot-dev/context-go-sdk/issues/1197)) ([1c0856c](https://github.com/context-dot-dev/context-go-sdk/commit/1c0856c746507034d4349561ecc7d46145e8b1a4))
+
 ## [2.18.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.17.1...v2.18.0) (2026-09-18)
 
 

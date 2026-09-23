@@ -1084,7 +1084,9 @@ type WebScrapeResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata WebScrapeResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// Relevant passages for your question or topic.
+	// Relevant passages for your question or topic, in page order. A heading in square
+	// brackets is included when needed to interpret a passage. Empty when the page has
+	// no text.
 	Highlights WebScrapeResponseHighlights `json:"highlights" api:"required"`
 	// Rendered HTML after content filters.
 	HTML WebScrapeResponseHTML `json:"html" api:"required"`
@@ -1210,7 +1212,9 @@ func (r *WebScrapeResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Relevant passages for your question or topic.
+// Relevant passages for your question or topic, in page order. A heading in square
+// brackets is included when needed to interpret a passage. Empty when the page has
+// no text.
 type WebScrapeResponseHighlights struct {
 	Data      []string `json:"data" api:"required"`
 	Requested bool     `json:"requested" api:"required"`
@@ -2809,7 +2813,8 @@ func (r *WebScrapeParams) UnmarshalJSON(data []byte) error {
 type WebScrapeParamsFormats struct {
 	// The original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
-	// Relevant passages for your question or topic. Adds 3 credits.
+	// Relevant passages for your question or topic, with headings included when needed
+	// for context. Adds 3 credits.
 	Highlights param.Opt[bool] `json:"highlights,omitzero"`
 	// Rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`

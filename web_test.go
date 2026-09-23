@@ -176,6 +176,7 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			Json:       contextdev.Bool(true),
 			Markdown:   contextdev.Bool(true),
 			Parse:      contextdev.Bool(true),
+			Product:    contextdev.Bool(true),
 			Screenshot: contextdev.Bool(true),
 		},
 		URL: "https://example.com",
@@ -215,6 +216,9 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 					},
 				},
 			},
+		},
+		ProductParams: contextdev.WebScrapeParamsProductParams{
+			UseAIFallback: contextdev.Bool(true),
 		},
 		ScreenshotParams: contextdev.WebScrapeParamsScreenshotParams{
 			Area: contextdev.WebScrapeParamsScreenshotParamsAreaUnion{

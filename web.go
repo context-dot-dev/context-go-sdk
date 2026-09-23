@@ -1084,18 +1084,13 @@ type WebScrapeResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata WebScrapeResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// Plain-text passages relevant to highlightsParams.query, in page order, each
-	// prefixed with its section heading in square brackets. Empty when the page has no
-	// text.
+	// Relevant passages for your question or topic.
 	Highlights WebScrapeResponseHighlights `json:"highlights" api:"required"`
 	// Rendered HTML after content filters.
 	HTML WebScrapeResponseHTML `json:"html" api:"required"`
 	// Images after content filters. Empty when none are found.
 	Images WebScrapeResponseImages `json:"images" api:"required"`
-	// Page data extracted into jsonParams.schema, after shared content filters. Values
-	// are grounded in the page; optional fields the page does not state are omitted,
-	// or null when their type allows null. An empty object when the filters leave no
-	// text.
+	// Page data extracted using your schema.
 	Json WebScrapeResponseJson `json:"json" api:"required"`
 	// Markdown after content filters.
 	Markdown WebScrapeResponseMarkdown `json:"markdown" api:"required"`
@@ -1103,7 +1098,7 @@ type WebScrapeResponse struct {
 	Metadata WebScrapeResponseMetadata `json:"metadata" api:"required"`
 	// Fields produced by parseParams.rules, after shared content filters.
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
-	// Product detail page classification and the extracted product.
+	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
 	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
 	// it when contacting support about a failed request.
@@ -1215,9 +1210,7 @@ func (r *WebScrapeResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Plain-text passages relevant to highlightsParams.query, in page order, each
-// prefixed with its section heading in square brackets. Empty when the page has no
-// text.
+// Relevant passages for your question or topic.
 type WebScrapeResponseHighlights struct {
 	Data      []string `json:"data" api:"required"`
 	Requested bool     `json:"requested" api:"required"`
@@ -1306,10 +1299,7 @@ func (r *WebScrapeResponseImagesData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Page data extracted into jsonParams.schema, after shared content filters. Values
-// are grounded in the page; optional fields the page does not state are omitted,
-// or null when their type allows null. An empty object when the filters leave no
-// text.
+// Page data extracted using your schema.
 type WebScrapeResponseJson struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -1590,7 +1580,7 @@ func (r *WebScrapeResponseParsed) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Product detail page classification and the extracted product.
+// Product details found on the page.
 type WebScrapeResponseProduct struct {
 	Data      WebScrapeResponseProductData `json:"data" api:"required"`
 	Requested bool                         `json:"requested" api:"required"`
@@ -2800,8 +2790,7 @@ type WebScrapeParams struct {
 	// when using return-partial.
 	TimeoutOpts WebScrapeParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Zero data retention. Bypasses caches and uploads; excludes request/response
-	// content and tags from logs. Must be enabled for your organization. Not available
-	// with the highlights output.
+	// content and tags from logs. Must be enabled for your organization.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebScrapeParamsZdr `json:"zdr,omitzero"`
@@ -2820,24 +2809,19 @@ func (r *WebScrapeParams) UnmarshalJSON(data []byte) error {
 type WebScrapeParamsFormats struct {
 	// The original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
-	// Plain-text passages from the page that are most relevant to
-	// highlightsParams.query, each prefixed with its section heading. Adds 3 credits.
-	// Not available with zdr enabled.
+	// Relevant passages for your question or topic. Adds 3 credits.
 	Highlights param.Opt[bool] `json:"highlights,omitzero"`
 	// Rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`
 	// Images found on the page.
 	Images param.Opt[bool] `json:"images,omitzero"`
-	// Page data extracted by an LLM from the page Markdown into jsonParams.schema;
-	// values carried only in attributes or CSS classes need formats.parse instead.
-	// Adds four credits when the page has text to extract; when shared content filters
-	// leave no text the result is an empty object and only the base price applies.
+	// Page data extracted using your schema. Adds 4 credits.
 	Json param.Opt[bool] `json:"json,omitzero"`
 	// Page content as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
 	// Fields selected by parseParams.rules.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
-	// Structured product data for product detail pages. Adds one credit.
+	// Product details such as name, price, and availability. Adds 1 credit.
 	Product param.Opt[bool] `json:"product,omitzero"`
 	// An inline image of the page.
 	Screenshot param.Opt[bool] `json:"screenshot,omitzero"`
@@ -3400,8 +3384,7 @@ func init() {
 }
 
 // Zero data retention. Bypasses caches and uploads; excludes request/response
-// content and tags from logs. Must be enabled for your organization. Not available
-// with the highlights output.
+// content and tags from logs. Must be enabled for your organization.
 type WebScrapeParamsZdr string
 
 const (

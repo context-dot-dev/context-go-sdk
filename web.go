@@ -84,16 +84,18 @@ func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts .
 
 // Reuse cached outputs independently and capture missing formats in one page
 // visit. Each cache key includes only the settings that affect that output. HTML
-// is shared with Markdown, parsed fields, highlights, and JSON extraction. Cached
-// outputs can come from different visits within maxAgeMs; use 0 for a fresh
-// capture. HTML-only requests use the existing fast acquisition path. Highlights
-// return the plain-text passages most relevant to highlightsParams.query. One
-// credit per request, including cache hits and missing pages, or two with browser
-// actions; highlights add 3 credits when passages are returned; JSON extraction
-// adds four credits and runs an LLM over the page Markdown on every request that
-// has text to extract; PDF OCR adds one credit per recovered page on fresh
-// extraction. Original response bytes and screenshots are limited to 20 MiB each,
-// screenshots to 40 megapixels, and the combined browser capture to 60 MiB.
+// is shared with Markdown, parsed fields, product data, highlights, and JSON
+// extraction. Cached outputs can come from different visits within maxAgeMs; use 0
+// for a fresh capture. HTML-only requests use the existing fast acquisition path.
+// Highlights return the plain-text passages most relevant to
+// highlightsParams.query. One credit per request, including cache hits and missing
+// pages, or two with browser actions; highlights add 3 credits when passages are
+// returned; JSON extraction adds four credits and runs an LLM over the page
+// Markdown on every request that has text to extract; PDF OCR adds one credit per
+// recovered page on fresh extraction; the product output adds one credit, plus six
+// more when the specialized model is used. Original response bytes and screenshots
+// are limited to 20 MiB each, screenshots to 40 megapixels, and the combined
+// browser capture to 60 MiB.
 func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape"
@@ -1101,6 +1103,8 @@ type WebScrapeResponse struct {
 	Metadata WebScrapeResponseMetadata `json:"metadata" api:"required"`
 	// Fields produced by parseParams.rules, after shared content filters.
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
+	// Product detail page classification and the extracted product.
+	Product WebScrapeResponseProduct `json:"product" api:"required"`
 	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
 	// it when contacting support about a failed request.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -1108,8 +1112,10 @@ type WebScrapeResponse struct {
 	Screenshot WebScrapeResponseScreenshot `json:"screenshot" api:"required"`
 	// Final URL after redirects and browser actions.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Present when return-partial captures a page that is still loading or returns
-	// images before image processing finishes. Partial responses are not cached.
+	// Present when return-partial captures a page that is still loading, returns
+	// images before image processing finishes, or cuts product AI extraction short.
+	// Also present if the optional product AI fallback fails. Partial responses are
+	// not cached.
 	//
 	// Any of true.
 	IsPartial bool `json:"isPartial"`
@@ -1126,6 +1132,7 @@ type WebScrapeResponse struct {
 		Markdown      respjson.Field
 		Metadata      respjson.Field
 		Parsed        respjson.Field
+		Product       respjson.Field
 		RequestID     respjson.Field
 		Screenshot    respjson.Field
 		URL           respjson.Field
@@ -1580,6 +1587,139 @@ type WebScrapeResponseParsed struct {
 // Returns the unmodified JSON received from the API
 func (r WebScrapeResponseParsed) RawJSON() string { return r.JSON.raw }
 func (r *WebScrapeResponseParsed) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Product detail page classification and the extracted product.
+type WebScrapeResponseProduct struct {
+	Data      WebScrapeResponseProductData `json:"data" api:"required"`
+	Requested bool                         `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseProduct) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebScrapeResponseProductData struct {
+	// Whether the page is a product detail page.
+	IsProductPage bool `json:"isProductPage" api:"required"`
+	// The extracted product, or null when the page is not a product detail page.
+	Product WebScrapeResponseProductDataProduct `json:"product" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		IsProductPage respjson.Field
+		Product       respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseProductData) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseProductData) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The extracted product, or null when the page is not a product detail page.
+type WebScrapeResponseProductDataProduct struct {
+	// Stock or ordering availability.
+	//
+	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
+	// "backorder", "made_to_order", "discontinued".
+	Availability string `json:"availability" api:"required"`
+	// Brand or vendor.
+	Brand string `json:"brand" api:"required"`
+	// Product category.
+	Category string `json:"category" api:"required"`
+	// ISO 4217 currency code.
+	Currency string `json:"currency" api:"required"`
+	// Product description.
+	Description string `json:"description" api:"required"`
+	// Product dimensions as shown on the page.
+	Dimensions []string `json:"dimensions" api:"required"`
+	// Key features and specifications.
+	Features []string `json:"features" api:"required"`
+	// Product image URLs, main image first.
+	Images []string `json:"images" api:"required" format:"uri"`
+	// Main product image URL.
+	ImageURL string `json:"imageUrl" api:"required" format:"uri"`
+	// Product name.
+	Name string `json:"name" api:"required"`
+	// Current price.
+	Price float64 `json:"price" api:"required"`
+	// List price before any discount.
+	RegularPrice float64 `json:"regularPrice" api:"required"`
+	// Product identifier such as a SKU or model number.
+	SKU string `json:"sku" api:"required"`
+	// Product tags.
+	Tags []string `json:"tags" api:"required"`
+	// Intended audience.
+	TargetAudience []string `json:"targetAudience" api:"required"`
+	// Product variations, such as different colors or sizes, with their attributes and
+	// images. Empty if none are found. May not include every variation offered by the
+	// store.
+	Variants []WebScrapeResponseProductDataProductVariant `json:"variants" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Availability   respjson.Field
+		Brand          respjson.Field
+		Category       respjson.Field
+		Currency       respjson.Field
+		Description    respjson.Field
+		Dimensions     respjson.Field
+		Features       respjson.Field
+		Images         respjson.Field
+		ImageURL       respjson.Field
+		Name           respjson.Field
+		Price          respjson.Field
+		RegularPrice   respjson.Field
+		SKU            respjson.Field
+		Tags           respjson.Field
+		TargetAudience respjson.Field
+		Variants       respjson.Field
+		ExtraFields    map[string]respjson.Field
+		raw            string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseProductDataProduct) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseProductDataProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebScrapeResponseProductDataProductVariant struct {
+	// Explicit variant attributes such as color, size, material, pattern and
+	// properties declared by page.
+	Attributes map[string]string `json:"attributes" api:"required"`
+	// Original source image URLs explicitly attached to this variant.
+	Images []string `json:"images" api:"required"`
+	SKU    string   `json:"sku" api:"required"`
+	// Variant or offer URL when provided by the source. May be shared by variants.
+	URL string `json:"url" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Attributes  respjson.Field
+		Images      respjson.Field
+		SKU         respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseProductDataProductVariant) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseProductDataProductVariant) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2642,6 +2782,8 @@ type WebScrapeParams struct {
 	MarkdownParams WebScrapeParamsMarkdownParams `json:"markdownParams,omitzero"`
 	// Required when formats.parse is true.
 	ParseParams WebScrapeParamsParseParams `json:"parseParams,omitzero"`
+	// Product options. Requires formats.product: true.
+	ProductParams WebScrapeParamsProductParams `json:"productParams,omitzero"`
 	// Screenshot options. Requires formats.screenshot: true.
 	ScreenshotParams WebScrapeParamsScreenshotParams `json:"screenshotParams,omitzero"`
 	// Shared browser and content settings. Content filters leave screenshots and
@@ -2695,6 +2837,8 @@ type WebScrapeParamsFormats struct {
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
 	// Fields selected by parseParams.rules.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
+	// Structured product data for product detail pages. Adds one credit.
+	Product param.Opt[bool] `json:"product,omitzero"`
 	// An inline image of the page.
 	Screenshot param.Opt[bool] `json:"screenshot,omitzero"`
 	paramObj
@@ -2860,6 +3004,24 @@ func init() {
 	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsRuleObject](
 		"type", "item", "list",
 	)
+}
+
+// Product options. Requires formats.product: true.
+type WebScrapeParamsProductParams struct {
+	// Extract the product with a specialized model when the page has no structured
+	// product data. Adds six credits when the model returns a verdict. If the fallback
+	// fails, returns a partial response with the deterministic result and no fallback
+	// charge. Request deadlines and client disconnects still apply.
+	UseAIFallback param.Opt[bool] `json:"useAIFallback,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsProductParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsProductParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsProductParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 // Screenshot options. Requires formats.screenshot: true.

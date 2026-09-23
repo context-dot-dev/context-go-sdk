@@ -170,6 +170,7 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 	_, err := client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
 		Formats: contextdev.WebScrapeParamsFormats{
 			Bytes:      contextdev.Bool(true),
+			Highlights: contextdev.Bool(true),
 			HTML:       contextdev.Bool(true),
 			Images:     contextdev.Bool(true),
 			Json:       contextdev.Bool(true),
@@ -178,6 +179,10 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			Screenshot: contextdev.Bool(true),
 		},
 		URL: "https://example.com",
+		HighlightsParams: contextdev.WebScrapeParamsHighlightsParams{
+			Query:         "x",
+			MaxCharacters: contextdev.Int(100),
+		},
 		ImageParams: contextdev.WebScrapeParamsImageParams{
 			Dedupe: "none",
 			Enrich: []string{"dimensions"},

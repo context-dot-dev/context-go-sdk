@@ -84,14 +84,16 @@ func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts .
 
 // Reuse cached outputs independently and capture missing formats in one page
 // visit. Each cache key includes only the settings that affect that output. HTML
-// is shared with Markdown, parsed fields, and JSON extraction. Cached outputs can
-// come from different visits within maxAgeMs; use 0 for a fresh capture. HTML-only
-// requests use the existing fast acquisition path. One credit per request,
-// including cache hits and missing pages, or two with browser actions; JSON
-// extraction adds four credits and runs an LLM over the page Markdown on every
-// request that has text to extract; PDF OCR adds one credit per recovered page on
-// fresh extraction. Original response bytes and screenshots are limited to 20 MiB
-// each, screenshots to 40 megapixels, and the combined browser capture to 60 MiB.
+// is shared with Markdown, parsed fields, highlights, and JSON extraction. Cached
+// outputs can come from different visits within maxAgeMs; use 0 for a fresh
+// capture. HTML-only requests use the existing fast acquisition path. Highlights
+// return the plain-text passages most relevant to highlightsParams.query. One
+// credit per request, including cache hits and missing pages, or two with browser
+// actions; highlights add 3 credits when passages are returned; JSON extraction
+// adds four credits and runs an LLM over the page Markdown on every request that
+// has text to extract; PDF OCR adds one credit per recovered page on fresh
+// extraction. Original response bytes and screenshots are limited to 20 MiB each,
+// screenshots to 40 megapixels, and the combined browser capture to 60 MiB.
 func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape"
@@ -1080,6 +1082,10 @@ type WebScrapeResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata WebScrapeResponseCacheMetadata `json:"cache_metadata" api:"required"`
+	// Plain-text passages relevant to highlightsParams.query, in page order, each
+	// prefixed with its section heading in square brackets. Empty when the page has no
+	// text.
+	Highlights WebScrapeResponseHighlights `json:"highlights" api:"required"`
 	// Rendered HTML after content filters.
 	HTML WebScrapeResponseHTML `json:"html" api:"required"`
 	// Images after content filters. Empty when none are found.
@@ -1113,6 +1119,7 @@ type WebScrapeResponse struct {
 	JSON struct {
 		Bytes         respjson.Field
 		CacheMetadata respjson.Field
+		Highlights    respjson.Field
 		HTML          respjson.Field
 		Images        respjson.Field
 		Json          respjson.Field
@@ -1198,6 +1205,27 @@ type WebScrapeResponseCacheMetadata struct {
 // Returns the unmodified JSON received from the API
 func (r WebScrapeResponseCacheMetadata) RawJSON() string { return r.JSON.raw }
 func (r *WebScrapeResponseCacheMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Plain-text passages relevant to highlightsParams.query, in page order, each
+// prefixed with its section heading in square brackets. Empty when the page has no
+// text.
+type WebScrapeResponseHighlights struct {
+	Data      []string `json:"data" api:"required"`
+	Requested bool     `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseHighlights) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseHighlights) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2604,6 +2632,8 @@ type WebScrapeParams struct {
 	// scrape endpoints. Image results with hosted files refresh after 23 hours; other
 	// outputs retain their own freshness.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Highlight options. Requires formats.highlights: true.
+	HighlightsParams WebScrapeParamsHighlightsParams `json:"highlightsParams,omitzero"`
 	// Image options. Requires formats.images: true.
 	ImageParams WebScrapeParamsImageParams `json:"imageParams,omitzero"`
 	// Required when formats.json is true.
@@ -2628,7 +2658,8 @@ type WebScrapeParams struct {
 	// when using return-partial.
 	TimeoutOpts WebScrapeParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Zero data retention. Bypasses caches and uploads; excludes request/response
-	// content and tags from logs. Must be enabled for your organization.
+	// content and tags from logs. Must be enabled for your organization. Not available
+	// with the highlights output.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebScrapeParamsZdr `json:"zdr,omitzero"`
@@ -2647,6 +2678,10 @@ func (r *WebScrapeParams) UnmarshalJSON(data []byte) error {
 type WebScrapeParamsFormats struct {
 	// The original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
+	// Plain-text passages from the page that are most relevant to
+	// highlightsParams.query, each prefixed with its section heading. Adds 3 credits.
+	// Not available with zdr enabled.
+	Highlights param.Opt[bool] `json:"highlights,omitzero"`
 	// Rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`
 	// Images found on the page.
@@ -2670,6 +2705,25 @@ func (r WebScrapeParamsFormats) MarshalJSON() (data []byte, err error) {
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *WebScrapeParamsFormats) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Highlight options. Requires formats.highlights: true.
+//
+// The property Query is required.
+type WebScrapeParamsHighlightsParams struct {
+	// The question or topic to find passages for.
+	Query string `json:"query" api:"required"`
+	// Maximum combined length of the returned passages, in characters.
+	MaxCharacters param.Opt[int64] `json:"maxCharacters,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsHighlightsParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsHighlightsParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsHighlightsParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3184,7 +3238,8 @@ func init() {
 }
 
 // Zero data retention. Bypasses caches and uploads; excludes request/response
-// content and tags from logs. Must be enabled for your organization.
+// content and tags from logs. Must be enabled for your organization. Not available
+// with the highlights output.
 type WebScrapeParamsZdr string
 
 const (

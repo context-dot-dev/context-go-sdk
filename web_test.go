@@ -172,6 +172,7 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			Bytes:      contextdev.Bool(true),
 			HTML:       contextdev.Bool(true),
 			Images:     contextdev.Bool(true),
+			Json:       contextdev.Bool(true),
 			Markdown:   contextdev.Bool(true),
 			Parse:      contextdev.Bool(true),
 			Screenshot: contextdev.Bool(true),
@@ -180,6 +181,15 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 		ImageParams: contextdev.WebScrapeParamsImageParams{
 			Dedupe: "none",
 			Enrich: []string{"dimensions"},
+		},
+		JsonParams: contextdev.WebScrapeParamsJsonParams{
+			Schema: map[string]any{
+				"type":                 "bar",
+				"properties":           "bar",
+				"required":             "bar",
+				"additionalProperties": "bar",
+			},
+			Instructions: contextdev.String("instructions"),
 		},
 		MarkdownParams: contextdev.WebScrapeParamsMarkdownParams{
 			IncludeImages: contextdev.Bool(true),

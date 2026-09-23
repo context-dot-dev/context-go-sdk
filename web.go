@@ -84,10 +84,12 @@ func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts .
 
 // Reuse cached outputs independently and capture missing formats in one page
 // visit. Each cache key includes only the settings that affect that output. HTML
-// is shared with Markdown and parsed fields. Cached outputs can come from
-// different visits within maxAgeMs; use 0 for a fresh capture. HTML-only requests
-// use the existing fast acquisition path. One credit per request, including cache
-// hits, or two with browser actions; PDF OCR adds one credit per recovered page on
+// is shared with Markdown, parsed fields, and JSON extraction. Cached outputs can
+// come from different visits within maxAgeMs; use 0 for a fresh capture. HTML-only
+// requests use the existing fast acquisition path. One credit per request,
+// including cache hits and missing pages, or two with browser actions; JSON
+// extraction adds four credits and runs an LLM over the page Markdown on every
+// request that has text to extract; PDF OCR adds one credit per recovered page on
 // fresh extraction. Original response bytes and screenshots are limited to 20 MiB
 // each, screenshots to 40 megapixels, and the combined browser capture to 60 MiB.
 func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
@@ -1082,6 +1084,11 @@ type WebScrapeResponse struct {
 	HTML WebScrapeResponseHTML `json:"html" api:"required"`
 	// Images after content filters. Empty when none are found.
 	Images WebScrapeResponseImages `json:"images" api:"required"`
+	// Page data extracted into jsonParams.schema, after shared content filters. Values
+	// are grounded in the page; optional fields the page does not state are omitted,
+	// or null when their type allows null. An empty object when the filters leave no
+	// text.
+	Json WebScrapeResponseJson `json:"json" api:"required"`
 	// Markdown after content filters.
 	Markdown WebScrapeResponseMarkdown `json:"markdown" api:"required"`
 	// Page details, when available.
@@ -1108,6 +1115,7 @@ type WebScrapeResponse struct {
 		CacheMetadata respjson.Field
 		HTML          respjson.Field
 		Images        respjson.Field
+		Json          respjson.Field
 		Markdown      respjson.Field
 		Metadata      respjson.Field
 		Parsed        respjson.Field
@@ -1260,6 +1268,28 @@ type WebScrapeResponseImagesData struct {
 // Returns the unmodified JSON received from the API
 func (r WebScrapeResponseImagesData) RawJSON() string { return r.JSON.raw }
 func (r *WebScrapeResponseImagesData) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Page data extracted into jsonParams.schema, after shared content filters. Values
+// are grounded in the page; optional fields the page does not state are omitted,
+// or null when their type allows null. An empty object when the filters leave no
+// text.
+type WebScrapeResponseJson struct {
+	Data      map[string]any `json:"data" api:"required"`
+	Requested bool           `json:"requested" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Data        respjson.Field
+		Requested   respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseJson) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseJson) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2576,6 +2606,8 @@ type WebScrapeParams struct {
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Image options. Requires formats.images: true.
 	ImageParams WebScrapeParamsImageParams `json:"imageParams,omitzero"`
+	// Required when formats.json is true.
+	JsonParams WebScrapeParamsJsonParams `json:"jsonParams,omitzero"`
 	// Markdown options. Requires formats.markdown: true.
 	MarkdownParams WebScrapeParamsMarkdownParams `json:"markdownParams,omitzero"`
 	// Required when formats.parse is true.
@@ -2619,6 +2651,11 @@ type WebScrapeParamsFormats struct {
 	HTML param.Opt[bool] `json:"html,omitzero"`
 	// Images found on the page.
 	Images param.Opt[bool] `json:"images,omitzero"`
+	// Page data extracted by an LLM from the page Markdown into jsonParams.schema;
+	// values carried only in attributes or CSS classes need formats.parse instead.
+	// Adds four credits when the page has text to extract; when shared content filters
+	// leave no text the result is an empty object and only the base price applies.
+	Json param.Opt[bool] `json:"json,omitzero"`
 	// Page content as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
 	// Fields selected by parseParams.rules.
@@ -2663,6 +2700,30 @@ func init() {
 	apijson.RegisterFieldValidator[WebScrapeParamsImageParams](
 		"dedupe", "none", "visual",
 	)
+}
+
+// Required when formats.json is true.
+//
+// The property Schema is required.
+type WebScrapeParamsJsonParams struct {
+	// JSON Schema for the returned object. Must describe a top-level object; at most
+	// 50 KB serialized. Optional fields the page does not state are omitted, or null
+	// when their type allows null, while required non-nullable fields always receive a
+	// best-effort value, so prefer nullable or optional fields for data a page may
+	// omit. Zod users can pass the output of z.toJSONSchema().
+	Schema map[string]any `json:"schema,omitzero" api:"required"`
+	// Optional guidance on which facts to prioritize or how to interpret schema
+	// fields.
+	Instructions param.Opt[string] `json:"instructions,omitzero"`
+	paramObj
+}
+
+func (r WebScrapeParamsJsonParams) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsJsonParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsJsonParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 // Markdown options. Requires formats.markdown: true.

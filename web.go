@@ -88,14 +88,20 @@ func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts .
 // extraction. Cached outputs can come from different visits within maxAgeMs; use 0
 // for a fresh capture. HTML-only requests use the existing fast acquisition path.
 // Highlights return the plain-text passages most relevant to
-// highlightsParams.query. One credit per request, including cache hits and missing
-// pages, or two with browser actions; highlights add 3 credits when passages are
-// returned; JSON extraction adds four credits and runs an LLM over the page
-// Markdown on every request that has text to extract; PDF OCR adds one credit per
-// recovered page on fresh extraction; the product output adds one credit, plus six
-// more when the specialized model is used. Original response bytes and screenshots
-// are limited to 20 MiB each, screenshots to 40 megapixels, and the combined
-// browser capture to 60 MiB.
+// highlightsParams.query. Requests with at least one successful output cost one
+// base credit, including cache hits, or two with browser actions. All-failed
+// responses are unbilled except missing pages, which retain the base price and the
+// one-credit product charge when product was requested. Highlights add 3 credits
+// when passages are returned. JSON extraction runs an LLM over nonempty page
+// Markdown and adds four credits only when its result is returned successfully.
+// PDF OCR adds one credit per recovered page on fresh extraction. Product adds one
+// credit when its successful result is returned, plus six if that result used the
+// specialized model. Original response bytes and screenshots are limited to 20 MiB
+// each, screenshots to 40 megapixels, and the combined response to 60 MiB. An
+// oversized output has success: false and data: null. If the combined response
+// exceeds its limit, the largest outputs are marked failed until the remaining
+// outputs fit. Valid captured pieces may still be cached when omitted to meet the
+// response size limit.
 func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape"
@@ -1109,10 +1115,11 @@ type WebScrapeResponse struct {
 	Screenshot WebScrapeResponseScreenshot `json:"screenshot" api:"required"`
 	// Final URL after redirects and browser actions.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Present when return-partial captures a page that is still loading, returns
-	// images before image processing finishes, or cuts product AI extraction short.
-	// Also present if the optional product AI fallback fails. Partial responses are
-	// not cached.
+	// Present when a requested output fails, capture returns a page that is still
+	// loading, images return before processing finishes, or the optional product AI
+	// fallback fails or is cut short. Check each output's success field for its
+	// result. Valid captured pieces may be cached independently; failed retrievals and
+	// incomplete captures are not cached.
 	//
 	// Any of true.
 	IsPartial bool `json:"isPartial"`
@@ -1151,10 +1158,13 @@ func (r *WebScrapeResponse) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseBytes struct {
 	Data      WebScrapeResponseBytesData `json:"data" api:"required"`
 	Requested bool                       `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1218,10 +1228,13 @@ func (r *WebScrapeResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseHighlights struct {
 	Data      []string `json:"data" api:"required"`
 	Requested bool     `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1237,10 +1250,13 @@ func (r *WebScrapeResponseHighlights) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseHTML struct {
 	Data      string `json:"data" api:"required"`
 	Requested bool   `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1256,10 +1272,13 @@ func (r *WebScrapeResponseHTML) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseImages struct {
 	Data      []WebScrapeResponseImagesData `json:"data" api:"required"`
 	Requested bool                          `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1307,10 +1326,13 @@ func (r *WebScrapeResponseImagesData) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseJson struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1326,10 +1348,13 @@ func (r *WebScrapeResponseJson) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseMarkdown struct {
 	Data      string `json:"data" api:"required"`
 	Requested bool   `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1569,10 +1594,13 @@ func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error
 type WebScrapeResponseParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1588,10 +1616,13 @@ func (r *WebScrapeResponseParsed) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseProduct struct {
 	Data      WebScrapeResponseProductData `json:"data" api:"required"`
 	Requested bool                         `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1721,10 +1752,13 @@ func (r *WebScrapeResponseProductDataProductVariant) UnmarshalJSON(data []byte) 
 type WebScrapeResponseScreenshot struct {
 	Data      string `json:"data" api:"required" format:"uri"`
 	Requested bool   `json:"requested" api:"required"`
+	// True when retrieved, false when retrieval failed, and null when not requested.
+	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
+		Success     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -2786,12 +2820,16 @@ type WebScrapeParams struct {
 	// Labels for tracking request usage. Not retained when zdr is enabled.
 	Tags []string `json:"tags,omitzero"`
 	// Total deadline, including navigation, actions, waiting, and all outputs.
-	// Defaults to 60000 milliseconds with behavior fail. Use return-partial to capture
-	// the current page state and return captured images if image processing cannot
-	// finish before the deadline; these responses set isPartial and are not cached.
-	// Every requested format must still be available. Fixed waits must fit before a
-	// response reserve of up to 5000 milliseconds (at most one quarter of the timeout)
-	// when using return-partial.
+	// Defaults to 60000 milliseconds with behavior fail. Individual outputs have
+	// internal deadlines that reserve time to return completed outputs; timed-out
+	// outputs have success: false and data: null under either behavior. The overall
+	// request deadline remains enforced: fail returns an error if that deadline is
+	// reached. Use return-partial to allow the current page state and available
+	// outputs when the page is still loading. Partial responses set isPartial. Failed
+	// retrievals and incomplete captures are not cached; valid captured pieces may be
+	// cached independently. Fixed waits must fit before a response reserve of up to
+	// 5000 milliseconds (at most one quarter of the timeout) when using
+	// return-partial.
 	TimeoutOpts WebScrapeParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Zero data retention. Bypasses caches and uploads; excludes request/response
 	// content and tags from logs. Must be enabled for your organization.
@@ -2814,19 +2852,21 @@ type WebScrapeParamsFormats struct {
 	// The original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
 	// Relevant passages for your question or topic, with headings included when needed
-	// for context. Adds 3 credits.
+	// for context. Adds 3 credits when passages are returned.
 	Highlights param.Opt[bool] `json:"highlights,omitzero"`
 	// Rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`
 	// Images found on the page.
 	Images param.Opt[bool] `json:"images,omitzero"`
-	// Page data extracted using your schema. Adds 4 credits.
+	// Page data extracted using your schema. Adds 4 credits when extraction succeeds
+	// and its result is returned.
 	Json param.Opt[bool] `json:"json,omitzero"`
 	// Page content as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
 	// Fields selected by parseParams.rules.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
-	// Product details such as name, price, and availability. Adds 1 credit.
+	// Product details such as name, price, and availability. Adds 1 credit when its
+	// successful result is returned or the target page is missing.
 	Product param.Opt[bool] `json:"product,omitzero"`
 	// An inline image of the page.
 	Screenshot param.Opt[bool] `json:"screenshot,omitzero"`
@@ -2998,9 +3038,10 @@ func init() {
 // Product options. Requires formats.product: true.
 type WebScrapeParamsProductParams struct {
 	// Extract the product with a specialized model when the page has no structured
-	// product data. Adds six credits when the model returns a verdict. If the fallback
-	// fails, returns a partial response with the deterministic result and no fallback
-	// charge. Request deadlines and client disconnects still apply.
+	// product data. Adds six credits when the model verdict is returned successfully.
+	// If the fallback fails, the product output has success: false and data: null with
+	// no fallback charge; other outputs remain available. Request deadlines and client
+	// disconnects still apply.
 	UseAIFallback param.Opt[bool] `json:"useAIFallback,omitzero"`
 	paramObj
 }
@@ -3352,12 +3393,16 @@ func (u *WebScrapeParamsSharedParamsWaitForUnion) UnmarshalJSON(data []byte) err
 }
 
 // Total deadline, including navigation, actions, waiting, and all outputs.
-// Defaults to 60000 milliseconds with behavior fail. Use return-partial to capture
-// the current page state and return captured images if image processing cannot
-// finish before the deadline; these responses set isPartial and are not cached.
-// Every requested format must still be available. Fixed waits must fit before a
-// response reserve of up to 5000 milliseconds (at most one quarter of the timeout)
-// when using return-partial.
+// Defaults to 60000 milliseconds with behavior fail. Individual outputs have
+// internal deadlines that reserve time to return completed outputs; timed-out
+// outputs have success: false and data: null under either behavior. The overall
+// request deadline remains enforced: fail returns an error if that deadline is
+// reached. Use return-partial to allow the current page state and available
+// outputs when the page is still loading. Partial responses set isPartial. Failed
+// retrievals and incomplete captures are not cached; valid captured pieces may be
+// cached independently. Fixed waits must fit before a response reserve of up to
+// 5000 milliseconds (at most one quarter of the timeout) when using
+// return-partial.
 //
 // The property Milliseconds is required.
 type WebScrapeParamsTimeoutOpts struct {

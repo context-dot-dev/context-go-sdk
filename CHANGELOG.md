@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.21.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.20.0...v2.21.0) (2026-09-26)
+
+
+### Features
+
+* **highlights:** preserve Markdown structure in scrape excerpts ([#1236](https://github.com/context-dot-dev/context-go-sdk/issues/1236)) ([8bbdc36](https://github.com/context-dot-dev/context-go-sdk/commit/8bbdc368106fda38e50672e78cfda4aaccdbf451))
+* **scrape:** add highlights format to POST /web/scrape ([#1210](https://github.com/context-dot-dev/context-go-sdk/issues/1210)) ([974630c](https://github.com/context-dot-dev/context-go-sdk/commit/974630c8621a61690a607f7159f621b993a38da3))
+* **scrape:** add json output format to POST /web/scrape ([#1213](https://github.com/context-dot-dev/context-go-sdk/issues/1213)) ([52d7632](https://github.com/context-dot-dev/context-go-sdk/commit/52d76324048f12da433feea55847d6a9547438a2))
+* **scrape:** add product extraction format to POST /web/scrape ([#1212](https://github.com/context-dot-dev/context-go-sdk/issues/1212)) ([27d9979](https://github.com/context-dot-dev/context-go-sdk/commit/27d9979fb9da9ff256fc20a2e28b36d80aa584a8))
+* **scrape:** enable highlights with zero data retention ([#1246](https://github.com/context-dot-dev/context-go-sdk/issues/1246)) ([a6c54dd](https://github.com/context-dot-dev/context-go-sdk/commit/a6c54dd771dcfcce27a6078c1a63cef480ca6109))
+
+
+### Bug Fixes
+
+* **openapi:** document exclusive news filters ([#1265](https://github.com/context-dot-dev/context-go-sdk/issues/1265)) ([745864a](https://github.com/context-dot-dev/context-go-sdk/commit/745864a5e09e3897a8bb02b253625b6c5257e7d7))
+* **scrape:** preserve successful formats when other outputs fail ([#1263](https://github.com/context-dot-dev/context-go-sdk/issues/1263)) ([5768952](https://github.com/context-dot-dev/context-go-sdk/commit/576895283f8b317654ad757ea762facfb8a990a5))
+* **scrape:** retain highlight headings only when needed ([#1245](https://github.com/context-dot-dev/context-go-sdk/issues/1245)) ([e1c0795](https://github.com/context-dot-dev/context-go-sdk/commit/e1c0795810232442d39a93f7d803f1f0cf82006c))
+
 ## [2.20.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.19.0...v2.20.0) (2026-09-22)
 
 

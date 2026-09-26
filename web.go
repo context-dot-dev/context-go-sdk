@@ -87,21 +87,21 @@ func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts .
 // is shared with Markdown, parsed fields, product data, highlights, and JSON
 // extraction. Cached outputs can come from different visits within maxAgeMs; use 0
 // for a fresh capture. HTML-only requests use the existing fast acquisition path.
-// Highlights return the plain-text passages most relevant to
-// highlightsParams.query. Requests with at least one successful output cost one
-// base credit, including cache hits, or two with browser actions. All-failed
-// responses are unbilled except missing pages, which retain the base price and the
-// one-credit product charge when product was requested. Highlights add 3 credits
-// when passages are returned. JSON extraction runs an LLM over nonempty page
-// Markdown and adds four credits only when its result is returned successfully.
-// PDF OCR adds one credit per recovered page on fresh extraction. Product adds one
-// credit when its successful result is returned, plus six if that result used the
-// specialized model. Original response bytes and screenshots are limited to 20 MiB
-// each, screenshots to 40 megapixels, and the combined response to 60 MiB. An
-// oversized output has success: false and data: null. If the combined response
-// exceeds its limit, the largest outputs are marked failed until the remaining
-// outputs fit. Valid captured pieces may still be cached when omitted to meet the
-// response size limit.
+// Highlights return Markdown excerpts most relevant to highlightsParams.query.
+// Requests with at least one successful output cost one base credit, including
+// cache hits, or two with browser actions. All-failed responses are unbilled
+// except missing pages, which retain the base price and the one-credit product
+// charge when product was requested. Highlights add 3 credits when passages are
+// returned. JSON extraction runs an LLM over nonempty page Markdown and adds four
+// credits only when its result is returned successfully. PDF OCR adds one credit
+// per recovered page on fresh extraction. Product adds one credit when its
+// successful result is returned, plus six if that result used the specialized
+// model. Original response bytes and screenshots are limited to 20 MiB each,
+// screenshots to 40 megapixels, and the combined response to 60 MiB. An oversized
+// output has success: false and data: null. If the combined response exceeds its
+// limit, the largest outputs are marked failed until the remaining outputs fit.
+// Valid captured pieces may still be cached when omitted to meet the response size
+// limit.
 func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape"
@@ -1090,9 +1090,9 @@ type WebScrapeResponse struct {
 	// cache-controlled fetch contributing to the output was a hit; age_ms is the
 	// oldest contributing hit.
 	CacheMetadata WebScrapeResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// Relevant passages for your question or topic, in page order. A heading in square
-	// brackets is included when needed to interpret a passage. Empty when the page has
-	// no text.
+	// Relevant Markdown excerpts for your question or topic, in page order. Headings
+	// in square brackets supply necessary context; ellipses mark omitted portions.
+	// Empty when the page has no text.
 	Highlights WebScrapeResponseHighlights `json:"highlights" api:"required"`
 	// Rendered HTML after content filters.
 	HTML WebScrapeResponseHTML `json:"html" api:"required"`
@@ -1222,9 +1222,9 @@ func (r *WebScrapeResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Relevant passages for your question or topic, in page order. A heading in square
-// brackets is included when needed to interpret a passage. Empty when the page has
-// no text.
+// Relevant Markdown excerpts for your question or topic, in page order. Headings
+// in square brackets supply necessary context; ellipses mark omitted portions.
+// Empty when the page has no text.
 type WebScrapeResponseHighlights struct {
 	Data      []string `json:"data" api:"required"`
 	Requested bool     `json:"requested" api:"required"`
@@ -2851,8 +2851,9 @@ func (r *WebScrapeParams) UnmarshalJSON(data []byte) error {
 type WebScrapeParamsFormats struct {
 	// The original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
-	// Relevant passages for your question or topic, with headings included when needed
-	// for context. Adds 3 credits when passages are returned.
+	// Relevant Markdown excerpts for your question or topic, preserving code, lists,
+	// and tables, with headings included when needed for context. Adds 3 credits when
+	// passages are returned.
 	Highlights param.Opt[bool] `json:"highlights,omitzero"`
 	// Rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`

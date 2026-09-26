@@ -39,9 +39,10 @@ func NewNewsService(opts ...option.RequestOption) (r NewsService) {
 
 // Searches live and historical company news for one company, identified in
 // searchBy by name, domain, ticker (optionally disambiguated by exchange), or
-// ISIN. Results can be filtered by publisher domain, publisher country, article
-// language, article type, and published-at date, and include stable story IDs,
-// source metadata, verified entity relevance, and cursor pagination.
+// ISIN. Results can be filtered by one of publisher domain, publisher country,
+// article language, or article type, optionally combined with a published-at date
+// range, and include stable story IDs, source metadata, verified entity relevance,
+// and cursor pagination.
 func (r *NewsService) Search(ctx context.Context, body NewsSearchParams, opts ...option.RequestOption) (res *NewsSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "news/search"
@@ -234,7 +235,9 @@ type NewsSearchParams struct {
 	Cursor param.Opt[string] `json:"cursor,omitzero"`
 	// Maximum results to return. Defaults to 10.
 	Limit param.Opt[int64] `json:"limit,omitzero"`
-	// Optional result filters.
+	// Optional result filters. Use at most one of sourceDomain, sourceCountry,
+	// articleLanguage, or articleType. A date range may accompany that category;
+	// date.from must not exceed date.to.
 	FilterBy NewsSearchParamsFilterBy `json:"filterBy,omitzero"`
 	// Result ordering. Defaults to newest.
 	SortBy NewsSearchParamsSortBy `json:"sortBy,omitzero"`
@@ -399,7 +402,9 @@ func (r *NewsSearchParamsSearchByEntityIsin) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Optional result filters.
+// Optional result filters. Use at most one of sourceDomain, sourceCountry,
+// articleLanguage, or articleType. A date range may accompany that category;
+// date.from must not exceed date.to.
 type NewsSearchParamsFilterBy struct {
 	// Article languages to include. Up to 3.
 	//
@@ -410,7 +415,7 @@ type NewsSearchParamsFilterBy struct {
 	//
 	// Any of "editorial", "press_release", "regulatory_filing", "advisory".
 	ArticleType []string `json:"articleType,omitzero"`
-	// Published-at window in epoch milliseconds.
+	// Published-at window in epoch milliseconds. from must be before or equal to to.
 	Date NewsSearchParamsFilterByDate `json:"date,omitzero"`
 	// Publisher countries to include, as lowercase ISO 3166-1 alpha-2 codes. Up to 3.
 	//
@@ -431,7 +436,7 @@ func (r *NewsSearchParamsFilterBy) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Published-at window in epoch milliseconds.
+// Published-at window in epoch milliseconds. from must be before or equal to to.
 type NewsSearchParamsFilterByDate struct {
 	// Inclusive start of the published-at window, in epoch milliseconds.
 	From param.Opt[int64] `json:"from,omitzero"`

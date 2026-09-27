@@ -37,6 +37,9 @@ type Client struct {
 	// Read your organization's API request logs to debug failed calls. These endpoints
 	// cost no credits and use a separate rate limit.
 	Logs LogService
+	// Report bugs, docs mismatches, and friction with any Context.dev API. Submissions
+	// cost no credits and use a separate rate limit.
+	Feedback FeedbackService
 }
 
 // DefaultClientOptions read from the environment (CONTEXT_DEV_API_KEY,
@@ -80,6 +83,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.People = NewPersonService(opts...)
 	r.News = NewNewsService(opts...)
 	r.Logs = NewLogService(opts...)
+	r.Feedback = NewFeedbackService(opts...)
 
 	return
 }

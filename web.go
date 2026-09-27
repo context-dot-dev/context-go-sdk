@@ -2661,7 +2661,7 @@ type WebScrapeParams struct {
 	// Public HTTP or HTTPS URL to scrape.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Maximum age of a cached output, in milliseconds. `0` fetches fresh. Defaults to
-	// 1 day.
+	// 3 days (259200000 ms). Maximum: 1 year (31536000000 ms).
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Required when `formats.highlights` is `true`.
 	HighlightsParams WebScrapeParamsHighlightsParams `json:"highlightsParams,omitzero"`

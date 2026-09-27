@@ -39,8 +39,7 @@ func NewParseService(opts ...option.RequestOption) (r ParseService) {
 	return
 }
 
-// Converts raw text, source code, web/data, PDF, Microsoft Office, and image bytes
-// into LLM-usable Markdown.
+// Convert uploaded file bytes into Markdown and optional HTML.
 func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseHandleParams, opts ...option.RequestOption) (res *ParseHandleResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	opts = append([]option.RequestOption{option.WithRequestBody("application/octet-stream", body)}, opts...)
@@ -52,8 +51,8 @@ func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseH
 type ParseHandleResponse struct {
 	// Input bytes converted to GitHub Flavored Markdown
 	Markdown string `json:"markdown" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Indicates success
 	//
@@ -67,7 +66,7 @@ type ParseHandleResponse struct {
 	// "xlsx", "xls", "pptx", "ppt", "jpg", "png", "gif", "bmp", "tiff", "webp", "ppm",
 	// "pbm", "pgm", "pnm".
 	Type ParseHandleResponseType `json:"type" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata ParseHandleResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -134,9 +133,9 @@ const (
 	ParseHandleResponseTypePnm        ParseHandleResponseType = "pnm"
 )
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type ParseHandleResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -162,11 +161,7 @@ type ParseHandleParams struct {
 	IncludeImages param.Opt[bool] `query:"includeImages,omitzero" json:"-"`
 	// Preserve hyperlinks in Markdown output
 	IncludeLinks param.Opt[bool] `query:"includeLinks,omitzero" json:"-"`
-	// When true for PDF inputs, OCR the selected pages that have no usable text layer
-	// (scans), replacing each recovered page's text with the OCR result while pages
-	// with a real text layer keep it. pdf.start/pdf.end limit the inclusive page
-	// range. Billed at 1 credit per page OCR actually recovered, on top of the base
-	// request cost. When false, no OCR runs.
+	// Read text from images and scanned PDF pages. PDF page ranges still apply.
 	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// Shorten base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
@@ -185,14 +180,10 @@ type ParseHandleParams struct {
 	Extension ParseHandleParamsExtension `query:"extension,omitzero" json:"-"`
 	// PDF page-range options as a JSON object, e.g. {"start": 2, "end": 5}.
 	Pdf ParseHandleParamsPdf `query:"pdf,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr ParseHandleParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -320,11 +311,8 @@ func (r ParseHandleParamsPdf) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type ParseHandleParamsZdr string
 
 const (

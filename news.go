@@ -16,7 +16,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
-// Search live first-party RSS and free historical news data by company identity.
+// Search live and historical news about a company.
 //
 // NewsService contains methods and other services that help with interacting with
 // the context.dev API.
@@ -37,12 +37,8 @@ func NewNewsService(opts ...option.RequestOption) (r NewsService) {
 	return
 }
 
-// Searches live and historical company news for one company, identified in
-// searchBy by name, domain, ticker (optionally disambiguated by exchange), or
-// ISIN. Results can be filtered by one of publisher domain, publisher country,
-// article language, or article type, optionally combined with a published-at date
-// range, and include stable story IDs, source metadata, verified entity relevance,
-// and cursor pagination.
+// Find company news by name, domain, ticker, or ISIN. Filter articles and continue
+// through results with a cursor.
 func (r *NewsService) Search(ctx context.Context, body NewsSearchParams, opts ...option.RequestOption) (res *NewsSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "news/search"
@@ -60,10 +56,10 @@ type NewsSearchResponse struct {
 	// Pass as cursor in the next request to fetch the following page. Null when there
 	// are no more results.
 	NextCursor string `json:"next_cursor" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata NewsSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -207,9 +203,9 @@ func (r *NewsSearchResponseMeta) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type NewsSearchResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -241,7 +237,7 @@ type NewsSearchParams struct {
 	FilterBy NewsSearchParamsFilterBy `json:"filterBy,omitzero"`
 	// Result ordering. Defaults to newest.
 	SortBy NewsSearchParamsSortBy `json:"sortBy,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -315,6 +311,8 @@ func init() {
 type NewsSearchParamsSearchByEntityName struct {
 	// Company name.
 	Name string `json:"name" api:"required"`
+	// Use `name` to identify the company by name.
+	//
 	// This field can be elided, and will marshal its zero value as "name".
 	Type constant.Name `json:"type" default:"name"`
 	paramObj
@@ -334,6 +332,8 @@ func (r *NewsSearchParamsSearchByEntityName) UnmarshalJSON(data []byte) error {
 type NewsSearchParamsSearchByEntityDomain struct {
 	// Company website domain, such as apple.com.
 	Domain string `json:"domain" api:"required"`
+	// Use `domain` to identify the company by website domain.
+	//
 	// This field can be elided, and will marshal its zero value as "domain".
 	Type constant.Domain `json:"type" default:"domain"`
 	paramObj
@@ -364,6 +364,8 @@ type NewsSearchParamsSearchByEntityTicker struct {
 	// "SAU", "SES", "SET", "SGO", "SHH", "SHZ", "SIX", "STO", "STU", "TAI", "TAL",
 	// "TLV", "TSX", "TSXV", "TWO", "VIE", "WSE", "XETRA".
 	Exchange string `json:"exchange,omitzero"`
+	// Use `ticker` to identify a publicly traded company.
+	//
 	// This field can be elided, and will marshal its zero value as "ticker".
 	Type constant.Ticker `json:"type" default:"ticker"`
 	paramObj
@@ -389,6 +391,8 @@ func init() {
 type NewsSearchParamsSearchByEntityIsin struct {
 	// International Securities Identification Number.
 	Isin string `json:"isin" api:"required"`
+	// Use `isin` to identify the company by its securities identifier.
+	//
 	// This field can be elided, and will marshal its zero value as "isin".
 	Type constant.Isin `json:"type" default:"isin"`
 	paramObj

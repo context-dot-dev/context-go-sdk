@@ -36,11 +36,8 @@ func NewBrandService(opts ...option.RequestOption) (r BrandService) {
 	return
 }
 
-// Retrieve logos, backdrops, colors, industry, description, and more. Provide
-// exactly one lookup identifier in the request body: a domain, company name, email
-// address, stock ticker, transaction descriptor, or direct URL. Note:
-// `by_direct_url` fetches brand data only from the provided URL — not from the
-// entire internet.
+// Retrieve logos, colors, company details, and social links using one lookup
+// identifier. A direct URL limits extraction to that page.
 func (r *BrandService) Get(ctx context.Context, body BrandGetParams, opts ...option.RequestOption) (res *BrandGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "brand/retrieve"
@@ -48,7 +45,8 @@ func (r *BrandService) Get(ctx context.Context, body BrandGetParams, opts ...opt
 	return res, err
 }
 
-// Search indexed brands by name or domain
+// Find up to 10 brands by name or domain, ordered by popularity. Use the returned
+// domain to retrieve a full brand profile.
 func (r *BrandService) Search(ctx context.Context, query BrandSearchParams, opts ...option.RequestOption) (res *BrandSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "brand/search"
@@ -59,18 +57,16 @@ func (r *BrandService) Search(ctx context.Context, query BrandSearchParams, opts
 type BrandGetResponse struct {
 	// Detailed brand information
 	Brand BrandGetResponseBrand `json:"brand" api:"required"`
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata BrandGetResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// HTTP status code
 	Code int64 `json:"code" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Status of the response, e.g., 'ok'
+	// Always `ok` on success.
 	Status string `json:"status" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BrandGetResponseKeyMetadata `json:"key_metadata"`
 	// True when the timeout ended processing and this response contains the usable
 	// data completed so far. Unfinished fields are omitted.
@@ -123,7 +119,7 @@ type BrandGetResponseBrand struct {
 	Logos []BrandGetResponseBrandLogo `json:"logos"`
 	// Company phone number
 	Phone string `json:"phone"`
-	// Language to force for the retrieved brand data.
+	// Language, e.g. `english`.
 	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
@@ -528,7 +524,7 @@ type BrandGetResponseBrandLogo struct {
 	//
 	// Any of "icon", "logo".
 	Type string `json:"type"`
-	// CDN hosted url of the logo (ready for display)
+	// Hosted logo URL.
 	URL string `json:"url"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -640,9 +636,7 @@ func (r *BrandGetResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type BrandGetResponseCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -666,9 +660,9 @@ func (r *BrandGetResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type BrandGetResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -688,13 +682,13 @@ func (r *BrandGetResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BrandSearchResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Up to 10 matching brands, name matches first, then domain matches, most popular
 	// first within each group. Empty when nothing matches.
 	Results []BrandSearchResponseResult `json:"results" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BrandSearchResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -736,9 +730,9 @@ func (r *BrandSearchResponseResult) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type BrandSearchResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -780,11 +774,8 @@ type BrandGetParams struct {
 	// email.
 	OfByTicker *BrandGetParamsBodyByTicker `json:",inline"`
 	// This field is a request body variant, only one variant field can be set.
-	// Retrieve brand data by fetching the provided URL directly. Note: if you use
-	// this, brand data is fetched only from the provided URL — not from the entire
-	// internet — so results are limited to what that single page contains. No domain
-	// resolution, database lookup, or cross-source enrichment is performed. Cannot be
-	// combined with domain, name, email, or ticker.
+	// Retrieve brand data from this exact URL. Cross-site enrichment and other lookup
+	// identifiers are excluded.
 	OfByDirectURL *BrandGetParamsBodyByDirectURL `json:",inline"`
 	// This field is a request body variant, only one variant field can be set.
 	// Identify brand data from a transaction descriptor. Cannot be combined with
@@ -812,10 +803,8 @@ func (r *BrandGetParams) UnmarshalJSON(data []byte) error {
 type BrandGetParamsBodyByDomain struct {
 	// Domain name to retrieve brand data for (e.g., 'stripe.com').
 	Domain string `json:"domain" api:"required"`
-	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
-	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
-	// are clamped to 1 year.
+	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
+	// year. `0` refreshes.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -840,11 +829,9 @@ type BrandGetParamsBodyByDomain struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDomainTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for domain-based brand retrieval.
 	//
@@ -867,18 +854,14 @@ func init() {
 	)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type BrandGetParamsBodyByDomainTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -909,10 +892,8 @@ type BrandGetParamsBodyByName struct {
 	// Optional country code hint (GL parameter) to specify the country when looking up
 	// by company name.
 	CountryGl param.Opt[string] `json:"country_gl,omitzero"`
-	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
-	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
-	// are clamped to 1 year.
+	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
+	// year. `0` refreshes.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -937,11 +918,9 @@ type BrandGetParamsBodyByName struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByNameTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for name-based brand retrieval.
 	//
@@ -964,18 +943,14 @@ func init() {
 	)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type BrandGetParamsBodyByNameTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1004,10 +979,8 @@ func init() {
 type BrandGetParamsBodyByEmail struct {
 	// Email address to retrieve brand data for (e.g., 'jane@stripe.com').
 	Email string `json:"email" api:"required" format:"email"`
-	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
-	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
-	// are clamped to 1 year.
+	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
+	// year. `0` refreshes.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -1032,11 +1005,9 @@ type BrandGetParamsBodyByEmail struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByEmailTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for email-based brand retrieval.
 	//
@@ -1059,18 +1030,14 @@ func init() {
 	)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type BrandGetParamsBodyByEmailTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1098,10 +1065,8 @@ func init() {
 type BrandGetParamsBodyByTicker struct {
 	// Stock ticker symbol to retrieve brand data for (e.g., 'AAPL').
 	Ticker string `json:"ticker" api:"required"`
-	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
-	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
-	// are clamped to 1 year.
+	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
+	// year. `0` refreshes.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Optional parameter to optimize the API call for maximum speed. When set to true,
 	// the API will skip time-consuming operations for faster response at the cost of
@@ -1128,11 +1093,9 @@ type BrandGetParamsBodyByTicker struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTickerTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for ticker-based brand retrieval.
 	//
@@ -1155,18 +1118,14 @@ func init() {
 	)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type BrandGetParamsBodyByTickerTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1187,11 +1146,8 @@ func init() {
 	)
 }
 
-// Retrieve brand data by fetching the provided URL directly. Note: if you use
-// this, brand data is fetched only from the provided URL — not from the entire
-// internet — so results are limited to what that single page contains. No domain
-// resolution, database lookup, or cross-source enrichment is performed. Cannot be
-// combined with domain, name, email, or ticker.
+// Retrieve brand data from this exact URL. Cross-site enrichment and other lookup
+// identifiers are excluded.
 //
 // The properties DirectURL, Type are required.
 type BrandGetParamsBodyByDirectURL struct {
@@ -1199,11 +1155,9 @@ type BrandGetParamsBodyByDirectURL struct {
 	// 'https://stripe.com/enterprise'). Only this URL is fetched — not the entire
 	// internet.
 	DirectURL string `json:"direct_url" api:"required" format:"uri"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDirectURLTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for direct-URL-based brand retrieval.
 	//
@@ -1220,18 +1174,14 @@ func (r *BrandGetParamsBodyByDirectURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type BrandGetParamsBodyByDirectURLTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1295,11 +1245,9 @@ type BrandGetParamsBodyByTransaction struct {
 	Mcc BrandGetParamsBodyByTransactionMccUnion `json:"mcc,omitzero"`
 	// Optional phone number from the transaction to help verify brand match.
 	Phone BrandGetParamsBodyByTransactionPhoneUnion `json:"phone,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTransactionTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// Discriminator for transaction-based brand retrieval.
 	//
@@ -1354,18 +1302,14 @@ func (u *BrandGetParamsBodyByTransactionPhoneUnion) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type BrandGetParamsBodyByTransactionTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1401,8 +1345,7 @@ type BrandSearchParams struct {
 	//
 	// Any of "name", "domain".
 	QueryBy []string `query:"queryBy,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }

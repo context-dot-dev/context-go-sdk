@@ -33,11 +33,7 @@ func NewUtilityService(opts ...option.RequestOption) (r UtilityService) {
 	return
 }
 
-// Signal that you may fetch data soon to improve latency. The type field selects
-// what to prefetch ('brand' queues a brand data fetch, 'styleguide' queues a
-// styleguide extraction) and identifier carries exactly one lookup key: a domain,
-// or an email whose domain is extracted and validated (free email providers and
-// disposable email addresses are not allowed).
+// Queue brand or styleguide data so a later lookup can return sooner.
 func (r *UtilityService) Prefetch(ctx context.Context, body UtilityPrefetchParams, opts ...option.RequestOption) (res *UtilityPrefetchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "utility/prefetch"
@@ -46,16 +42,16 @@ func (r *UtilityService) Prefetch(ctx context.Context, body UtilityPrefetchParam
 }
 
 type UtilityPrefetchResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// The domain that was queued for prefetching
 	Domain string `json:"domain"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata UtilityPrefetchResponseKeyMetadata `json:"key_metadata"`
 	// Success message
 	Message string `json:"message"`
-	// Status of the response, e.g., 'ok'
+	// Always `ok` on success.
 	Status string `json:"status"`
 	// The type of prefetch that was queued, echoed from the request
 	//
@@ -80,9 +76,9 @@ func (r *UtilityPrefetchResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type UtilityPrefetchResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -112,16 +108,13 @@ const (
 type UtilityPrefetchParams struct {
 	// Identifier of the target to prefetch. Provide exactly one of domain or email.
 	Identifier UtilityPrefetchParamsIdentifierUnion `json:"identifier,omitzero" api:"required"`
-	// What to prefetch: 'brand' warms the brand data cache, 'styleguide' warms the
-	// styleguide cache.
+	// Data to prefetch.
 	//
 	// Any of "brand", "styleguide".
 	Type UtilityPrefetchParamsType `json:"type,omitzero" api:"required"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts UtilityPrefetchParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
@@ -154,7 +147,7 @@ func (u *UtilityPrefetchParamsIdentifierUnion) UnmarshalJSON(data []byte) error 
 //
 // The property Domain is required.
 type UtilityPrefetchParamsIdentifierByDomain struct {
-	// Domain name to prefetch data for
+	// Domain, e.g. `stripe.com`.
 	Domain string `json:"domain" api:"required"`
 	paramObj
 }
@@ -186,8 +179,7 @@ func (r *UtilityPrefetchParamsIdentifierByEmail) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What to prefetch: 'brand' warms the brand data cache, 'styleguide' warms the
-// styleguide cache.
+// Data to prefetch.
 type UtilityPrefetchParamsType string
 
 const (
@@ -195,16 +187,13 @@ const (
 	UtilityPrefetchParamsTypeStyleguide UtilityPrefetchParamsType = "styleguide"
 )
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type UtilityPrefetchParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. This endpoint supports "fail": return 408
-	// REQUEST_TIMEOUT without charging credits.
+	// Only "fail" is supported: return 408 at the deadline.
 	//
 	// Any of "fail".
 	Behavior string `json:"behavior,omitzero"`

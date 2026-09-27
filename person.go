@@ -35,10 +35,8 @@ func NewPersonService(opts ...option.RequestOption) (r PersonService) {
 	return
 }
 
-// Finds and normalizes the best available person candidate from additive identity
-// clues, then assigns an identity match score from 0 to 100. Available on all paid
-// plans. Successful requests cost 20 credits. Disposable and free email addresses
-// (like gmail.com, yahoo.com) will throw a 422 error.
+// Find a person from identity clues and return their profile with a match score.
+// Requires a paid plan; free or disposable email addresses return 422.
 func (r *PersonService) Enrich(ctx context.Context, body PersonEnrichParams, opts ...option.RequestOption) (res *PersonEnrichResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "people/enrich"
@@ -49,10 +47,10 @@ func (r *PersonService) Enrich(ctx context.Context, body PersonEnrichParams, opt
 type PersonEnrichResponse struct {
 	// The highest-scoring person candidate.
 	Match PersonEnrichResponseMatchUnion `json:"match" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata PersonEnrichResponseKeyMetadata `json:"key_metadata"`
 	// True when the timeout ended processing and this response contains the usable
 	// data completed so far. Unfinished fields are omitted.
@@ -638,9 +636,9 @@ func (r *PersonEnrichResponseMatchNotFound) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type PersonEnrichResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -660,23 +658,27 @@ func (r *PersonEnrichResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type PersonEnrichParams struct {
-	Email      param.Opt[string]             `json:"email,omitzero" format:"email"`
-	Company    PersonEnrichParamsCompany     `json:"company,omitzero"`
-	Education  []PersonEnrichParamsEducation `json:"education,omitzero"`
-	Location   PersonEnrichParamsLocation    `json:"location,omitzero"`
-	Name       PersonEnrichParamsName        `json:"name,omitzero"`
-	SocialURLs []string                      `json:"social_urls,omitzero" format:"uri"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Email address of the person to find.
+	Email param.Opt[string] `json:"email,omitzero" format:"email"`
+	// Company context to help identify the person. Provide a name or domain.
+	Company PersonEnrichParamsCompany `json:"company,omitzero"`
+	// Education history to help distinguish people with similar names.
+	Education []PersonEnrichParamsEducation `json:"education,omitzero"`
+	// Location context to help identify the person. Provide a city, region, or
+	// country.
+	Location PersonEnrichParamsLocation `json:"location,omitzero"`
+	// Person name. Without an email or person-profile URL, provide both first and last
+	// name plus company, education, or location.
+	Name PersonEnrichParamsName `json:"name,omitzero"`
+	// Public profile URLs for the person. A person-profile URL can identify the person
+	// without a name.
+	SocialURLs []string `json:"social_urls,omitzero" format:"uri"`
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts PersonEnrichParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr PersonEnrichParamsZdr `json:"zdr,omitzero"`
@@ -691,9 +693,12 @@ func (r *PersonEnrichParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Company context to help identify the person. Provide a name or domain.
 type PersonEnrichParamsCompany struct {
+	// Website domain of a company associated with the person.
 	Domain param.Opt[string] `json:"domain,omitzero"`
-	Name   param.Opt[string] `json:"name,omitzero"`
+	// Name of a company associated with the person.
+	Name param.Opt[string] `json:"name,omitzero"`
 	paramObj
 }
 
@@ -706,10 +711,14 @@ func (r *PersonEnrichParamsCompany) UnmarshalJSON(data []byte) error {
 }
 
 type PersonEnrichParamsEducation struct {
-	Degree         param.Opt[string]                      `json:"degree,omitzero"`
-	FieldOfStudy   param.Opt[string]                      `json:"field_of_study,omitzero"`
-	GraduationYear param.Opt[int64]                       `json:"graduation_year,omitzero"`
-	Institution    PersonEnrichParamsEducationInstitution `json:"institution,omitzero"`
+	// Degree or qualification earned.
+	Degree param.Opt[string] `json:"degree,omitzero"`
+	// Subject or major studied.
+	FieldOfStudy param.Opt[string] `json:"field_of_study,omitzero"`
+	// Four-digit graduation year.
+	GraduationYear param.Opt[int64] `json:"graduation_year,omitzero"`
+	// School or university, identified by name or domain.
+	Institution PersonEnrichParamsEducationInstitution `json:"institution,omitzero"`
 	paramObj
 }
 
@@ -721,9 +730,12 @@ func (r *PersonEnrichParamsEducation) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// School or university, identified by name or domain.
 type PersonEnrichParamsEducationInstitution struct {
+	// Website domain of the school or university.
 	Domain param.Opt[string] `json:"domain,omitzero"`
-	Name   param.Opt[string] `json:"name,omitzero"`
+	// Name of the school or university.
+	Name param.Opt[string] `json:"name,omitzero"`
 	paramObj
 }
 
@@ -735,10 +747,15 @@ func (r *PersonEnrichParamsEducationInstitution) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Location context to help identify the person. Provide a city, region, or
+// country.
 type PersonEnrichParamsLocation struct {
-	City    param.Opt[string] `json:"city,omitzero"`
+	// City associated with the person.
+	City param.Opt[string] `json:"city,omitzero"`
+	// Country associated with the person.
 	Country param.Opt[string] `json:"country,omitzero"`
-	Region  param.Opt[string] `json:"region,omitzero"`
+	// State, province, or region associated with the person.
+	Region param.Opt[string] `json:"region,omitzero"`
 	paramObj
 }
 
@@ -750,9 +767,13 @@ func (r *PersonEnrichParamsLocation) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Person name. Without an email or person-profile URL, provide both first and last
+// name plus company, education, or location.
 type PersonEnrichParamsName struct {
+	// First or given name.
 	First param.Opt[string] `json:"first,omitzero"`
-	Last  param.Opt[string] `json:"last,omitzero"`
+	// Last or family name.
+	Last param.Opt[string] `json:"last,omitzero"`
 	paramObj
 }
 
@@ -764,18 +785,14 @@ func (r *PersonEnrichParamsName) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type PersonEnrichParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -796,11 +813,8 @@ func init() {
 	)
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type PersonEnrichParamsZdr string
 
 const (

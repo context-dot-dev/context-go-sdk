@@ -29,8 +29,8 @@ func TestNewsSearchWithOptionalParams(t *testing.T) {
 	_, err := client.News.Search(context.TODO(), contextdev.NewsSearchParams{
 		SearchBy: contextdev.NewsSearchParamsSearchBy{
 			Entity: contextdev.NewsSearchParamsSearchByEntityUnion{
-				OfName: &contextdev.NewsSearchParamsSearchByEntityName{
-					Name: "xx",
+				OfDomain: &contextdev.NewsSearchParamsSearchByEntityDomain{
+					Domain: "stripe.com",
 				},
 			},
 			Type: "entity",

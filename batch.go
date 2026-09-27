@@ -41,7 +41,8 @@ func NewBatchService(opts ...option.RequestOption) (r BatchService) {
 	return
 }
 
-// Check progress, and get download links once the batch finishes.
+// Get batch progress and result download links. Result files are deleted 7 days
+// after the batch finishes.
 func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -53,8 +54,7 @@ func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.R
 	return res, err
 }
 
-// List your batches from newest to oldest. Filter by status or continue with a
-// cursor.
+// List your batches, newest first, with optional filters.
 func (r *BatchService) List(ctx context.Context, query BatchListParams, opts ...option.RequestOption) (res *BatchListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "batch/list"
@@ -62,8 +62,8 @@ func (r *BatchService) List(ctx context.Context, query BatchListParams, opts ...
 	return res, err
 }
 
-// Permanently delete a finished batch and its stored results. Active batches must
-// settle first.
+// Permanently delete a finished batch and its results. Its webhook deliveries can
+// no longer be retried.
 func (r *BatchService) Delete(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchDeleteResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -75,8 +75,8 @@ func (r *BatchService) Delete(ctx context.Context, batchID string, opts ...optio
 	return res, err
 }
 
-// Stop a batch from starting new pages. In-progress pages finish, and unused
-// credits are refunded.
+// Stop a batch from starting new pages. Pages already in progress finish before
+// the batch becomes cancelled.
 func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchCancelResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -88,8 +88,8 @@ func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...optio
 	return res, err
 }
 
-// Page through a finished batch's results as JSON instead of downloading the
-// NDJSON files.
+// Page through a finished batch’s results as JSON. Results remain available for 7
+// days.
 func (r *BatchService) GetResults(ctx context.Context, batchID string, query BatchGetResultsParams, opts ...option.RequestOption) (res *BatchGetResultsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -101,7 +101,8 @@ func (r *BatchService) GetResults(ctx context.Context, batchID string, query Bat
 	return res, err
 }
 
-// Scrape 25K URLs or crawl large websites asynchronously.
+// Scrape up to 25,000 URLs, or crawl a site, asynchronously. Poll the batch ID or
+// receive a webhook when it finishes.
 func (r *BatchService) Submit(ctx context.Context, params BatchSubmitParams, opts ...option.RequestOption) (res *BatchSubmitResponse, err error) {
 	if !param.IsOmitted(params.IdempotencyKey) {
 		opts = append(opts, option.WithHeader("Idempotency-Key", fmt.Sprintf("%v", params.IdempotencyKey.Value)))
@@ -155,8 +156,7 @@ func (r *Failure) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The crawl controls as submitted, so the limits requested can be compared against
-// what the crawl reached.
+// Crawl settings as submitted.
 type CrawlControls struct {
 	// Whether links to subdomains were followed. Always false for a sitemap crawl.
 	FollowSubdomains bool `json:"follow_subdomains" api:"required"`
@@ -265,23 +265,17 @@ func (r *CrawlControlsSourceSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What submission took in, and what it charged for.
+// What the submission accepted.
 type Intake struct {
 	// URLs dropped before reserving because another entry resolved to the same page.
 	// Non-zero for sitemap crawls too, whose sitemaps routinely list a page more than
 	// once.
 	Duplicates int64 `json:"duplicates" api:"required"`
-	// URLs from your list rejected as unusable; the same ones are itemised in
-	// `invalid_urls` at submission. Null for a crawl — a crawl that resolves no usable
-	// page is rejected outright with a 400 rather than accepted with an empty list.
+	// Rejected input URLs; `null` for a crawl.
 	Invalid int64 `json:"invalid" api:"required"`
-	// Pages credits were reserved for. Everything else — progress, the refund, the
-	// completion percentage — is measured against this.
+	// Pages accepted; progress counts toward this total.
 	Reserved int64 `json:"reserved" api:"required"`
-	// Whether `reserved` is an upper bound the batch may finish under. True only for a
-	// crawl that follows links, whose reachable page count is unknowable until it
-	// runs. False for a scrape and for a sitemap crawl, where `reserved` is an exact
-	// page count.
+	// True when `reserved` is a crawl ceiling; false when it is an exact URL count.
 	ReservedIsCeiling bool `json:"reserved_is_ceiling" api:"required"`
 	// URLs in the list you sent, before validation and de-duplication. Null for a
 	// crawl, which is given a source rather than a list.
@@ -305,12 +299,11 @@ func (r *Intake) UnmarshalJSON(data []byte) error {
 }
 
 type BatchGetResponse struct {
-	// Batch ID used to retrieve or cancel the job.
+	// Batch ID.
 	ID string `json:"id" api:"required"`
-	// The crawl controls as submitted, so the limits requested can be compared against
-	// what the crawl reached.
+	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
-	// What this batch has done to your credit balance.
+	// Batch credit usage and settlement.
 	Credits BatchGetResponseCredits `json:"credits" api:"required"`
 	// A failure of the batch as a whole, distinct from the per-page failures in
 	// `page_errors`.
@@ -320,11 +313,11 @@ type BatchGetResponse struct {
 	//
 	// Any of "markdown", "html".
 	Format BatchGetResponseFormat `json:"format" api:"required"`
-	// What submission took in, and what it charged for.
+	// What the submission accepted.
 	Input Intake `json:"input" api:"required"`
-	// Rejected URLs, up to 100. These are not charged.
+	// Rejected URLs (first 100).
 	InvalidURLs []BatchGetResponseInvalidURL `json:"invalid_urls" api:"required"`
-	// How pages were selected. Matches `input.mode` on the submit request.
+	// `scrape` (URL list) or `crawl`.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchGetResponseMode `json:"mode" api:"required"`
@@ -333,11 +326,11 @@ type BatchGetResponse struct {
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
 	// Pages attempted so far. Use `status` to check completion.
 	Progress BatchGetResponseProgress `json:"progress" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Download links, available once the batch reaches a final status and null before
-	// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
+	// Result download links; null until the batch finishes. Files are deleted 7 days
+	// after the batch finishes.
 	Results BatchGetResponseResults `json:"results" api:"required"`
 	// Current state. `completed`, `cancelled`, and `failed` are final.
 	//
@@ -380,19 +373,15 @@ func (r *BatchGetResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What this batch has done to your credit balance.
+// Batch credit usage and settlement.
 type BatchGetResponseCredits struct {
-	// `reserved` minus `refunded` plus `ocr_charged` — what the batch has cost so far.
-	// Equal to `reserved` until the batch settles.
+	// `reserved` minus `refunded` plus `ocr_charged`.
 	Net int64 `json:"net" api:"required"`
-	// Credits charged for PDF pages recovered by OCR (pdf.ocr=true), 1 per recovered
-	// page, on top of `reserved`. Stays 0 until the batch settles.
+	// OCR usage charged when the batch settles.
 	OcrCharged int64 `json:"ocr_charged" api:"required"`
-	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
-	// a final status, then settles in one movement.
+	// Credits returned for unsuccessful pages when the batch settles.
 	Refunded int64 `json:"refunded" api:"required"`
-	// Credits debited from your balance the moment the batch was accepted. This is a
-	// charge, not a forecast — the whole amount leaves the balance up front.
+	// Credits held when the batch was accepted.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -440,7 +429,7 @@ func (r *BatchGetResponseInvalidURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How pages were selected. Matches `input.mode` on the submit request.
+// `scrape` (URL list) or `crawl`.
 type BatchGetResponseMode string
 
 const (
@@ -452,9 +441,8 @@ const (
 type BatchGetResponseProgress struct {
 	// Pages that could not be scraped.
 	Failed int64 `json:"failed" api:"required"`
-	// Reserved pages not yet attempted. A cancelled batch keeps reporting the URLs it
-	// never reached; a crawl whose `input.reserved_is_ceiling` is true reports 0 once
-	// final, because its unspent budget was never real pages.
+	// Accepted pages not yet attempted. Unused crawl capacity is excluded after
+	// completion.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -474,10 +462,10 @@ func (r *BatchGetResponseProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Download links, available once the batch reaches a final status and null before
-// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
+// Result download links; null until the batch finishes. Files are deleted 7 days
+// after the batch finishes.
 type BatchGetResponseResults struct {
-	// When the download URLs expire.
+	// When these links expire (24 hours after this response).
 	ExpiresAt string `json:"expires_at" api:"required"`
 	// Result files. Order is not guaranteed.
 	Files []BatchGetResponseResultsFile `json:"files" api:"required"`
@@ -556,7 +544,7 @@ func (r *BatchGetResponseTiming) UnmarshalJSON(data []byte) error {
 
 // API key usage for this request.
 type BatchGetResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -576,14 +564,14 @@ func (r *BatchGetResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchListResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Batches on this page.
 	Data []BatchListResponseData `json:"data"`
 	// Whether another page is available.
 	HasMore bool `json:"has_more"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BatchListResponseKeyMetadata `json:"key_metadata"`
 	// Cursor for the next page.
 	NextCursor string `json:"next_cursor" api:"nullable"`
@@ -607,12 +595,11 @@ func (r *BatchListResponse) UnmarshalJSON(data []byte) error {
 
 // An asynchronous web scraping job.
 type BatchListResponseData struct {
-	// Batch ID used to retrieve or cancel the job.
+	// Batch ID.
 	ID string `json:"id" api:"required"`
-	// The crawl controls as submitted, so the limits requested can be compared against
-	// what the crawl reached.
+	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
-	// What this batch has done to your credit balance.
+	// Batch credit usage and settlement.
 	Credits BatchListResponseDataCredits `json:"credits" api:"required"`
 	// A failure of the batch as a whole, distinct from the per-page failures in
 	// `page_errors`.
@@ -622,9 +609,9 @@ type BatchListResponseData struct {
 	//
 	// Any of "markdown", "html".
 	Format string `json:"format" api:"required"`
-	// What submission took in, and what it charged for.
+	// What the submission accepted.
 	Input Intake `json:"input" api:"required"`
-	// How pages were selected. Matches `input.mode` on the submit request.
+	// `scrape` (URL list) or `crawl`.
 	//
 	// Any of "scrape", "crawl".
 	Mode string `json:"mode" api:"required"`
@@ -633,8 +620,8 @@ type BatchListResponseData struct {
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
 	// Pages attempted so far. Use `status` to check completion.
 	Progress BatchListResponseDataProgress `json:"progress" api:"required"`
-	// Download links, available once the batch reaches a final status and null before
-	// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
+	// Result download links; null until the batch finishes. Files are deleted 7 days
+	// after the batch finishes.
 	Results BatchListResponseDataResults `json:"results" api:"required"`
 	// Current state. `completed`, `cancelled`, and `failed` are final.
 	//
@@ -669,19 +656,15 @@ func (r *BatchListResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What this batch has done to your credit balance.
+// Batch credit usage and settlement.
 type BatchListResponseDataCredits struct {
-	// `reserved` minus `refunded` plus `ocr_charged` — what the batch has cost so far.
-	// Equal to `reserved` until the batch settles.
+	// `reserved` minus `refunded` plus `ocr_charged`.
 	Net int64 `json:"net" api:"required"`
-	// Credits charged for PDF pages recovered by OCR (pdf.ocr=true), 1 per recovered
-	// page, on top of `reserved`. Stays 0 until the batch settles.
+	// OCR usage charged when the batch settles.
 	OcrCharged int64 `json:"ocr_charged" api:"required"`
-	// Credits returned for pages that did not succeed. Stays 0 until the batch reaches
-	// a final status, then settles in one movement.
+	// Credits returned for unsuccessful pages when the batch settles.
 	Refunded int64 `json:"refunded" api:"required"`
-	// Credits debited from your balance the moment the batch was accepted. This is a
-	// charge, not a forecast — the whole amount leaves the balance up front.
+	// Credits held when the batch was accepted.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -704,9 +687,8 @@ func (r *BatchListResponseDataCredits) UnmarshalJSON(data []byte) error {
 type BatchListResponseDataProgress struct {
 	// Pages that could not be scraped.
 	Failed int64 `json:"failed" api:"required"`
-	// Reserved pages not yet attempted. A cancelled batch keeps reporting the URLs it
-	// never reached; a crawl whose `input.reserved_is_ceiling` is true reports 0 once
-	// final, because its unspent budget was never real pages.
+	// Accepted pages not yet attempted. Unused crawl capacity is excluded after
+	// completion.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -726,10 +708,10 @@ func (r *BatchListResponseDataProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Download links, available once the batch reaches a final status and null before
-// then. GET /batch/{batch_id}/results serves the same records as paginated JSON.
+// Result download links; null until the batch finishes. Files are deleted 7 days
+// after the batch finishes.
 type BatchListResponseDataResults struct {
-	// When the download URLs expire.
+	// When these links expire (24 hours after this response).
 	ExpiresAt string `json:"expires_at" api:"required"`
 	// Result files. Order is not guaranteed.
 	Files []BatchListResponseDataResultsFile `json:"files" api:"required"`
@@ -794,9 +776,9 @@ func (r *BatchListResponseDataTiming) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type BatchListResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -816,14 +798,14 @@ func (r *BatchListResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchDeleteResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// ID of the deleted batch.
 	ID string `json:"id"`
 	// Always true on success.
 	Deleted bool `json:"deleted"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BatchDeleteResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -842,9 +824,9 @@ func (r *BatchDeleteResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type BatchDeleteResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -866,8 +848,7 @@ func (r *BatchDeleteResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 type BatchCancelResponse struct {
 	// Batch ID.
 	ID string `json:"id" api:"required"`
-	// The crawl controls as submitted, so the limits requested can be compared against
-	// what the crawl reached.
+	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
 	// What this batch cost so far.
 	Credits BatchCancelResponseCredits `json:"credits" api:"required"`
@@ -875,7 +856,7 @@ type BatchCancelResponse struct {
 	//
 	// Any of "markdown", "html".
 	Format BatchCancelResponseFormat `json:"format" api:"required"`
-	// What submission took in, and what it charged for.
+	// What the submission accepted.
 	Input Intake `json:"input" api:"required"`
 	// How pages were selected.
 	//
@@ -885,8 +866,8 @@ type BatchCancelResponse struct {
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
 	// How far the batch got before cancellation.
 	Progress BatchCancelResponseProgress `json:"progress" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Always `cancelling`. Work already in flight finishes; the batch reaches
 	// `cancelled` shortly after.
@@ -895,7 +876,7 @@ type BatchCancelResponse struct {
 	Status BatchCancelResponseStatus `json:"status" api:"required"`
 	// Tags stored on the batch at submission.
 	Tags []string `json:"tags" api:"required"`
-	// There is no finish time yet — the batch is still winding down.
+	// Batch timestamps.
 	Timing BatchCancelResponseTiming `json:"timing" api:"required"`
 	// API key usage for this request.
 	KeyMetadata BatchCancelResponseKeyMetadata `json:"key_metadata"`
@@ -927,8 +908,7 @@ func (r *BatchCancelResponse) UnmarshalJSON(data []byte) error {
 
 // What this batch cost so far.
 type BatchCancelResponseCredits struct {
-	// Credits debited at submission. The unspent remainder is refunded once the batch
-	// settles — read `credits.refunded` from GET /batch/{batch_id} then.
+	// Credits held at submission; unused credits are refunded when the batch settles.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -964,7 +944,7 @@ const (
 type BatchCancelResponseProgress struct {
 	// Pages that could not be scraped before the request landed.
 	Failed int64 `json:"failed" api:"required"`
-	// Reserved pages that will now be skipped, and refunded when the batch settles.
+	// Pages that will be skipped.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully before the request landed.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -992,7 +972,7 @@ const (
 	BatchCancelResponseStatusCancelling BatchCancelResponseStatus = "cancelling"
 )
 
-// There is no finish time yet — the batch is still winding down.
+// Batch timestamps.
 type BatchCancelResponseTiming struct {
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
@@ -1015,7 +995,7 @@ func (r *BatchCancelResponseTiming) UnmarshalJSON(data []byte) error {
 
 // API key usage for this request.
 type BatchCancelResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -1035,14 +1015,14 @@ func (r *BatchCancelResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchGetResultsResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Result records on this page.
 	Data []BatchGetResultsResponseDataUnion `json:"data"`
 	// Whether another page is available.
 	HasMore bool `json:"has_more"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BatchGetResultsResponseKeyMetadata `json:"key_metadata"`
 	// Cursor for the next page.
 	NextCursor string `json:"next_cursor" api:"nullable"`
@@ -1160,9 +1140,7 @@ func (r *BatchGetResultsResponseDataUnion) UnmarshalJSON(data []byte) error {
 
 // A page the batch fetched successfully.
 type BatchGetResultsResponseDataOk struct {
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata BatchGetResultsResponseDataOkCacheMetadata `json:"cache_metadata" api:"required"`
 	// URL the content was read from, after redirects.
 	FinalURL string `json:"final_url" api:"required"`
@@ -1177,14 +1155,13 @@ type BatchGetResultsResponseDataOk struct {
 	// Page HTML. Present on html batches, and on markdown batches submitted with
 	// `options.includeHTML`.
 	HTML string `json:"html"`
-	// Caller-supplied identifier echoed from submission.
+	// Your `itemId` from submission.
 	ItemID string `json:"itemId"`
 	// Page content as Markdown. Present on markdown batches.
 	Markdown string `json:"markdown"`
 	// Caller-supplied metadata echoed from submission.
 	Meta map[string]any `json:"meta"`
-	// PDF pages of this document recovered by OCR (pdf.ocr=true). Each recovered page
-	// bills 1 credit on top of the page base credit; absent when no OCR ran.
+	// Number of PDF pages recovered by OCR. Omitted when OCR did not run.
 	OcrPages int64 `json:"ocr_pages"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1210,9 +1187,7 @@ func (r *BatchGetResultsResponseDataOk) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type BatchGetResultsResponseDataOkCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -1477,7 +1452,7 @@ type BatchGetResultsResponseDataError struct {
 	Status constant.Error `json:"status" default:"error"`
 	// URL as submitted, or as discovered by the crawl.
 	URL string `json:"url" api:"required"`
-	// Caller-supplied identifier echoed from submission.
+	// Your `itemId` from submission.
 	ItemID string `json:"itemId"`
 	// Caller-supplied metadata echoed from submission.
 	Meta map[string]any `json:"meta"`
@@ -1500,9 +1475,9 @@ func (r *BatchGetResultsResponseDataError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type BatchGetResultsResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -1524,12 +1499,9 @@ func (r *BatchGetResultsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 type BatchSubmitResponse struct {
 	// Batch ID. Poll GET /batch/{batch_id} with it.
 	ID string `json:"id" api:"required"`
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata BatchSubmitResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// The crawl controls as submitted, so the limits requested can be compared against
-	// what the crawl reached.
+	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
@@ -1539,16 +1511,16 @@ type BatchSubmitResponse struct {
 	//
 	// Any of "markdown", "html".
 	Format BatchSubmitResponseFormat `json:"format" api:"required"`
-	// What submission took in, and what it charged for.
+	// What the submission accepted.
 	Input Intake `json:"input" api:"required"`
-	// Rejected URLs, up to 100. These are not charged.
+	// Rejected URLs (first 100).
 	InvalidURLs []BatchSubmitResponseInvalidURL `json:"invalid_urls" api:"required"`
 	// How pages will be selected.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchSubmitResponseMode `json:"mode" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Always `queued`. An accepted batch has not started yet.
 	//
@@ -1558,8 +1530,7 @@ type BatchSubmitResponse struct {
 	Tags []string `json:"tags" api:"required"`
 	// API key usage for this request.
 	KeyMetadata BatchSubmitResponseKeyMetadata `json:"key_metadata"`
-	// Signing secret for the completion webhook, returned only here and never again.
-	// Store it now; it is not repeated by GET /batch/{batch_id}.
+	// Secret for verifying `X-Context-Signature`. Only submit returns it, so store it.
 	WebhookSecret string `json:"webhook_secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1588,9 +1559,7 @@ func (r *BatchSubmitResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type BatchSubmitResponseCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -1616,8 +1585,7 @@ func (r *BatchSubmitResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 
 // What accepting this batch cost.
 type BatchSubmitResponseCredits struct {
-	// Credits just debited from your balance. Whatever the batch does not spend is
-	// refunded when it settles.
+	// Credits held at submission.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1678,7 +1646,7 @@ const (
 
 // API key usage for this request.
 type BatchSubmitResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -1771,13 +1739,13 @@ type BatchSubmitParams struct {
 	// Legacy URL notified when the batch finishes. Preserves one best-effort attempt.
 	// Cannot be combined with webhook.
 	WebhookURL param.Opt[string] `json:"webhookUrl,omitzero"`
-	// Any string unique to this submission. Retries with the same key return the
-	// original batch.
+	// Unique key per submission. Retrying with the same key and body returns the
+	// original batch; a different body returns `409`.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
 	// Tags stored on the batch. Filter the batch list by them later.
 	Tags []string `json:"tags,omitzero"`
-	// Completion webhook settings. Cannot be combined with webhookUrl. Omitting retry
-	// preserves legacy delivery; retry: {} opts into durable retries.
+	// Where to send the batch's final-status event. Omit `retry` for one attempt; `{}`
+	// uses the default retry schedule.
 	Webhook BatchSubmitParamsWebhook `json:"webhook,omitzero"`
 	paramObj
 }
@@ -1814,7 +1782,7 @@ func init() {
 	)
 }
 
-// Scrape up to 25K URLs in one batch.
+// Scrape a list of up to 25,000 URLs.
 //
 // The properties Data, Mode are required.
 type BatchSubmitParamsInputScrape struct {
@@ -1906,19 +1874,15 @@ func (r *BatchSubmitParamsInputScrapeDataMarkdownURL) UnmarshalJSON(data []byte)
 
 // Options for Markdown output.
 type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
-	// Return a cached result if a prior scrape for the same parameters exists and is
-	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
-	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Also include each page's HTML in its result record, as an `html` field alongside
-	// the Markdown.
+	// Also return each page's HTML in `html`.
 	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
 	// Include image references in the Markdown.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Include links in the Markdown.
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Wait briefly for CSS and transition animations to settle before extraction, on
-	// pages that render in a browser.
+	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Shorten inline base64 image data.
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
@@ -1929,11 +1893,10 @@ type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
 	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
 	// so an element matching both is removed.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
-	// fetched fresh, ignoring `maxAgeMs`.
+	// Keep only elements matching these CSS selectors. Filtered pages ignore
+	// `maxAgeMs`.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch the target page through a residential proxy in this country (ISO 3166-1
-	// alpha-2).
+	// Fetch from this country (ISO 3166-1 alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -1978,13 +1941,9 @@ type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// When true, OCR the selected PDF pages that have no usable text layer (scans),
-	// replacing each recovered page's text with the OCR result while pages with a real
-	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
-	// of the base request cost. When false, no OCR runs.
+	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
-	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 PDF_SKIPPED is returned.
+	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `json:"start,omitzero"`
@@ -2046,12 +2005,9 @@ func (r *BatchSubmitParamsInputScrapeDataHTMLURL) UnmarshalJSON(data []byte) err
 
 // Options for HTML output.
 type BatchSubmitParamsInputScrapeDataHTMLOptions struct {
-	// Return a cached result if a prior scrape for the same parameters exists and is
-	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
-	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Wait briefly for CSS and transition animations to settle before extraction, on
-	// pages that render in a browser.
+	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Return the main content without navigation or footers.
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
@@ -2060,11 +2016,10 @@ type BatchSubmitParamsInputScrapeDataHTMLOptions struct {
 	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
 	// so an element matching both is removed.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
-	// fetched fresh, ignoring `maxAgeMs`.
+	// Keep only elements matching these CSS selectors. Filtered pages ignore
+	// `maxAgeMs`.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch the target page through a residential proxy in this country (ISO 3166-1
-	// alpha-2).
+	// Fetch from this country (ISO 3166-1 alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -2109,13 +2064,9 @@ type BatchSubmitParamsInputScrapeDataHTMLOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// When true, OCR the selected PDF pages that have no usable text layer (scans),
-	// replacing each recovered page's text with the OCR result while pages with a real
-	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
-	// of the base request cost. When false, no OCR runs.
+	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
-	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 PDF_SKIPPED is returned.
+	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `json:"start,omitzero"`
@@ -2312,19 +2263,15 @@ func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) Unmarshal
 
 // Options for Markdown output.
 type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
-	// Return a cached result if a prior scrape for the same parameters exists and is
-	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
-	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Also include each page's HTML in its result record, as an `html` field alongside
-	// the Markdown.
+	// Also return each page's HTML in `html`.
 	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
 	// Include image references in the Markdown.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Include links in the Markdown.
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Wait briefly for CSS and transition animations to settle before extraction, on
-	// pages that render in a browser.
+	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Shorten inline base64 image data.
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
@@ -2335,11 +2282,10 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
 	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
 	// so an element matching both is removed.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
-	// fetched fresh, ignoring `maxAgeMs`.
+	// Keep only elements matching these CSS selectors. Filtered pages ignore
+	// `maxAgeMs`.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch the target page through a residential proxy in this country (ISO 3166-1
-	// alpha-2).
+	// Fetch from this country (ISO 3166-1 alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -2384,13 +2330,9 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// When true, OCR the selected PDF pages that have no usable text layer (scans),
-	// replacing each recovered page's text with the OCR result while pages with a real
-	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
-	// of the base request cost. When false, no OCR runs.
+	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
-	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 PDF_SKIPPED is returned.
+	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `json:"start,omitzero"`
@@ -2542,12 +2484,9 @@ func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) UnmarshalJSON
 
 // Options for HTML output.
 type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
-	// Return a cached result if a prior scrape for the same parameters exists and is
-	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
-	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Wait briefly for CSS and transition animations to settle before extraction, on
-	// pages that render in a browser.
+	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Return the main content without navigation or footers.
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
@@ -2556,11 +2495,10 @@ type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
 	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
 	// so an element matching both is removed.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Keep only the subtrees matching these CSS selectors. Filtered pages are always
-	// fetched fresh, ignoring `maxAgeMs`.
+	// Keep only elements matching these CSS selectors. Filtered pages ignore
+	// `maxAgeMs`.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch the target page through a residential proxy in this country (ISO 3166-1
-	// alpha-2).
+	// Fetch from this country (ISO 3166-1 alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -2605,13 +2543,9 @@ type BatchSubmitParamsInputCrawlDataHTMLOptionsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// When true, OCR the selected PDF pages that have no usable text layer (scans),
-	// replacing each recovered page's text with the OCR result while pages with a real
-	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
-	// of the base request cost. When false, no OCR runs.
+	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
-	// When true, PDF URLs are fetched and parsed. When false, PDF URLs are skipped and
-	// a 400 PDF_SKIPPED is returned.
+	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
 	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
 	Start param.Opt[int64] `json:"start,omitzero"`
@@ -2626,11 +2560,13 @@ func (r *BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) UnmarshalJSON(data []byt
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Completion webhook settings. Cannot be combined with webhookUrl. Omitting retry
-// preserves legacy delivery; retry: {} opts into durable retries.
+// Where to send the batch's final-status event. Omit `retry` for one attempt; `{}`
+// uses the default retry schedule.
 //
 // The property URL is required.
 type BatchSubmitParamsWebhook struct {
+	// Public HTTP(S) URL that receives batch completion, failure, or cancellation
+	// events.
 	URL string `json:"url" api:"required" format:"uri"`
 	// Webhook retry settings. Use {} for the default schedule.
 	Retry RetryConfigParam `json:"retry,omitzero"`

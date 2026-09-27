@@ -72,8 +72,8 @@ func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts .
 	return res, err
 }
 
-// Returns the outputs you enable in `formats` from one visit to a URL. Each output
-// reports its own `success`, so a failed output does not fail the request.
+// Scrape anything from a URL on the internet. Returns the outputs you enable in
+// formats. Handles PDFs, DOCX, PPT, XLSX, and 40 other file formats.
 func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape"

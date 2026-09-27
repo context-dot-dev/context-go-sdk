@@ -189,3 +189,13 @@ Methods:
 
 - <code title="get /logs/{request_id}">client.Logs.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogService.Get">Get</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, requestID <a href="https://pkg.go.dev/builtin#string">string</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogGetResponse">LogGetResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 - <code title="get /logs">client.Logs.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogService.List">List</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogListParams">LogListParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogListResponse">LogListResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
+# Feedback
+
+Response Types:
+
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#FeedbackSubmitResponse">FeedbackSubmitResponse</a>
+
+Methods:
+
+- <code title="post /feedback">client.Feedback.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#FeedbackService.Submit">Submit</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, body <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#FeedbackSubmitParams">FeedbackSubmitParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#FeedbackSubmitResponse">FeedbackSubmitResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>

@@ -1279,11 +1279,17 @@ type WebScrapeResponseJson struct {
 	Requested bool           `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Cause of a failed JSON extraction, when available.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the JSON extraction failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`

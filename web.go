@@ -109,8 +109,9 @@ func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, o
 type WebAnswersResponse struct {
 	// The answer, in the shape requested by json_format.
 	JsonContent map[string]any `json:"json_content" api:"required"`
-	// URLs that supplied search results or readable page content, in first-seen order.
-	// Unreadable pages are excluded.
+	// Public evidence URLs from searches, pages, or company/profile records, in
+	// first-seen order. A listed URL may identify a record without its page being
+	// read.
 	Sources []string `json:"sources" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata WebAnswersResponseKeyMetadata `json:"key_metadata"`
@@ -2376,12 +2377,14 @@ func (r *WebWebCrawlMdResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebAnswersParams struct {
-	// Research task. Name a domain to have it read before searching.
+	// Research task. The agent selects company/profile lookups, web searches, or page
+	// reads. Include domains or URLs to focus the research.
 	Task string `json:"task" api:"required"`
 	// Example answer object, not JSON Schema. Up to 8 levels, 500 values, and 16000
 	// characters; unknowns may be null.
 	JsonFormat map[string]any `json:"json_format,omitzero"`
-	// `fast` for short tasks; `ultra` for deeper research (default).
+	// `fast` prioritizes speed, with extra verification for people and companies;
+	// `ultra` supports deeper research (default).
 	//
 	// Any of "fast", "ultra".
 	Mode WebAnswersParamsMode `json:"mode,omitzero"`
@@ -2405,7 +2408,8 @@ func (r *WebAnswersParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// `fast` for short tasks; `ultra` for deeper research (default).
+// `fast` prioritizes speed, with extra verification for people and companies;
+// `ultra` supports deeper research (default).
 type WebAnswersParamsMode string
 
 const (

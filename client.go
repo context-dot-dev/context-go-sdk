@@ -23,22 +23,17 @@ type Client struct {
 	Brand    BrandService
 	Industry IndustryService
 	Utility  UtilityService
-	// Monitor pages, sitemaps, and extracted website data for exact or semantic
-	// changes. Webhook payloads are documented by the
-	// MonitorsChangeDetectedWebhookPayload and MonitorsRunCompletedWebhookPayload
-	// schemas.
+	// Watch websites for exact or meaningful changes.
 	Monitors MonitorService
 	// Scrape many pages or crawl a site asynchronously.
 	Batch    BatchService
 	Webhooks WebhookService
 	People   PersonService
-	// Search live first-party RSS and free historical news data by company identity.
+	// Search live and historical news about a company.
 	News NewsService
-	// Read your organization's API request logs to debug failed calls. These endpoints
-	// cost no credits and use a separate rate limit.
+	// Read your organization's API request logs.
 	Logs LogService
-	// Report bugs, docs mismatches, and friction with any Context.dev API. Submissions
-	// cost no credits and use a separate rate limit.
+	// Report API issues and documentation mismatches.
 	Feedback FeedbackService
 }
 

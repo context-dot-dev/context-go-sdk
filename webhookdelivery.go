@@ -21,7 +21,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
-// Inspect and retry webhook deliveries. These endpoints cost no credits.
+// Inspect and retry batch and monitor webhook deliveries.
 //
 // WebhookDeliveryService contains methods and other services that help with
 // interacting with the context.dev API.
@@ -42,7 +42,7 @@ func NewWebhookDeliveryService(opts ...option.RequestOption) (r WebhookDeliveryS
 	return
 }
 
-// Get a webhook delivery, including its status and latest attempt.
+// Retrieve a webhook delivery’s status and original payload.
 func (r *WebhookDeliveryService) Get(ctx context.Context, deliveryID string, query WebhookDeliveryGetParams, opts ...option.RequestOption) (res *WebhookDeliveryGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if deliveryID == "" {
@@ -54,7 +54,7 @@ func (r *WebhookDeliveryService) Get(ctx context.Context, deliveryID string, que
 	return res, err
 }
 
-// List your batch or monitor webhook deliveries, newest first.
+// List batch and monitor webhook deliveries from the last 30 days.
 func (r *WebhookDeliveryService) List(ctx context.Context, body WebhookDeliveryListParams, opts ...option.RequestOption) (res *WebhookDeliveryListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "webhooks/deliveries"
@@ -62,7 +62,7 @@ func (r *WebhookDeliveryService) List(ctx context.Context, body WebhookDeliveryL
 	return res, err
 }
 
-// List delivery attempts, newest first.
+// List a delivery’s attempts, newest first.
 func (r *WebhookDeliveryService) ListAttempts(ctx context.Context, deliveryID string, query WebhookDeliveryListAttemptsParams, opts ...option.RequestOption) (res *WebhookDeliveryListAttemptsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if deliveryID == "" {
@@ -74,7 +74,8 @@ func (r *WebhookDeliveryService) ListAttempts(ctx context.Context, deliveryID st
 	return res, err
 }
 
-// Retry a webhook delivery within seven days of creation.
+// Resend the original payload using the source’s current URL and secret. Available
+// for 7 days after the event.
 func (r *WebhookDeliveryService) Retry(ctx context.Context, deliveryID string, params WebhookDeliveryRetryParams, opts ...option.RequestOption) (res *WebhookDeliveryRetryResponse, err error) {
 	if !param.IsOmitted(params.IdempotencyKey) {
 		opts = append(opts, option.WithHeader("Idempotency-Key", fmt.Sprintf("%v", params.IdempotencyKey.Value)))
@@ -100,7 +101,7 @@ type Attempt struct {
 	HTTPStatus int64 `json:"http_status" api:"required"`
 	// Attempt start time.
 	StartedAt time.Time `json:"started_at" api:"required" format:"date-time"`
-	// What started this attempt.
+	// `initial`, `automatic` (scheduled retry), or `manual` (Retry endpoint).
 	//
 	// Any of "initial", "automatic", "manual".
 	Trigger AttemptTrigger `json:"trigger" api:"required"`
@@ -147,7 +148,7 @@ func (r *AttemptError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What started this attempt.
+// `initial`, `automatic` (scheduled retry), or `manual` (Retry endpoint).
 type AttemptTrigger string
 
 const (
@@ -178,11 +179,12 @@ type Delivery struct {
 	NextAttemptAt time.Time `json:"next_attempt_at" api:"required" format:"date-time"`
 	// Webhook retry settings. Use {} for the default schedule.
 	Retry RetryConfig `json:"retry" api:"required"`
-	// Manual retry deadline, seven days after event creation.
+	// Last time you can retry manually (7 days after the event).
 	RetryExpiresAt time.Time `json:"retry_expires_at" api:"required" format:"date-time"`
 	// Batch or monitor run that produced the event.
 	Source DeliverySourceUnion `json:"source" api:"required"`
-	// Current delivery status.
+	// `pending`, `delivering`, `retrying`, `delivered`, `failed`, or `cancelled`
+	// (source or its webhook was removed).
 	//
 	// Any of "pending", "delivering", "retrying", "delivered", "failed", "cancelled".
 	Status DeliveryStatus `json:"status" api:"required"`
@@ -287,7 +289,7 @@ func (r *DeliverySourceUnion) UnmarshalJSON(data []byte) error {
 type DeliverySourceBatch struct {
 	// Batch ID.
 	BatchID string `json:"batch_id" api:"required"`
-	// Delivery source.
+	// Which deliveries to list: `batch` or `monitor`.
 	//
 	// Any of "batch".
 	Type string `json:"type" api:"required"`
@@ -311,7 +313,7 @@ type DeliverySourceMonitor struct {
 	MonitorID string `json:"monitor_id" api:"required"`
 	// Monitor run ID.
 	RunID string `json:"run_id" api:"required"`
-	// Delivery source.
+	// Which deliveries to list: `batch` or `monitor`.
 	//
 	// Any of "monitor".
 	Type string `json:"type" api:"required"`
@@ -331,7 +333,8 @@ func (r *DeliverySourceMonitor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current delivery status.
+// `pending`, `delivering`, `retrying`, `delivered`, `failed`, or `cancelled`
+// (source or its webhook was removed).
 type DeliveryStatus string
 
 const (
@@ -359,11 +362,12 @@ type DeliverySummary struct {
 	LastError DeliverySummaryLastError `json:"last_error" api:"required"`
 	// Next scheduled attempt, or null if none.
 	NextAttemptAt time.Time `json:"next_attempt_at" api:"required" format:"date-time"`
-	// Manual retry deadline, seven days after event creation.
+	// Last time you can retry manually (7 days after the event).
 	RetryExpiresAt time.Time `json:"retry_expires_at" api:"required" format:"date-time"`
 	// Batch or monitor run that produced the event.
 	Source DeliverySummarySourceUnion `json:"source" api:"required"`
-	// Current delivery status.
+	// `pending`, `delivering`, `retrying`, `delivered`, `failed`, or `cancelled`
+	// (source or its webhook was removed).
 	//
 	// Any of "pending", "delivering", "retrying", "delivered", "failed", "cancelled".
 	Status DeliverySummaryStatus `json:"status" api:"required"`
@@ -465,7 +469,7 @@ func (r *DeliverySummarySourceUnion) UnmarshalJSON(data []byte) error {
 type DeliverySummarySourceBatch struct {
 	// Batch ID.
 	BatchID string `json:"batch_id" api:"required"`
-	// Delivery source.
+	// Which deliveries to list: `batch` or `monitor`.
 	//
 	// Any of "batch".
 	Type string `json:"type" api:"required"`
@@ -489,7 +493,7 @@ type DeliverySummarySourceMonitor struct {
 	MonitorID string `json:"monitor_id" api:"required"`
 	// Monitor run ID.
 	RunID string `json:"run_id" api:"required"`
-	// Delivery source.
+	// Which deliveries to list: `batch` or `monitor`.
 	//
 	// Any of "monitor".
 	Type string `json:"type" api:"required"`
@@ -509,7 +513,8 @@ func (r *DeliverySummarySourceMonitor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current delivery status.
+// `pending`, `delivering`, `retrying`, `delivered`, `failed`, or `cancelled`
+// (source or its webhook was removed).
 type DeliverySummaryStatus string
 
 const (
@@ -522,10 +527,10 @@ const (
 )
 
 type WebhookDeliveryGetResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebhookDeliveryGetResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -543,9 +548,9 @@ func (r *WebhookDeliveryGetResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebhookDeliveryGetResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -571,10 +576,10 @@ type WebhookDeliveryListResponse struct {
 	HasMore bool `json:"has_more" api:"required"`
 	// Next page cursor, or null on the last page.
 	NextCursor string `json:"next_cursor" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebhookDeliveryListResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -594,9 +599,9 @@ func (r *WebhookDeliveryListResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebhookDeliveryListResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -622,10 +627,10 @@ type WebhookDeliveryListAttemptsResponse struct {
 	HasMore bool `json:"has_more" api:"required"`
 	// Next page cursor, or null on the last page.
 	NextCursor string `json:"next_cursor" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebhookDeliveryListAttemptsResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -645,9 +650,9 @@ func (r *WebhookDeliveryListAttemptsResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebhookDeliveryListAttemptsResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -669,10 +674,10 @@ func (r *WebhookDeliveryListAttemptsResponseKeyMetadata) UnmarshalJSON(data []by
 type WebhookDeliveryRetryResponse struct {
 	// Delivery ID.
 	ID string `json:"id" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebhookDeliveryRetryResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -690,9 +695,9 @@ func (r *WebhookDeliveryRetryResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebhookDeliveryRetryResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -712,8 +717,7 @@ func (r *WebhookDeliveryRetryResponseKeyMetadata) UnmarshalJSON(data []byte) err
 }
 
 type WebhookDeliveryGetParams struct {
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -762,7 +766,7 @@ type WebhookDeliveryListParamsBodyBatch struct {
 	//
 	// Any of "pending", "delivering", "retrying", "delivered", "failed", "cancelled".
 	Status string `json:"status,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	// Delivery source.
 	//
@@ -801,7 +805,7 @@ type WebhookDeliveryListParamsBodyMonitor struct {
 	//
 	// Any of "pending", "delivering", "retrying", "delivered", "failed", "cancelled".
 	Status string `json:"status,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	// Delivery source.
 	//
@@ -829,8 +833,7 @@ type WebhookDeliveryListAttemptsParams struct {
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
 	// Number of attempts to return.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -845,11 +848,11 @@ func (r WebhookDeliveryListAttemptsParams) URLQuery() (v url.Values, err error) 
 }
 
 type WebhookDeliveryRetryParams struct {
-	// Resend a delivery that already succeeded.
+	// Resend even if the delivery already succeeded. Defaults to false.
 	Force param.Opt[bool] `json:"force,omitzero"`
 	// Unique key to prevent duplicate retry requests.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }

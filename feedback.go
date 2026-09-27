@@ -14,8 +14,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
-// Report bugs, docs mismatches, and friction with any Context.dev API. Submissions
-// cost no credits and use a separate rate limit.
+// Report API issues and documentation mismatches.
 //
 // FeedbackService contains methods and other services that help with interacting
 // with the context.dev API.
@@ -36,8 +35,8 @@ func NewFeedbackService(opts ...option.RequestOption) (r FeedbackService) {
 	return
 }
 
-// Report a problem with a Context.dev API call, docs page, SDK, or CLI. Include
-// request_id, url, or both.
+// Report an API issue or documentation mismatch, including request IDs when
+// available.
 func (r *FeedbackService) Submit(ctx context.Context, body FeedbackSubmitParams, opts ...option.RequestOption) (res *FeedbackSubmitResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "feedback"
@@ -51,10 +50,10 @@ type FeedbackSubmitResponse struct {
 	AlreadySubmitted bool `json:"already_submitted" api:"required"`
 	// ID of the stored feedback.
 	FeedbackID string `json:"feedback_id" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata FeedbackSubmitResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -73,9 +72,9 @@ func (r *FeedbackSubmitResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type FeedbackSubmitResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -107,7 +106,7 @@ type FeedbackSubmitParams struct {
 	RequestID param.Opt[string] `json:"request_id,omitzero" format:"uuid"`
 	// The page the feedback is about, such as one page of a crawl or a docs page.
 	URL param.Opt[string] `json:"url,omitzero" format:"uri"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }

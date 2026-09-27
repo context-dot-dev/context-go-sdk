@@ -19,8 +19,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
-// Read your organization's API request logs to debug failed calls. These endpoints
-// cost no credits and use a separate rate limit.
+// Read your organization's API request logs.
 //
 // LogService contains methods and other services that help with interacting with
 // the context.dev API.
@@ -41,7 +40,7 @@ func NewLogService(opts ...option.RequestOption) (r LogService) {
 	return
 }
 
-// Get one logged API call, including its request input and response body.
+// Retrieve a request’s metadata, retained input, and response.
 func (r *LogService) Get(ctx context.Context, requestID string, opts ...option.RequestOption) (res *LogGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if requestID == "" {
@@ -53,8 +52,8 @@ func (r *LogService) Get(ctx context.Context, requestID string, opts ...option.R
 	return res, err
 }
 
-// List your organization's API requests, newest first. Defaults to the last 24
-// hours.
+// List your organization’s request logs with filters and pagination. Logs also
+// include batch settlements and monitor runs.
 func (r *LogService) List(ctx context.Context, query LogListParams, opts ...option.RequestOption) (res *LogListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "logs"
@@ -64,10 +63,10 @@ func (r *LogService) List(ctx context.Context, query LogListParams, opts ...opti
 
 type LogGetResponse struct {
 	Data LogGetResponseData `json:"data" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata LogGetResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -96,7 +95,8 @@ type LogGetResponseData struct {
 	KeyID string `json:"key_id" api:"required"`
 	// Server-side processing time in milliseconds.
 	LatencyMs float64 `json:"latency_ms" api:"required"`
-	// HTTP method.
+	// HTTP method, or `MONITOR` / `BATCH` for monitor-run and batch-settlement
+	// entries.
 	Method string `json:"method" api:"required"`
 	// Endpoint path as called.
 	Path string `json:"path" api:"required"`
@@ -112,8 +112,6 @@ type LogGetResponseData struct {
 	UserAgent string `json:"user_agent" api:"required"`
 	// Whether the request was made under zero data retention.
 	Zdr bool `json:"zdr" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
-	KeyMetadata LogGetResponseDataKeyMetadata `json:"key_metadata"`
 	// The retained JSON response with credentials redacted, or null when unavailable.
 	Response any `json:"response"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -131,7 +129,6 @@ type LogGetResponseData struct {
 		Timestamp   respjson.Field
 		UserAgent   respjson.Field
 		Zdr         respjson.Field
-		KeyMetadata respjson.Field
 		Response    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -165,30 +162,9 @@ func (r *LogGetResponseDataInput) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
-type LogGetResponseDataKeyMetadata struct {
-	// Credits used by this request.
-	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
-	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		CreditsConsumed  respjson.Field
-		CreditsRemaining respjson.Field
-		ExtraFields      map[string]respjson.Field
-		raw              string
-	} `json:"-"`
-}
-
-// Returns the unmodified JSON received from the API
-func (r LogGetResponseDataKeyMetadata) RawJSON() string { return r.JSON.raw }
-func (r *LogGetResponseDataKeyMetadata) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type LogGetResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -216,10 +192,10 @@ type LogListResponse struct {
 	Limit int64 `json:"limit" api:"required"`
 	// Current page number.
 	Page int64 `json:"page" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata LogListResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -249,7 +225,8 @@ type LogListResponseData struct {
 	KeyID string `json:"key_id" api:"required"`
 	// Server-side processing time in milliseconds.
 	LatencyMs float64 `json:"latency_ms" api:"required"`
-	// HTTP method.
+	// HTTP method, or `MONITOR` / `BATCH` for monitor-run and batch-settlement
+	// entries.
 	Method string `json:"method" api:"required"`
 	// Endpoint path as called.
 	Path string `json:"path" api:"required"`
@@ -287,9 +264,9 @@ func (r *LogListResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type LogListResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`

@@ -29,7 +29,7 @@ func TestUtilityPrefetchWithOptionalParams(t *testing.T) {
 	_, err := client.Utility.Prefetch(context.TODO(), contextdev.UtilityPrefetchParams{
 		Identifier: contextdev.UtilityPrefetchParamsIdentifierUnion{
 			OfByDomain: &contextdev.UtilityPrefetchParamsIdentifierByDomain{
-				Domain: "xxx",
+				Domain: "stripe.com",
 			},
 		},
 		Type: contextdev.UtilityPrefetchParamsTypeBrand,

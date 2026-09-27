@@ -35,7 +35,7 @@ func NewIndustryService(opts ...option.RequestOption) (r IndustryService) {
 	return
 }
 
-// Classify any brand into 2022 NAICS industry codes from its domain or name.
+// Classify a company into NAICS industry codes.
 func (r *IndustryService) GetNaics(ctx context.Context, query IndustryGetNaicsParams, opts ...option.RequestOption) (res *IndustryGetNaicsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/naics"
@@ -43,9 +43,7 @@ func (r *IndustryService) GetNaics(ctx context.Context, query IndustryGetNaicsPa
 	return res, err
 }
 
-// Classify any brand into Standard Industrial Classification (SIC) codes from its
-// domain or name. Choose between the original SIC system (`original_sic`) or the
-// latest SIC list maintained by the SEC (`latest_sec`).
+// Classify a company into SIC industry codes.
 func (r *IndustryService) GetSic(ctx context.Context, query IndustryGetSicParams, opts ...option.RequestOption) (res *IndustryGetSicResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/sic"
@@ -54,19 +52,19 @@ func (r *IndustryService) GetSic(ctx context.Context, query IndustryGetSicParams
 }
 
 type IndustryGetNaicsResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Array of NAICS codes and titles.
 	Codes []IndustryGetNaicsResponseCode `json:"codes"`
 	// Domain found for the brand
 	Domain string `json:"domain"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata IndustryGetNaicsResponseKeyMetadata `json:"key_metadata"`
 	// True when the timeout ended processing and this response contains only usable
 	// results completed so far. Unfinished results are omitted.
 	Partial bool `json:"partial"`
-	// Status of the response, e.g., 'ok'
+	// Always `ok` on success.
 	Status string `json:"status"`
 	// Industry classification type, for naics api it will be `naics`
 	Type string `json:"type"`
@@ -115,9 +113,9 @@ func (r *IndustryGetNaicsResponseCode) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type IndustryGetNaicsResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -137,8 +135,8 @@ func (r *IndustryGetNaicsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type IndustryGetSicResponse struct {
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Echoes back which SIC dataset was used to classify the brand.
 	//
@@ -150,12 +148,12 @@ type IndustryGetSicResponse struct {
 	Codes []IndustryGetSicResponseCode `json:"codes"`
 	// Domain found for the brand
 	Domain string `json:"domain"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata IndustryGetSicResponseKeyMetadata `json:"key_metadata"`
 	// True when the timeout ended processing and this response contains only usable
 	// results completed so far. Unfinished results are omitted.
 	Partial bool `json:"partial"`
-	// Status of the response, e.g., 'ok'
+	// Always `ok` on success.
 	Status string `json:"status"`
 	// Industry classification type, for sic api it will be `sic`
 	Type string `json:"type"`
@@ -225,9 +223,9 @@ func (r *IndustryGetSicResponseCode) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type IndustryGetSicResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -256,18 +254,12 @@ type IndustryGetNaicsParams struct {
 	MaxResults param.Opt[int64] `query:"maxResults,omitzero" json:"-"`
 	// Minimum number of NAICS codes to return. Must be at least 1. Defaults to 1.
 	MinResults param.Opt[int64] `query:"minResults,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts IndustryGetNaicsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr IndustryGetNaicsParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -282,18 +274,14 @@ func (r IndustryGetNaicsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type IndustryGetNaicsParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -309,11 +297,8 @@ func (r IndustryGetNaicsParamsTimeoutOpts) URLQuery() (v url.Values, err error) 
 	})
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type IndustryGetNaicsParamsZdr string
 
 const (
@@ -330,24 +315,16 @@ type IndustryGetSicParams struct {
 	MaxResults param.Opt[int64] `query:"maxResults,omitzero" json:"-"`
 	// Minimum number of SIC codes to return. Must be at least 1. Defaults to 1.
 	MinResults param.Opt[int64] `query:"minResults,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts IndustryGetSicParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
-	// Which SIC dataset to classify against. `original_sic` uses the 1987 Standard
-	// Industrial Classification system; `latest_sec` uses the current SIC list as
-	// published by the SEC. Defaults to `original_sic`.
+	// SIC dataset: `original_sic` (1987) or `latest_sec` (current SEC list).
 	//
 	// Any of "original_sic", "latest_sec".
 	Type IndustryGetSicParamsType `query:"type,omitzero" json:"-"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr IndustryGetSicParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -362,18 +339,14 @@ func (r IndustryGetSicParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type IndustryGetSicParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -389,9 +362,7 @@ func (r IndustryGetSicParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Which SIC dataset to classify against. `original_sic` uses the 1987 Standard
-// Industrial Classification system; `latest_sec` uses the current SIC list as
-// published by the SEC. Defaults to `original_sic`.
+// SIC dataset: `original_sic` (1987) or `latest_sec` (current SEC list).
 type IndustryGetSicParamsType string
 
 const (
@@ -399,11 +370,8 @@ const (
 	IndustryGetSicParamsTypeLatestSec   IndustryGetSicParamsType = "latest_sec"
 )
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type IndustryGetSicParamsZdr string
 
 const (

@@ -19,7 +19,7 @@ import (
 // the [NewWebhookService] method instead.
 type WebhookService struct {
 	options []option.RequestOption
-	// Inspect and retry webhook deliveries. These endpoints cost no credits.
+	// Inspect and retry batch and monitor webhook deliveries.
 	Deliveries WebhookDeliveryService
 }
 

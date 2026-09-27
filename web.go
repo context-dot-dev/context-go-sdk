@@ -37,11 +37,8 @@ func NewWebService(opts ...option.RequestOption) (r WebService) {
 	return
 }
 
-// Researches the live web and returns a sourced answer in your requested JSON
-// shape. Select fast for a smaller research budget at 10 credits or ultra for
-// deeper reasoning at 100 credits. Defaults to ultra. Fast research is limited to
-// 30 seconds and ultra to 50 seconds; timeoutOpts.milliseconds can shorten either
-// deadline.
+// Research the web and return a sourced answer in your JSON shape. Choose `fast`
+// for a short task or `ultra` for deeper research.
 func (r *WebService) Answers(ctx context.Context, body WebAnswersParams, opts ...option.RequestOption) (res *WebAnswersResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/answers"
@@ -58,8 +55,7 @@ func (r *WebService) ExtractCompetitors(ctx context.Context, query WebExtractCom
 	return res, err
 }
 
-// Extract a comprehensive design system from a website including colors,
-// typography, spacing, shadows, and UI components.
+// Extract colors, typography, spacing, and component styles from a website.
 func (r *WebService) ExtractStyleguide(ctx context.Context, query WebExtractStyleguideParams, opts ...option.RequestOption) (res *WebExtractStyleguideResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/styleguide"
@@ -67,14 +63,8 @@ func (r *WebService) ExtractStyleguide(ctx context.Context, query WebExtractStyl
 	return res, err
 }
 
-// Discovers URLs using the same sitemap crawl, filters, and limits as
-// /web/scrape/sitemap. Each URL includes its available title, description,
-// keywords, and language. URLs without stored enrichment are returned immediately
-// with only the URL and queued for background HTML scraping, so later requests can
-// include their metadata. Responses are never cached as a whole; every request
-// reads the current per-URL enrichment. Zero data retention and credential-bearing
-// discovery requests return URLs without reading or storing shared enrichment or
-// queuing background scrapes. Costs 1 credit, or 2 credits with search.
+// Discover a site's URLs, with page titles, descriptions, keywords, and language
+// when available. Metadata can be missing on newly discovered URLs.
 func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts ...option.RequestOption) (res *WebMapURLsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/urls"
@@ -82,26 +72,8 @@ func (r *WebService) MapURLs(ctx context.Context, query WebMapURLsParams, opts .
 	return res, err
 }
 
-// Reuse cached outputs independently and capture missing formats in one page
-// visit. Each cache key includes only the settings that affect that output. HTML
-// is shared with Markdown, parsed fields, product data, highlights, and JSON
-// extraction. Cached outputs can come from different visits within maxAgeMs; use 0
-// for a fresh capture. HTML-only requests use the existing fast acquisition path.
-// Highlights return Markdown excerpts most relevant to highlightsParams.query.
-// Requests with at least one successful output cost one base credit, including
-// cache hits, or two with browser actions. All-failed responses are unbilled
-// except missing pages, which retain the base price and the one-credit product
-// charge when product was requested. Highlights add 3 credits when passages are
-// returned. JSON extraction runs an LLM over nonempty page Markdown and adds four
-// credits only when its result is returned successfully. PDF OCR adds one credit
-// per recovered page on fresh extraction. Product adds one credit when its
-// successful result is returned, plus six if that result used the specialized
-// model. Original response bytes and screenshots are limited to 20 MiB each,
-// screenshots to 40 megapixels, and the combined response to 60 MiB. An oversized
-// output has success: false and data: null. If the combined response exceeds its
-// limit, the largest outputs are marked failed until the remaining outputs fit.
-// Valid captured pieces may still be cached when omitted to meet the response size
-// limit.
+// Returns the outputs you enable in `formats` from one visit to a URL. Each output
+// reports its own `success`, so a failed output does not fail the request.
 func (r *WebService) Scrape(ctx context.Context, body WebScrapeParams, opts ...option.RequestOption) (res *WebScrapeResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/scrape"
@@ -117,7 +89,7 @@ func (r *WebService) Screenshot(ctx context.Context, query WebScreenshotParams, 
 	return res, err
 }
 
-// Search the web and optionally scrape each result to Markdown in one round-trip.
+// Search the web and optionally return page content with each result.
 func (r *WebService) Search(ctx context.Context, body WebSearchParams, opts ...option.RequestOption) (res *WebSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/search"
@@ -125,8 +97,8 @@ func (r *WebService) Search(ctx context.Context, body WebSearchParams, opts ...o
 	return res, err
 }
 
-// Performs a crawl starting from a given URL, extracts page content as Markdown,
-// and returns results for all crawled pages.
+// Crawl a website and return page content as Markdown. Use a batch for crawls
+// beyond 500 pages.
 func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, opts ...option.RequestOption) (res *WebWebCrawlMdResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/crawl"
@@ -140,7 +112,7 @@ type WebAnswersResponse struct {
 	// URLs that supplied search results or readable page content, in first-seen order.
 	// Unreadable pages are excluded.
 	Sources []string `json:"sources" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebAnswersResponseKeyMetadata `json:"key_metadata"`
 	// True when the request deadline ended research and the answer uses the evidence
 	// collected so far.
@@ -162,9 +134,9 @@ func (r *WebAnswersResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebAnswersResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -188,8 +160,8 @@ type WebExtractCompetitorsResponse struct {
 	Competitors []WebExtractCompetitorsResponseCompetitor `json:"competitors" api:"required"`
 	// Normalized input domain.
 	Domain string `json:"domain" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Status of the response.
 	//
@@ -197,7 +169,7 @@ type WebExtractCompetitorsResponse struct {
 	Status WebExtractCompetitorsResponseStatus `json:"status" api:"required"`
 	// Target company profile inferred from the landing page.
 	Target WebExtractCompetitorsResponseTarget `json:"target" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebExtractCompetitorsResponseKeyMetadata `json:"key_metadata"`
 	// True when the timeout ended processing and this response contains only usable
 	// results completed so far. Unfinished results are omitted.
@@ -290,9 +262,9 @@ func (r *WebExtractCompetitorsResponseTarget) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebExtractCompetitorsResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -312,28 +284,23 @@ func (r *WebExtractCompetitorsResponseKeyMetadata) UnmarshalJSON(data []byte) er
 }
 
 type WebExtractStyleguideResponse struct {
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata WebExtractStyleguideResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// HTTP status code
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
 	Domain string `json:"domain"`
-	// How complete the returned content is. `loaded` means the page finished the waits
-	// the request asked for. `still-loading` only occurs with
-	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
-	// reached first, so the content reflects the DOM at that moment and late-rendering
-	// parts may be missing. Partial results are billed at the base request cost.
+	// `loaded`, or `still-loading` when capture ended before the page finished
+	// loading.
 	//
 	// Any of "loaded", "still-loading".
 	FinalDomState WebExtractStyleguideResponseFinalDomState `json:"finalDOMState"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebExtractStyleguideResponseKeyMetadata `json:"key_metadata"`
-	// Status of the response, e.g., 'ok'
+	// Always `ok` on success.
 	Status string `json:"status"`
 	// Comprehensive styleguide data extracted from the website
 	Styleguide WebExtractStyleguideResponseStyleguide `json:"styleguide"`
@@ -358,9 +325,7 @@ func (r *WebExtractStyleguideResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type WebExtractStyleguideResponseCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -384,11 +349,8 @@ func (r *WebExtractStyleguideResponseCacheMetadata) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How complete the returned content is. `loaded` means the page finished the waits
-// the request asked for. `still-loading` only occurs with
-// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
-// reached first, so the content reflects the DOM at that moment and late-rendering
-// parts may be missing. Partial results are billed at the base request cost.
+// `loaded`, or `still-loading` when capture ended before the page finished
+// loading.
 type WebExtractStyleguideResponseFinalDomState string
 
 const (
@@ -396,9 +358,9 @@ const (
 	WebExtractStyleguideResponseFinalDomStateStillLoading WebExtractStyleguideResponseFinalDomState = "still-loading"
 )
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebExtractStyleguideResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -540,7 +502,7 @@ type WebExtractStyleguideResponseStyleguideComponentsButtonLink struct {
 	FontWeight float64 `json:"fontWeight" api:"required"`
 	// Sampled minimum height of the button box (typically px)
 	MinHeight string `json:"minHeight" api:"required"`
-	// Sampled minimum width of the button box (typically px)
+	// Minimum width (usually px).
 	MinWidth       string `json:"minWidth" api:"required"`
 	Padding        string `json:"padding" api:"required"`
 	TextDecoration string `json:"textDecoration" api:"required"`
@@ -599,7 +561,7 @@ type WebExtractStyleguideResponseStyleguideComponentsButtonPrimary struct {
 	FontWeight float64 `json:"fontWeight" api:"required"`
 	// Sampled minimum height of the button box (typically px)
 	MinHeight string `json:"minHeight" api:"required"`
-	// Sampled minimum width of the button box (typically px)
+	// Minimum width (usually px).
 	MinWidth       string `json:"minWidth" api:"required"`
 	Padding        string `json:"padding" api:"required"`
 	TextDecoration string `json:"textDecoration" api:"required"`
@@ -658,7 +620,7 @@ type WebExtractStyleguideResponseStyleguideComponentsButtonSecondary struct {
 	FontWeight float64 `json:"fontWeight" api:"required"`
 	// Sampled minimum height of the button box (typically px)
 	MinHeight string `json:"minHeight" api:"required"`
-	// Sampled minimum width of the button box (typically px)
+	// Minimum width (usually px).
 	MinWidth       string `json:"minWidth" api:"required"`
 	Padding        string `json:"padding" api:"required"`
 	TextDecoration string `json:"textDecoration" api:"required"`
@@ -862,7 +824,7 @@ func (r *WebExtractStyleguideResponseStyleguideTypographyHeadings) UnmarshalJSON
 type WebExtractStyleguideResponseStyleguideTypographyHeadingsH1 struct {
 	// Full ordered font list from resolved computed font-family
 	FontFallbacks []string `json:"fontFallbacks" api:"required"`
-	// Primary face (first family in the computed stack)
+	// First font in the stack.
 	FontFamily    string  `json:"fontFamily" api:"required"`
 	FontSize      string  `json:"fontSize" api:"required"`
 	FontWeight    float64 `json:"fontWeight" api:"required"`
@@ -892,7 +854,7 @@ func (r *WebExtractStyleguideResponseStyleguideTypographyHeadingsH1) UnmarshalJS
 type WebExtractStyleguideResponseStyleguideTypographyHeadingsH2 struct {
 	// Full ordered font list from resolved computed font-family
 	FontFallbacks []string `json:"fontFallbacks" api:"required"`
-	// Primary face (first family in the computed stack)
+	// First font in the stack.
 	FontFamily    string  `json:"fontFamily" api:"required"`
 	FontSize      string  `json:"fontSize" api:"required"`
 	FontWeight    float64 `json:"fontWeight" api:"required"`
@@ -922,7 +884,7 @@ func (r *WebExtractStyleguideResponseStyleguideTypographyHeadingsH2) UnmarshalJS
 type WebExtractStyleguideResponseStyleguideTypographyHeadingsH3 struct {
 	// Full ordered font list from resolved computed font-family
 	FontFallbacks []string `json:"fontFallbacks" api:"required"`
-	// Primary face (first family in the computed stack)
+	// First font in the stack.
 	FontFamily    string  `json:"fontFamily" api:"required"`
 	FontSize      string  `json:"fontSize" api:"required"`
 	FontWeight    float64 `json:"fontWeight" api:"required"`
@@ -952,7 +914,7 @@ func (r *WebExtractStyleguideResponseStyleguideTypographyHeadingsH3) UnmarshalJS
 type WebExtractStyleguideResponseStyleguideTypographyHeadingsH4 struct {
 	// Full ordered font list from resolved computed font-family
 	FontFallbacks []string `json:"fontFallbacks" api:"required"`
-	// Primary face (first family in the computed stack)
+	// First font in the stack.
 	FontFamily    string  `json:"fontFamily" api:"required"`
 	FontSize      string  `json:"fontSize" api:"required"`
 	FontWeight    float64 `json:"fontWeight" api:"required"`
@@ -982,7 +944,7 @@ func (r *WebExtractStyleguideResponseStyleguideTypographyHeadingsH4) UnmarshalJS
 type WebExtractStyleguideResponseStyleguideTypographyP struct {
 	// Full ordered font list from resolved computed font-family
 	FontFallbacks []string `json:"fontFallbacks" api:"required"`
-	// Primary face (first family in the computed stack)
+	// First font in the stack.
 	FontFamily    string  `json:"fontFamily" api:"required"`
 	FontSize      string  `json:"fontSize" api:"required"`
 	FontWeight    float64 `json:"fontWeight" api:"required"`
@@ -1009,13 +971,13 @@ func (r *WebExtractStyleguideResponseStyleguideTypographyP) UnmarshalJSON(data [
 
 type WebMapURLsResponse struct {
 	Domain string `json:"domain" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Any of true.
 	Success bool                    `json:"success" api:"required"`
 	URLs    []WebMapURLsResponseURL `json:"urls" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebMapURLsResponseKeyMetadata `json:"key_metadata"`
 	Partial     bool                          `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -1061,9 +1023,9 @@ func (r *WebMapURLsResponseURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebMapURLsResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -1083,47 +1045,41 @@ func (r *WebMapURLsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebScrapeResponse struct {
-	// Original HTTP response body. Waiting, actions, and content filters never change
-	// it.
+	// The original HTTP response body, unchanged by waits, actions, and filters.
 	Bytes WebScrapeResponseBytes `json:"bytes" api:"required"`
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata WebScrapeResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// Relevant Markdown excerpts for your question or topic, in page order. Headings
-	// in square brackets supply necessary context; ellipses mark omitted portions.
-	// Empty when the page has no text.
+	// Relevant Markdown excerpts in page order. `[Heading]` adds context; `…` marks
+	// omitted text.
 	Highlights WebScrapeResponseHighlights `json:"highlights" api:"required"`
 	// Rendered HTML after content filters.
 	HTML WebScrapeResponseHTML `json:"html" api:"required"`
-	// Images after content filters. Empty when none are found.
+	// Images after content filters. `[]` when none are found.
 	Images WebScrapeResponseImages `json:"images" api:"required"`
-	// Page data extracted using your schema.
+	// Object matching `jsonParams.schema`.
 	Json WebScrapeResponseJson `json:"json" api:"required"`
 	// Markdown after content filters.
 	Markdown WebScrapeResponseMarkdown `json:"markdown" api:"required"`
-	// Page details, when available.
+	// Page metadata. Fields are omitted when not found.
 	Metadata WebScrapeResponseMetadata `json:"metadata" api:"required"`
-	// Fields produced by parseParams.rules, after shared content filters.
+	// Fields from `parseParams.rules`, after content filters. Unmatched fields are
+	// `null` (`[]` for lists).
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// An image data URL. Use directly as an image src.
+	// Screenshot as a base64 image data URL.
 	Screenshot WebScrapeResponseScreenshot `json:"screenshot" api:"required"`
 	// Final URL after redirects and browser actions.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Present when at least one requested output succeeds while another fails, or when
-	// successful outputs come from a page that is still loading or images returned
-	// before processing finished. Absent when every requested output fails. Check each
-	// output's success field for its result. Valid captured pieces may be cached
-	// independently; failed retrievals and incomplete captures are not cached.
+	// True when at least one requested output succeeds but the response has failed or
+	// incomplete outputs. Absent when all requested outputs fail.
 	//
 	// Any of true.
 	IsPartial bool `json:"isPartial"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebScrapeResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1153,12 +1109,11 @@ func (r *WebScrapeResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Original HTTP response body. Waiting, actions, and content filters never change
-// it.
+// The original HTTP response body, unchanged by waits, actions, and filters.
 type WebScrapeResponseBytes struct {
 	Data      WebScrapeResponseBytesData `json:"data" api:"required"`
 	Requested bool                       `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1177,8 +1132,7 @@ func (r *WebScrapeResponseBytes) UnmarshalJSON(data []byte) error {
 }
 
 type WebScrapeResponseBytesData struct {
-	// Original response body as base64, after HTTP decompression. Maximum decoded
-	// size: 20 MiB.
+	// Body as base64, after HTTP decompression. Up to 20 MiB decoded.
 	Base64      string `json:"base64" api:"required"`
 	ContentType string `json:"contentType" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -1196,9 +1150,7 @@ func (r *WebScrapeResponseBytesData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type WebScrapeResponseCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -1222,13 +1174,12 @@ func (r *WebScrapeResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Relevant Markdown excerpts for your question or topic, in page order. Headings
-// in square brackets supply necessary context; ellipses mark omitted portions.
-// Empty when the page has no text.
+// Relevant Markdown excerpts in page order. `[Heading]` adds context; `…` marks
+// omitted text.
 type WebScrapeResponseHighlights struct {
 	Data      []string `json:"data" api:"required"`
 	Requested bool     `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1250,7 +1201,7 @@ func (r *WebScrapeResponseHighlights) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseHTML struct {
 	Data      string `json:"data" api:"required"`
 	Requested bool   `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1268,11 +1219,11 @@ func (r *WebScrapeResponseHTML) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Images after content filters. Empty when none are found.
+// Images after content filters. `[]` when none are found.
 type WebScrapeResponseImages struct {
 	Data      []WebScrapeResponseImagesData `json:"data" api:"required"`
 	Requested bool                          `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1298,8 +1249,8 @@ type WebScrapeResponseImagesData struct {
 	// Any of "photography", "illustration", "logo", "wordmark", "icon", "pattern",
 	// "graphic", "other".
 	Classification string `json:"classification"`
-	// Hosted copy when file enrichment is requested and zdr is disabled. Valid for 24
-	// hours from the original capture.
+	// Hosted image URL, valid for 24 hours after capture. Requires `file` enrichment
+	// and ZDR disabled.
 	FileURL string `json:"fileUrl" format:"uri"`
 	Height  int64  `json:"height"`
 	Width   int64  `json:"width"`
@@ -1322,11 +1273,11 @@ func (r *WebScrapeResponseImagesData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Page data extracted using your schema.
+// Object matching `jsonParams.schema`.
 type WebScrapeResponseJson struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1348,7 +1299,7 @@ func (r *WebScrapeResponseJson) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseMarkdown struct {
 	Data      string `json:"data" api:"required"`
 	Requested bool   `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1366,7 +1317,7 @@ func (r *WebScrapeResponseMarkdown) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Page details, when available.
+// Page metadata. Fields are omitted when not found.
 type WebScrapeResponseMetadata struct {
 	// Additional non-social meta tags not promoted to top-level metadata fields.
 	AdditionalMeta map[string]WebScrapeResponseMetadataAdditionalMetaUnion `json:"additionalMeta"`
@@ -1380,8 +1331,7 @@ type WebScrapeResponseMetadata struct {
 	Description string `json:"description"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
-	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
-	// Capped at the first 500 headings. Omitted when the page has none.
+	// Up to 500 h1–h6 headings in document order, before content filtering.
 	Headings []WebScrapeResponseMetadataHeading `json:"headings"`
 	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
 	Image string `json:"image"`
@@ -1590,11 +1540,12 @@ func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Fields produced by parseParams.rules, after shared content filters.
+// Fields from `parseParams.rules`, after content filters. Unmatched fields are
+// `null` (`[]` for lists).
 type WebScrapeResponseParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1616,7 +1567,7 @@ func (r *WebScrapeResponseParsed) UnmarshalJSON(data []byte) error {
 type WebScrapeResponseProduct struct {
 	Data      WebScrapeResponseProductData `json:"data" api:"required"`
 	Requested bool                         `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1748,11 +1699,11 @@ func (r *WebScrapeResponseProductDataProductVariant) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// An image data URL. Use directly as an image src.
+// Screenshot as a base64 image data URL.
 type WebScrapeResponseScreenshot struct {
 	Data      string `json:"data" api:"required" format:"uri"`
 	Requested bool   `json:"requested" api:"required"`
-	// True when retrieved, false when retrieval failed, and null when not requested.
+	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1770,9 +1721,9 @@ func (r *WebScrapeResponseScreenshot) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebScrapeResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -1792,28 +1743,23 @@ func (r *WebScrapeResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebScreenshotResponse struct {
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata WebScreenshotResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// HTTP status code
 	Code int64 `json:"code"`
 	// The normalized domain that was processed
 	Domain string `json:"domain"`
-	// How complete the returned content is. `loaded` means the page finished the waits
-	// the request asked for. `still-loading` only occurs with
-	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
-	// reached first, so the content reflects the DOM at that moment and late-rendering
-	// parts may be missing. Partial results are billed at the base request cost.
+	// `loaded`, or `still-loading` when capture ended before the page finished
+	// loading.
 	//
 	// Any of "loaded", "still-loading".
 	FinalDomState WebScreenshotResponseFinalDomState `json:"finalDOMState"`
 	// Height in pixels of the returned screenshot image
 	Height int64 `json:"height"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebScreenshotResponseKeyMetadata `json:"key_metadata"`
 	// Public image URL for standard requests, or an in-memory data URL when ZDR or
 	// non-empty custom headers are supplied.
@@ -1822,7 +1768,7 @@ type WebScreenshotResponse struct {
 	//
 	// Any of "viewport", "fullPage".
 	ScreenshotType WebScreenshotResponseScreenshotType `json:"screenshotType"`
-	// Status of the response, e.g., 'ok'
+	// Always `ok` on success.
 	Status string `json:"status"`
 	// Width in pixels of the returned screenshot image
 	Width int64 `json:"width"`
@@ -1850,9 +1796,7 @@ func (r *WebScreenshotResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type WebScreenshotResponseCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -1876,11 +1820,8 @@ func (r *WebScreenshotResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How complete the returned content is. `loaded` means the page finished the waits
-// the request asked for. `still-loading` only occurs with
-// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
-// reached first, so the content reflects the DOM at that moment and late-rendering
-// parts may be missing. Partial results are billed at the base request cost.
+// `loaded`, or `still-loading` when capture ended before the page finished
+// loading.
 type WebScreenshotResponseFinalDomState string
 
 const (
@@ -1888,9 +1829,9 @@ const (
 	WebScreenshotResponseFinalDomStateStillLoading WebScreenshotResponseFinalDomState = "still-loading"
 )
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebScreenshotResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -1918,17 +1859,15 @@ const (
 )
 
 type WebSearchResponse struct {
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata WebSearchResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Echo of the original query (useful when fanout was enabled).
 	Query string `json:"query" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string                    `json:"request_id" api:"required" format:"uuid"`
 	Results   []WebSearchResponseResult `json:"results" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebSearchResponseKeyMetadata `json:"key_metadata"`
 	// True when timeoutOpts.behavior=return-partial returned the usable results
 	// collected before the deadline. Partial collections are not cached as complete
@@ -1953,9 +1892,7 @@ func (r *WebSearchResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type WebSearchResponseCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -2021,11 +1958,8 @@ type WebSearchResponseResultMarkdown struct {
 	// GFM Markdown of the page. Null unless markdownOptions.enabled is true and
 	// scraping succeeded.
 	Markdown string `json:"markdown" api:"required"`
-	// How complete the returned content is. `loaded` means the page finished the waits
-	// the request asked for. `still-loading` only occurs with
-	// timeoutOpts.behavior=return-partial: the timeoutOpts.milliseconds deadline was
-	// reached first, so the content reflects the DOM at that moment and late-rendering
-	// parts may be missing. Partial results are billed at the base request cost.
+	// `loaded`, or `still-loading` when capture ended before the page finished
+	// loading.
 	//
 	// Any of "loaded", "still-loading".
 	FinalDomState string `json:"finalDOMState"`
@@ -2045,9 +1979,9 @@ func (r *WebSearchResponseResultMarkdown) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebSearchResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -2067,16 +2001,14 @@ func (r *WebSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebWebCrawlMdResponse struct {
-	// Cache outcome for this response. Composite responses are hits only when every
-	// cache-controlled fetch contributing to the output was a hit; age_ms is the
-	// oldest contributing hit.
+	// Whether this response came from cache.
 	CacheMetadata WebWebCrawlMdResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	Metadata      WebWebCrawlMdResponseMetadata      `json:"metadata" api:"required"`
-	// Unique id of this API call, also sent in the X-Request-Id response header. Quote
-	// it when contacting support about a failed request.
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
 	RequestID string                        `json:"request_id" api:"required" format:"uuid"`
 	Results   []WebWebCrawlMdResponseResult `json:"results" api:"required"`
-	// Credit usage, included whenever a valid API key is provided.
+	// Credits this request used and your remaining balance.
 	KeyMetadata WebWebCrawlMdResponseKeyMetadata `json:"key_metadata"`
 	// True when timeoutOpts.behavior=return-partial returned the usable results
 	// collected before the deadline. Partial collections are not cached as complete
@@ -2101,9 +2033,7 @@ func (r *WebWebCrawlMdResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Cache outcome for this response. Composite responses are hits only when every
-// cache-controlled fetch contributing to the output was a hit; age_ms is the
-// oldest contributing hit.
+// Whether this response came from cache.
 type WebWebCrawlMdResponseCacheMetadata struct {
 	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
 	AgeMs int64 `json:"age_ms" api:"required"`
@@ -2418,9 +2348,9 @@ func (r *WebWebCrawlMdResponseResultMetadataTwitterUnion) UnmarshalJSON(data []b
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credit usage, included whenever a valid API key is provided.
+// Credits this request used and your remaining balance.
 type WebWebCrawlMdResponseKeyMetadata struct {
-	// Credits used by this request.
+	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
 	// Credits remaining for your organization.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
@@ -2440,32 +2370,21 @@ func (r *WebWebCrawlMdResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebAnswersParams struct {
-	// What to research and answer, in plain language. Naming a domain in the task (for
-	// example "pricing on context.dev") makes the agent read that site before it
-	// searches.
+	// Research task. Name a domain to have it read before searching.
 	Task string `json:"task" api:"required"`
-	// An example object with placeholder values (for example {"pricing_page_url": "",
-	// "plans": [{"name": "", "price": 0}]}). Object keys and value types are
-	// preserved; unknown values may be null. Empty arrays accept any JSON items.
-	// Defaults to {"result": ""}. Maximum 8 levels, 500 values, and 16000 characters.
+	// Example answer object, not JSON Schema. Up to 8 levels, 500 values, and 16000
+	// characters; unknowns may be null.
 	JsonFormat map[string]any `json:"json_format,omitzero"`
-	// Research level: fast uses a smaller model and research budget for 10 credits;
-	// ultra uses deeper reasoning and research for 100 credits. Defaults to ultra.
-	// Only successful requests consume credits.
+	// `fast` for short tasks; `ultra` for deeper research (default).
 	//
 	// Any of "fast", "ultra".
 	Mode WebAnswersParamsMode `json:"mode,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebAnswersParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebAnswersParamsZdr `json:"zdr,omitzero"`
@@ -2480,9 +2399,7 @@ func (r *WebAnswersParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Research level: fast uses a smaller model and research budget for 10 credits;
-// ultra uses deeper reasoning and research for 100 credits. Defaults to ultra.
-// Only successful requests consume credits.
+// `fast` for short tasks; `ultra` for deeper research (default).
 type WebAnswersParamsMode string
 
 const (
@@ -2490,18 +2407,14 @@ const (
 	WebAnswersParamsModeUltra WebAnswersParamsMode = "ultra"
 )
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebAnswersParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -2522,11 +2435,8 @@ func init() {
 	)
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type WebAnswersParamsZdr string
 
 const (
@@ -2540,18 +2450,12 @@ type WebExtractCompetitorsParams struct {
 	Domain string `query:"domain" api:"required" json:"-"`
 	// Exact number of direct competitors to return. Defaults to 5.
 	NumCompetitors param.Opt[int64] `query:"numCompetitors,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebExtractCompetitorsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebExtractCompetitorsParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -2567,18 +2471,14 @@ func (r WebExtractCompetitorsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebExtractCompetitorsParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -2594,11 +2494,8 @@ func (r WebExtractCompetitorsParamsTimeoutOpts) URLQuery() (v url.Values, err er
 	})
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type WebExtractCompetitorsParamsZdr string
 
 const (
@@ -2607,15 +2504,10 @@ const (
 )
 
 type WebExtractStyleguideParams struct {
-	// Maximum age in milliseconds for cached brand data before the API performs a hard
-	// refresh. Defaults to 3 months (7776000000 ms). Set to 0 to always perform a hard
-	// refresh. Negative values are clamped to 0; values above 1 year (31536000000 ms)
-	// are clamped to 1 year.
+	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
+	// year. `0` refreshes.
 	MaxAgeMs param.Opt[int64] `query:"maxAgeMs,omitzero" json:"-"`
-	// A specific URL to fetch the styleguide from directly, bypassing domain
-	// resolution (e.g., 'https://example.com/design-system'). When provided, the
-	// styleguide is extracted from this exact URL. You must provide either 'domain' or
-	// 'directUrl', but not both.
+	// Exact URL to inspect. Provide either `domain` or `directUrl`, not both.
 	DirectURL param.Opt[string] `query:"directUrl,omitzero" format:"uri" json:"-"`
 	// Domain name to extract styleguide from (e.g., 'example.com', 'google.com'). The
 	// domain will be automatically normalized and validated. You must provide either
@@ -2626,18 +2518,12 @@ type WebExtractStyleguideParams struct {
 	//
 	// Any of "light", "dark".
 	ColorScheme WebExtractStyleguideParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebExtractStyleguideParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebExtractStyleguideParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -2662,19 +2548,14 @@ const (
 	WebExtractStyleguideParamsColorSchemeDark  WebExtractStyleguideParamsColorScheme = "dark"
 )
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebExtractStyleguideParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 5000.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -2690,11 +2571,8 @@ func (r WebExtractStyleguideParamsTimeoutOpts) URLQuery() (v url.Values, err err
 	})
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type WebExtractStyleguideParamsZdr string
 
 const (
@@ -2703,40 +2581,28 @@ const (
 )
 
 type WebMapURLsParams struct {
-	// Domain to build a sitemap for
+	// Domain to map, e.g. `stripe.com`.
 	Domain string `query:"domain" api:"required" json:"-"`
-	// When true, discover and include public pages and sitemaps on subdomains of the
-	// requested domain. Defaults to false.
+	// Include URLs on subdomains.
 	IncludeSubdomains param.Opt[bool] `query:"includeSubdomains,omitzero" json:"-"`
-	// Maximum number of links to return from the sitemap crawl. Defaults to 10,000.
-	// Minimum is 1, maximum is 100,000.
+	// Maximum number of URLs to return.
 	MaxLinks param.Opt[int64] `query:"maxLinks,omitzero" json:"-"`
-	// Optional search phrase. When provided, the crawled sitemap is filtered to the
-	// pages whose URLs are about that phrase, most relevant first, and the request
-	// costs 2 credits instead of 1.
+	// Filter URLs by a topic or phrase, most relevant first.
 	Search param.Opt[string] `query:"search,omitzero" json:"-"`
-	// Optional explicit sitemap URL. When provided, exactly this sitemap is crawled
-	// instead of discovering the domain's sitemaps.
+	// Fetch this sitemap instead of discovering sitemaps. Must belong to the domain or
+	// a subdomain.
 	SitemapURL param.Opt[string] `query:"sitemapUrl,omitzero" format:"uri" json:"-"`
 	// Optional RE2-compatible regex pattern. Only URLs matching this pattern are
 	// returned and counted against maxLinks.
 	URLRegex param.Opt[string] `query:"urlRegex,omitzero" json:"-"`
-	// Optional outbound HTTP headers forwarded only to the target URL, sent as
-	// deep-object query params such as headers[X-Custom]=value. When provided, caching
-	// is bypassed: the result is neither read from nor written to cache.
+	// HTTP headers for the target origin. Non-empty headers bypass caching.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebMapURLsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebMapURLsParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -2751,18 +2617,14 @@ func (r WebMapURLsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebMapURLsParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -2778,11 +2640,8 @@ func (r WebMapURLsParamsTimeoutOpts) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type WebMapURLsParamsZdr string
 
 const (
@@ -2791,22 +2650,20 @@ const (
 )
 
 type WebScrapeParams struct {
-	// Outputs to return. Enable at least one; omitted formats are false.
+	// Outputs to return. Set at least one to `true`.
 	Formats WebScrapeParamsFormats `json:"formats,omitzero" api:"required"`
-	// The URL to scrape.
+	// Public HTTP or HTTPS URL to scrape.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Maximum age of each cached output. Defaults to 1 day; 0 fetches fresh and
-	// updates the requested outputs. Compatible outputs are shared with the individual
-	// scrape endpoints. Image results with hosted files refresh after 23 hours; other
-	// outputs retain their own freshness.
+	// Maximum age of a cached output, in milliseconds. `0` fetches fresh. Defaults to
+	// 1 day.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Highlight options. Requires formats.highlights: true.
+	// Required when `formats.highlights` is `true`.
 	HighlightsParams WebScrapeParamsHighlightsParams `json:"highlightsParams,omitzero"`
 	// Image options. Requires formats.images: true.
 	ImageParams WebScrapeParamsImageParams `json:"imageParams,omitzero"`
 	// Required when formats.json is true.
 	JsonParams WebScrapeParamsJsonParams `json:"jsonParams,omitzero"`
-	// Markdown options. Requires formats.markdown: true.
+	// Markdown options. Requires `formats.markdown`.
 	MarkdownParams WebScrapeParamsMarkdownParams `json:"markdownParams,omitzero"`
 	// Required when formats.parse is true.
 	ParseParams WebScrapeParamsParseParams `json:"parseParams,omitzero"`
@@ -2814,25 +2671,14 @@ type WebScrapeParams struct {
 	ProductParams WebScrapeParamsProductParams `json:"productParams,omitzero"`
 	// Screenshot options. Requires formats.screenshot: true.
 	ScreenshotParams WebScrapeParamsScreenshotParams `json:"screenshotParams,omitzero"`
-	// Shared browser and content settings. Content filters leave screenshots and
-	// original bytes unchanged.
+	// Browser and content settings shared by all outputs.
 	SharedParams WebScrapeParamsSharedParams `json:"sharedParams,omitzero"`
 	// Labels for tracking request usage. Not retained when zdr is enabled.
 	Tags []string `json:"tags,omitzero"`
-	// Total deadline, including navigation, actions, waiting, and all outputs.
-	// Defaults to 60000 milliseconds with behavior fail. Individual outputs have
-	// internal deadlines that reserve time to return completed outputs; timed-out
-	// outputs have success: false and data: null under either behavior. The overall
-	// request deadline remains enforced: fail returns an error if that deadline is
-	// reached. Use return-partial to allow the current page state and available
-	// outputs when the page is still loading. Partial responses set isPartial. Failed
-	// retrievals and incomplete captures are not cached; valid captured pieces may be
-	// cached independently. Fixed waits must fit before a response reserve of up to
-	// 5000 milliseconds (at most one quarter of the timeout) when using
-	// return-partial.
+	// Deadline for the whole request. Defaults to 60000 ms with `fail`. Fixed waits
+	// must end before it.
 	TimeoutOpts WebScrapeParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// Zero data retention. Bypasses caches and uploads; excludes request/response
-	// content and tags from logs. Must be enabled for your organization.
+	// `enabled` turns on zero data retention. Your organization must have ZDR enabled.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebScrapeParamsZdr `json:"zdr,omitzero"`
@@ -2847,29 +2693,25 @@ func (r *WebScrapeParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Outputs to return. Enable at least one; omitted formats are false.
+// Outputs to return. Set at least one to `true`.
 type WebScrapeParamsFormats struct {
 	// The original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
-	// Relevant Markdown excerpts for your question or topic, preserving code, lists,
-	// and tables, with headings included when needed for context. Adds 3 credits when
-	// passages are returned.
+	// Markdown excerpts relevant to `highlightsParams.query`.
 	Highlights param.Opt[bool] `json:"highlights,omitzero"`
 	// Rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`
 	// Images found on the page.
 	Images param.Opt[bool] `json:"images,omitzero"`
-	// Page data extracted using your schema. Adds 4 credits when extraction succeeds
-	// and its result is returned.
+	// An object matching `jsonParams.schema`, extracted from the page.
 	Json param.Opt[bool] `json:"json,omitzero"`
 	// Page content as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
-	// Fields selected by parseParams.rules.
+	// Fields extracted with `parseParams.rules`, returned as `parsed`.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
-	// Product details such as name, price, and availability. Adds 1 credit when its
-	// successful result is returned or the target page is missing.
+	// Product details such as name, price, and availability.
 	Product param.Opt[bool] `json:"product,omitzero"`
-	// An inline image of the page.
+	// A screenshot of the page.
 	Screenshot param.Opt[bool] `json:"screenshot,omitzero"`
 	paramObj
 }
@@ -2882,13 +2724,13 @@ func (r *WebScrapeParamsFormats) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Highlight options. Requires formats.highlights: true.
+// Required when `formats.highlights` is `true`.
 //
 // The property Query is required.
 type WebScrapeParamsHighlightsParams struct {
 	// The question or topic to find passages for.
 	Query string `json:"query" api:"required"`
-	// Maximum combined length of the returned passages, in characters.
+	// Maximum combined length of returned passages.
 	MaxCharacters param.Opt[int64] `json:"maxCharacters,omitzero"`
 	paramObj
 }
@@ -2903,13 +2745,11 @@ func (r *WebScrapeParamsHighlightsParams) UnmarshalJSON(data []byte) error {
 
 // Image options. Requires formats.images: true.
 type WebScrapeParamsImageParams struct {
-	// For visual duplicates, keep the largest image.
+	// Set `visual` to drop visual duplicates, keeping the largest copy.
 	//
 	// Any of "none", "visual".
 	Dedupe string `json:"dedupe,omitzero"`
-	// Add dimensions, a visual category, or a hosted file URL. Each image has a
-	// maximum processing time of 30000 milliseconds, bounded by the remaining request
-	// deadline.
+	// Extra data per image: `dimensions`, `classification`, or a hosted `file` URL.
 	//
 	// Any of "dimensions", "classification", "file".
 	Enrich []string `json:"enrich,omitzero"`
@@ -2934,14 +2774,10 @@ func init() {
 //
 // The property Schema is required.
 type WebScrapeParamsJsonParams struct {
-	// JSON Schema for the returned object. Must describe a top-level object; at most
-	// 50 KB serialized. Optional fields the page does not state are omitted, or null
-	// when their type allows null, while required non-nullable fields always receive a
-	// best-effort value, so prefer nullable or optional fields for data a page may
-	// omit. Zod users can pass the output of z.toJSONSchema().
+	// JSON Schema for a top-level object, up to 50 KB. Use optional or nullable fields
+	// for missing facts.
 	Schema map[string]any `json:"schema,omitzero" api:"required"`
-	// Optional guidance on which facts to prioritize or how to interpret schema
-	// fields.
+	// Extra guidance, such as which facts to prefer or how to read a field.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	paramObj
 }
@@ -2954,11 +2790,14 @@ func (r *WebScrapeParamsJsonParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Markdown options. Requires formats.markdown: true.
+// Markdown options. Requires `formats.markdown`.
 type WebScrapeParamsMarkdownParams struct {
+	// Include images in the Markdown using image syntax with URLs and alt text.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	IncludeLinks  param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Base64 images use placeholders by default. Requires includeImages: true.
+	// Keep link URLs in the Markdown. Set false to return link text without URLs.
+	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
+	// How base64 images appear: `placeholder` (default) or `preserve`. Requires
+	// `includeImages`.
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
@@ -2983,8 +2822,8 @@ func init() {
 //
 // The property Rules is required.
 type WebScrapeParamsParseParams struct {
-	// Map field names to CSS selectors or rules. Missing items return null; missing
-	// lists return [].
+	// Field names mapped to CSS selectors (`h1`, `a@href`) or rule objects. Max 100
+	// fields, 5 levels.
 	Rules map[string]WebScrapeParamsParseParamsRuleUnion `json:"rules,omitzero" api:"required"`
 	paramObj
 }
@@ -3015,8 +2854,13 @@ func (u *WebScrapeParamsParseParamsRuleUnion) UnmarshalJSON(data []byte) error {
 
 // The property Selector is required.
 type WebScrapeParamsParseParamsRuleObject struct {
+	// CSS selector to match within the current page or parent rule.
 	Selector string `json:"selector" api:"required"`
-	Output   string `json:"output,omitzero"`
+	// Return text, HTML, an attribute such as `@href`, or nested field rules. Defaults
+	// to text.
+	Output string `json:"output,omitzero"`
+	// Return the first match with `item` or all matches with `list`.
+	//
 	// Any of "item", "list".
 	Type string `json:"type,omitzero"`
 	paramObj
@@ -3038,11 +2882,7 @@ func init() {
 
 // Product options. Requires formats.product: true.
 type WebScrapeParamsProductParams struct {
-	// Extract the product with a specialized model when the page has no structured
-	// product data. Adds six credits when the model verdict is returned successfully.
-	// If the fallback fails, the product output has success: false and data: null with
-	// no fallback charge; other outputs remain available. Request deadlines and client
-	// disconnects still apply.
+	// Use an AI model when the page has no structured product data.
 	UseAIFallback param.Opt[bool] `json:"useAIFallback,omitzero"`
 	paramObj
 }
@@ -3057,8 +2897,11 @@ func (r *WebScrapeParamsProductParams) UnmarshalJSON(data []byte) error {
 
 // Screenshot options. Requires formats.screenshot: true.
 type WebScrapeParamsScreenshotParams struct {
-	// Viewport, full page, one visible element, or a rectangle. Maximum 40 megapixels.
+	// What to capture: `viewport`, `fullPage`, one element, or a rectangle. Max 40
+	// megapixels.
 	Area WebScrapeParamsScreenshotParamsAreaUnion `json:"area,omitzero"`
+	// Image format for the screenshot.
+	//
 	// Any of "png", "jpeg", "webp".
 	Format string `json:"format,omitzero"`
 	paramObj
@@ -3105,7 +2948,7 @@ const (
 
 // The property Selector is required.
 type WebScrapeParamsScreenshotParamsAreaElement struct {
-	// Must match one visible element.
+	// CSS selector matching exactly one visible element.
 	Selector string `json:"selector" api:"required"`
 	paramObj
 }
@@ -3122,10 +2965,14 @@ func (r *WebScrapeParamsScreenshotParamsAreaElement) UnmarshalJSON(data []byte) 
 //
 // The properties Height, Width, X, Y are required.
 type WebScrapeParamsScreenshotParamsAreaRectangle struct {
+	// Height of the capture in pixels.
 	Height int64 `json:"height" api:"required"`
-	Width  int64 `json:"width" api:"required"`
-	X      int64 `json:"x" api:"required"`
-	Y      int64 `json:"y" api:"required"`
+	// Width of the capture in pixels.
+	Width int64 `json:"width" api:"required"`
+	// Left edge of the capture, in pixels from the document origin.
+	X int64 `json:"x" api:"required"`
+	// Top edge of the capture, in pixels from the document origin.
+	Y int64 `json:"y" api:"required"`
 	paramObj
 }
 
@@ -3137,43 +2984,42 @@ func (r *WebScrapeParamsScreenshotParamsAreaRectangle) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Shared browser and content settings. Content filters leave screenshots and
-// original bytes unchanged.
+// Browser and content settings shared by all outputs.
 type WebScrapeParamsSharedParams struct {
-	// Supported two-letter country code, case-insensitive. Applies to every output,
-	// including image downloads.
+	// Proxy country as a two-letter code, such as `US`. Case-insensitive.
 	Country param.Opt[string] `json:"country,omitzero"`
-	// Dismiss cookie banners by accepting cookies before actions.
+	// Accept cookie banners before actions and capture.
 	DismissCookies param.Opt[bool] `json:"dismissCookies,omitzero"`
-	// Dismiss other popups before actions.
+	// Close other popups before actions and capture.
 	DismissPopups param.Opt[bool] `json:"dismissPopups,omitzero"`
-	// Include iframe content in extraction. Screenshots show visible frames
-	// regardless.
+	// Include iframe content in HTML and text outputs. Screenshots always show visible
+	// frames.
 	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
-	// Keep only main content in HTML, Markdown, images, and parsed fields.
+	// Keep only the main content. Doesn't affect `screenshot`, `bytes`, or `product`.
 	MainContentOnly param.Opt[bool] `json:"mainContentOnly,omitzero"`
-	// Settle animations before capture. Defaults to true with screenshots, otherwise
-	// false.
+	// Wait for CSS animations to finish before capture. Defaults to `true` when
+	// `screenshot` is requested.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
-	// Run in order before capture. A failed action fails the request. Bypasses
-	// caching.
+	// Browser steps run in order before capture. Requires a paid plan. Skips the
+	// cache.
 	Actions []WebScrapeParamsSharedParamsActionUnion `json:"actions,omitzero"`
-	// Remove matching content. Exclusions win.
+	// Remove elements matching these CSS selectors. Overrides `includeSelectors`.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Headers for the target origin. Requests with custom headers bypass caching.
+	// HTTP headers to send to the target site. Requests with headers skip the cache.
 	Headers map[string]string `json:"headers,omitzero"`
-	// Keep matching content after mainContentOnly.
+	// Keep only elements matching these CSS selectors.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// Document parsing options.
 	Parsers WebScrapeParamsSharedParamsParsers `json:"parsers,omitzero"`
-	// Override the browser color scheme.
+	// Emulate a light or dark color scheme.
 	//
 	// Any of "light", "dark".
 	Theme string `json:"theme,omitzero"`
-	// Browser dimensions in pixels.
+	// Browser size in pixels. Omit for 1920 × 1080. When provided, missing dimensions
+	// default to 1440 × 900.
 	Viewport WebScrapeParamsSharedParamsViewport `json:"viewport,omitzero"`
-	// After actions, wait this many milliseconds or until a CSS selector is visible.
-	// Defaults to 500 ms, or 2000 ms with frames or an XML URL. Set 0 to skip.
+	// Milliseconds, or a CSS selector to wait for, after actions. Defaults to 500
+	// (2000 with frames or XML).
 	WaitFor WebScrapeParamsSharedParamsWaitForUnion `json:"waitFor,omitzero"`
 	paramObj
 }
@@ -3222,7 +3068,10 @@ func init() {
 
 // The properties Action, Type are required.
 type WebScrapeParamsSharedParamsActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	//
 	// This field can be elided, and will marshal its zero value as "perform".
 	Type constant.Perform `json:"type" default:"perform"`
 	paramObj
@@ -3238,12 +3087,18 @@ func (r *WebScrapeParamsSharedParamsActionPerform) UnmarshalJSON(data []byte) er
 
 // The property Type is required.
 type WebScrapeParamsSharedParamsActionScroll struct {
+	// Maximum number of scroll steps for this action.
 	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
 	// Scroll this container. Omit to scroll the page.
-	Selector param.Opt[string]                                  `json:"selector,omitzero"`
-	Amount   WebScrapeParamsSharedParamsActionScrollAmountUnion `json:"amount,omitzero"`
+	Selector param.Opt[string] `json:"selector,omitzero"`
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
+	Amount WebScrapeParamsSharedParamsActionScrollAmountUnion `json:"amount,omitzero"`
+	// Direction to scroll.
+	//
 	// Any of "down", "up", "left", "right".
 	Direction string `json:"direction,omitzero"`
+	// Use `scroll` to move through the page or a container.
+	//
 	// This field can be elided, and will marshal its zero value as "scroll".
 	Type constant.Scroll `json:"type" default:"scroll"`
 	paramObj
@@ -3290,7 +3145,10 @@ const (
 
 // The properties Milliseconds, Type are required.
 type WebScrapeParamsSharedParamsActionWait struct {
+	// Time to pause in milliseconds before the next action.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
+	// Use `wait` to pause for a fixed duration.
+	//
 	// This field can be elided, and will marshal its zero value as "wait".
 	Type constant.Wait `json:"type" default:"wait"`
 	paramObj
@@ -3306,7 +3164,10 @@ func (r *WebScrapeParamsSharedParamsActionWait) UnmarshalJSON(data []byte) error
 
 // The properties Selector, Type are required.
 type WebScrapeParamsSharedParamsActionWaitFor struct {
+	// CSS selector to wait for before continuing.
 	Selector string `json:"selector" api:"required"`
+	// Use `waitFor` to wait for a matching element.
+	//
 	// This field can be elided, and will marshal its zero value as "waitFor".
 	Type constant.WaitFor `json:"type" default:"waitFor"`
 	paramObj
@@ -3322,7 +3183,7 @@ func (r *WebScrapeParamsSharedParamsActionWaitFor) UnmarshalJSON(data []byte) er
 
 // Document parsing options.
 type WebScrapeParamsSharedParamsParsers struct {
-	// PDF text options for HTML, Markdown, and parsed fields.
+	// PDF page range and OCR.
 	Pdf WebScrapeParamsSharedParamsParsersPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -3335,13 +3196,13 @@ func (r *WebScrapeParamsSharedParamsParsers) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// PDF text options for HTML, Markdown, and parsed fields.
+// PDF page range and OCR.
 type WebScrapeParamsSharedParamsParsersPdf struct {
-	// Last page to parse. Must be at least startPage.
+	// Last page to parse. Must be at least `startPage`.
 	EndPage param.Opt[int64] `json:"endPage,omitzero"`
 	// First page to parse, starting at 1.
 	StartPage param.Opt[int64] `json:"startPage,omitzero"`
-	// Read text from scanned pages.
+	// Set `auto` to read scanned pages with OCR.
 	//
 	// Any of "off", "auto".
 	Ocr string `json:"ocr,omitzero"`
@@ -3362,10 +3223,13 @@ func init() {
 	)
 }
 
-// Browser dimensions in pixels.
+// Browser size in pixels. Omit for 1920 × 1080. When provided, missing dimensions
+// default to 1440 × 900.
 type WebScrapeParamsSharedParamsViewport struct {
+	// Browser viewport height in pixels.
 	Height param.Opt[int64] `json:"height,omitzero"`
-	Width  param.Opt[int64] `json:"width,omitzero"`
+	// Browser viewport width in pixels.
+	Width param.Opt[int64] `json:"width,omitzero"`
 	paramObj
 }
 
@@ -3393,27 +3257,15 @@ func (u *WebScrapeParamsSharedParamsWaitForUnion) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Total deadline, including navigation, actions, waiting, and all outputs.
-// Defaults to 60000 milliseconds with behavior fail. Individual outputs have
-// internal deadlines that reserve time to return completed outputs; timed-out
-// outputs have success: false and data: null under either behavior. The overall
-// request deadline remains enforced: fail returns an error if that deadline is
-// reached. Use return-partial to allow the current page state and available
-// outputs when the page is still loading. Partial responses set isPartial. Failed
-// retrievals and incomplete captures are not cached; valid captured pieces may be
-// cached independently. Fixed waits must fit before a response reserve of up to
-// 5000 milliseconds (at most one quarter of the timeout) when using
-// return-partial.
+// Deadline for the whole request. Defaults to 60000 ms with `fail`. Fixed waits
+// must end before it.
 //
 // The property Milliseconds is required.
 type WebScrapeParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 5000.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -3434,8 +3286,7 @@ func init() {
 	)
 }
 
-// Zero data retention. Bypasses caches and uploads; excludes request/response
-// content and tags from logs. Must be enabled for your organization.
+// `enabled` turns on zero data retention. Your organization must have ZDR enabled.
 type WebScrapeParamsZdr string
 
 const (
@@ -3484,8 +3335,7 @@ type WebScreenshotParams struct {
 	//
 	// Any of "light", "dark".
 	ColorScheme WebScreenshotParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
-	// Fetch the target page through a residential proxy in this country (ISO 3166-1
-	// alpha-2).
+	// Fetch from this country (ISO 3166-1 alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -3527,20 +3377,14 @@ type WebScreenshotParams struct {
 	// Any of "login", "signup", "blog", "careers", "pricing", "terms", "privacy",
 	// "contact".
 	Page WebScreenshotParamsPage `query:"page,omitzero" json:"-"`
-	// Comma-separated tags for tracking request usage. Up to 20 tags, each 1-50
-	// characters.
+	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebScreenshotParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
 	// Optional browser viewport dimensions for the screenshot. Defaults to 1920x1080.
 	Viewport WebScreenshotParamsViewport `query:"viewport,omitzero" json:"-"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebScreenshotParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -3564,8 +3408,7 @@ const (
 	WebScreenshotParamsColorSchemeDark  WebScreenshotParamsColorScheme = "dark"
 )
 
-// Fetch the target page through a residential proxy in this country (ISO 3166-1
-// alpha-2).
+// Fetch from this country (ISO 3166-1 alpha-2).
 type WebScreenshotParamsCountry string
 
 const (
@@ -3803,19 +3646,14 @@ const (
 	WebScreenshotParamsPageContact WebScreenshotParamsPage = "contact"
 )
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebScreenshotParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 5000.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -3849,11 +3687,8 @@ func (r WebScreenshotParamsViewport) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type WebScreenshotParamsZdr string
 
 const (
@@ -3867,7 +3702,7 @@ type WebSearchParams struct {
 	Query string `json:"query" api:"required"`
 	// Number of results to request and return (10–100). Defaults to 10.
 	NumResults param.Opt[int64] `json:"numResults,omitzero"`
-	// Expand the query into multiple parallel variants for broader recall.
+	// Currently has no effect.
 	QueryFanout param.Opt[bool] `json:"queryFanout,omitzero"`
 	// Two-letter ISO 3166-1 alpha-2 country code to localize results to a specific
 	// country (maps to Google's `gl` parameter). Example: "us", "gb", "de".
@@ -3904,17 +3739,12 @@ type WebSearchParams struct {
 	IncludeDomains []string `json:"includeDomains,omitzero"`
 	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
 	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebSearchParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-	// omitted. Requires zero data retention to be enabled for your organization
-	// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-	// Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebSearchParamsZdr `json:"zdr,omitzero"`
@@ -4207,9 +4037,7 @@ type WebSearchParamsMarkdownOptions struct {
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
 	// PDF handling. Use start/end to bound text extraction and OCR to a page range.
 	Pdf WebSearchParamsMarkdownOptionsPdf `json:"pdf,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebSearchParamsMarkdownOptionsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
@@ -4242,19 +4070,14 @@ func (r *WebSearchParamsMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebSearchParamsMarkdownOptionsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results. "return-partial" requires milliseconds of at
-	// least 5000.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -4275,18 +4098,14 @@ func init() {
 	)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebSearchParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -4307,11 +4126,8 @@ func init() {
 	)
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Asset uploads are skipped, so hosted image URLs are
-// omitted. Requires zero data retention to be enabled for your organization
-// (contact support@context.dev), otherwise the request fails with ZDR_NOT_ENABLED.
-// Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type WebSearchParamsZdr string
 
 const (
@@ -4320,7 +4136,7 @@ const (
 )
 
 type WebWebCrawlMdParams struct {
-	// The starting URL for the crawl (must include http:// or https:// protocol)
+	// Start URL, including `http://` or `https://`.
 	URL string `json:"url" api:"required" format:"uri"`
 	// When true, follow links on subdomains of the starting URL's domain (e.g.
 	// docs.example.com when starting from example.com). www and apex are always
@@ -4333,24 +4149,19 @@ type WebWebCrawlMdParams struct {
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Preserve hyperlinks in the Markdown output
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Return a cached result if a prior scrape for the same parameters exists and is
-	// younger than this many milliseconds. Defaults to 1 day (86400000 ms) when
-	// omitted. Max is 30 days (2592000000 ms). Set to 0 to always scrape fresh.
+	// Maximum cache age in milliseconds. Defaults to 1 day; `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Maximum link depth from the starting URL (0 = only the starting page)
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
-	// Maximum number of pages to crawl. Hard cap: 500.
+	// Maximum pages to crawl.
 	MaxPages param.Opt[int64] `json:"maxPages,omitzero"`
-	// When true, waits briefly for CSS and transition animations to settle before
-	// extracting each crawled page. Defaults to false. This adds a bit of latency in
-	// exchange for more stable output on animated pages.
+	// Wait briefly for CSS animations and transitions to settle before reading each
+	// page.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
 	// Truncate base64-encoded image data in the Markdown output
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
-	// Soft time budget for the crawl in milliseconds. After each scrape, the crawler
-	// checks the elapsed time and, if exceeded, returns the pages collected so far
-	// instead of continuing. Min: 10000 (10s). Max: 110000 (110s). Default: 80000
-	// (80s).
+	// Soft crawl deadline in milliseconds. Returns pages collected before the next
+	// deadline check.
 	StopAfterMs param.Opt[int64] `json:"stopAfterMs,omitzero"`
 	// Regex pattern. Only URLs matching this pattern will be followed and scraped. An
 	// automatic prefix scope in the form ^<starting URL> follows a redirect of the
@@ -4362,8 +4173,7 @@ type WebWebCrawlMdParams struct {
 	// Browser wait time in milliseconds after initial page load for each crawled page.
 	// Defaults to 3500 (3.5 seconds). Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
-	// Fetch the target page through a residential proxy in this country (ISO 3166-1
-	// alpha-2).
+	// Fetch from this country (ISO 3166-1 alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -4382,28 +4192,18 @@ type WebWebCrawlMdParams struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country WebWebCrawlMdParamsCountry `json:"country,omitzero"`
-	// CSS selectors to remove before each crawled page is converted to Markdown.
-	// Applied after includeSelectors. Exclusion takes precedence: an element matching
-	// both is removed. Examples: "nav", "footer", ".ad-banner", "[aria-hidden=true]".
+	// Remove matching elements after inclusions. Exclusions take precedence.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// CSS selectors. When provided, only matching HTML subtrees (and their
-	// descendants) are kept before each crawled page is converted to Markdown. When
-	// omitted, the entire document is kept. Examples: "article.main", "#content",
-	// "[role=main]".
+	// Keep matching HTML subtrees before converting each page to Markdown.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-	// detection/OCR to an inclusive 1-based page range.
+	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
-	// Optional tags for tracking usage. Up to 20 tags, each 1 to 50 characters.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Optional request deadline and behavior on timeout. For GET requests, use
-	// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-	// timeoutOpts object.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebWebCrawlMdParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// Set to enabled to bypass shared caches and omit request and response content
-	// from retained usage logs. Requires zero data retention to be enabled for your
-	// organization (contact support@context.dev), otherwise the request fails with
-	// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebWebCrawlMdParamsZdr `json:"zdr,omitzero"`
@@ -4418,8 +4218,7 @@ func (r *WebWebCrawlMdParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Fetch the target page through a residential proxy in this country (ISO 3166-1
-// alpha-2).
+// Fetch from this country (ISO 3166-1 alpha-2).
 type WebWebCrawlMdParamsCountry string
 
 const (
@@ -4629,16 +4428,12 @@ const (
 	WebWebCrawlMdParamsCountryZw WebWebCrawlMdParamsCountry = "zw"
 )
 
-// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-// detection/OCR to an inclusive 1-based page range.
+// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type WebWebCrawlMdParamsPdf struct {
 	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
 	// Must be greater than or equal to start when both are provided.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// When true, OCR the selected PDF pages that have no usable text layer (scans),
-	// replacing each recovered page's text with the OCR result while pages with a real
-	// text layer keep it. Billed at 1 credit per page OCR actually recovered, on top
-	// of the base request cost.
+	// Read scanned PDF pages with OCR; preserve pages that already contain text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF pages are fetched and parsed. When false, PDF pages are skipped
 	// entirely (not included in results and not counted as failures).
@@ -4656,18 +4451,14 @@ func (r *WebWebCrawlMdParamsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Optional request deadline and behavior on timeout. For GET requests, use
-// timeoutOpts[milliseconds]=30000&timeoutOpts[behavior]=fail or a JSON-encoded
-// timeoutOpts object.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebWebCrawlMdParamsTimeoutOpts struct {
-	// Request deadline in milliseconds. Maximum: 300000 (5 minutes).
+	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// What to do at the deadline. "fail" returns 408 REQUEST_TIMEOUT without charging
-	// credits. "return-partial" returns usable results collected so far; if none are
-	// available, the request still fails without charging credits. Partial results are
-	// not cached as complete results.
+	// "fail" returns 408 at the deadline. "return-partial" returns available results;
+	// inspect the response’s partial flag.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -4688,10 +4479,8 @@ func init() {
 	)
 }
 
-// Set to enabled to bypass shared caches and omit request and response content
-// from retained usage logs. Requires zero data retention to be enabled for your
-// organization (contact support@context.dev), otherwise the request fails with
-// ZDR_NOT_ENABLED. Successful ZDR responses include X-Context-ZDR: true.
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
 type WebWebCrawlMdParamsZdr string
 
 const (

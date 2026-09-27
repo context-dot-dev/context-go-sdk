@@ -129,7 +129,7 @@ func TestWebMapURLsWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.MapURLs(context.TODO(), contextdev.WebMapURLsParams{
-		Domain: "xxx",
+		Domain: "stripe.com",
 		Headers: map[string]string{
 			"foo": "J!",
 		},
@@ -337,7 +337,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.Search(context.TODO(), contextdev.WebSearchParams{
-		Query:          "x",
+		Query:          "Stripe API authentication",
 		Country:        contextdev.WebSearchParamsCountryAf,
 		ExcludeDomains: []string{"string"},
 		Freshness:      contextdev.WebSearchParamsFreshnessLast24Hours,
@@ -403,7 +403,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		IncludeSelectors: []string{"string"},
 		MaxAgeMs:         contextdev.Int(0),
 		MaxDepth:         contextdev.Int(0),
-		MaxPages:         contextdev.Int(1),
+		MaxPages:         contextdev.Int(10),
 		Pdf: contextdev.WebWebCrawlMdParamsPdf{
 			End:         contextdev.Int(1),
 			Ocr:         contextdev.Bool(true),

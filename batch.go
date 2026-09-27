@@ -1874,7 +1874,8 @@ func (r *BatchSubmitParamsInputScrapeDataMarkdownURL) UnmarshalJSON(data []byte)
 
 // Options for Markdown output.
 type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
-	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
+	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
+	// year (31536000000 ms). `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Also return each page's HTML in `html`.
 	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
@@ -2005,7 +2006,8 @@ func (r *BatchSubmitParamsInputScrapeDataHTMLURL) UnmarshalJSON(data []byte) err
 
 // Options for HTML output.
 type BatchSubmitParamsInputScrapeDataHTMLOptions struct {
-	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
+	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
+	// year (31536000000 ms). `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
@@ -2263,7 +2265,8 @@ func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) Unmarshal
 
 // Options for Markdown output.
 type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
-	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
+	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
+	// year (31536000000 ms). `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Also return each page's HTML in `html`.
 	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
@@ -2484,7 +2487,8 @@ func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) UnmarshalJSON
 
 // Options for HTML output.
 type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
-	// Maximum cache age in milliseconds. Defaults to 1 day. `0` fetches fresh.
+	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
+	// year (31536000000 ms). `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`

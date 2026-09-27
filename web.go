@@ -1115,11 +1115,11 @@ type WebScrapeResponse struct {
 	Screenshot WebScrapeResponseScreenshot `json:"screenshot" api:"required"`
 	// Final URL after redirects and browser actions.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Present when a requested output fails, capture returns a page that is still
-	// loading, images return before processing finishes, or the optional product AI
-	// fallback fails or is cut short. Check each output's success field for its
-	// result. Valid captured pieces may be cached independently; failed retrievals and
-	// incomplete captures are not cached.
+	// Present when at least one requested output succeeds while another fails, or when
+	// successful outputs come from a page that is still loading or images returned
+	// before processing finished. Absent when every requested output fails. Check each
+	// output's success field for its result. Valid captured pieces may be cached
+	// independently; failed retrievals and incomplete captures are not cached.
 	//
 	// Any of true.
 	IsPartial bool `json:"isPartial"`

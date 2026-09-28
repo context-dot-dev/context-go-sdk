@@ -1116,11 +1116,17 @@ type WebScrapeResponseBytes struct {
 	Requested bool                       `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1182,11 +1188,17 @@ type WebScrapeResponseHighlights struct {
 	Requested bool     `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1204,11 +1216,17 @@ type WebScrapeResponseHTML struct {
 	Requested bool   `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1226,11 +1244,17 @@ type WebScrapeResponseImages struct {
 	Requested bool                          `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1280,9 +1304,9 @@ type WebScrapeResponseJson struct {
 	Requested bool           `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
-	// Cause of a failed JSON extraction, when available.
+	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the JSON extraction failure and possible next steps.
+	// Explanation of the failure and possible next steps.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1308,11 +1332,17 @@ type WebScrapeResponseMarkdown struct {
 	Requested bool   `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1554,11 +1584,17 @@ type WebScrapeResponseParsed struct {
 	Requested bool           `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1576,11 +1612,17 @@ type WebScrapeResponseProduct struct {
 	Requested bool                         `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1712,11 +1754,17 @@ type WebScrapeResponseScreenshot struct {
 	Requested bool   `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// Why the output failed. Present only when `success` is `false`.
+	ErrorCode string `json:"error_code"`
+	// Explanation of the failure and possible next steps.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		ErrorCode   respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`

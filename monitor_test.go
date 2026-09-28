@@ -31,7 +31,12 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		Name: "Acme pricing page",
 		Target: contextdev.MonitorNewParamsTargetUnion{
 			OfPage: &contextdev.MonitorNewParamsTargetPage{
-				URL:                 "https://acme.com/pricing",
+				URL: "https://acme.com/pricing",
+				Actions: []contextdev.MonitorNewParamsTargetPageActionUnion{{
+					OfWait: &contextdev.MonitorNewParamsTargetPageActionWait{
+						TimeMs: 0,
+					},
+				}},
 				ExcludeSelectors:    []string{".carousel", `[id^="TA_"]`},
 				IncludeSelectors:    []string{"#attraction-details"},
 				Instructions:        contextdev.String("Report pricing or plan availability changes. Ignore counters, timestamps, testimonials, and navigation."),
@@ -118,7 +123,12 @@ func TestMonitorUpdateWithOptionalParams(t *testing.T) {
 			Tags:   []string{"pricing", "competitor"},
 			Target: contextdev.MonitorUpdateParamsTargetUnion{
 				OfPage: &contextdev.MonitorUpdateParamsTargetPage{
-					URL:                 "https://acme.com/pricing",
+					URL: "https://acme.com/pricing",
+					Actions: []contextdev.MonitorUpdateParamsTargetPageActionUnion{{
+						OfWait: &contextdev.MonitorUpdateParamsTargetPageActionWait{
+							TimeMs: 0,
+						},
+					}},
 					ExcludeSelectors:    []string{".carousel", `[id^="TA_"]`},
 					IncludeSelectors:    []string{"#attraction-details"},
 					Instructions:        contextdev.String("Report pricing or plan availability changes. Ignore counters, timestamps, testimonials, and navigation."),

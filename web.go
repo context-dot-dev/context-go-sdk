@@ -89,7 +89,8 @@ func (r *WebService) Screenshot(ctx context.Context, query WebScreenshotParams, 
 	return res, err
 }
 
-// Search the web and optionally return page content with each result.
+// Search the web and optionally return page content or relevant passages with each
+// result.
 func (r *WebService) Search(ctx context.Context, body WebSearchParams, opts ...option.RequestOption) (res *WebSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/search"
@@ -1975,6 +1976,8 @@ type WebSearchResponseResult struct {
 	// Snippet excerpt from the page. Empty string when the search provider does not
 	// supply a snippet.
 	Description string `json:"description" api:"required"`
+	// Highlights status and passages for this result.
+	Highlights WebSearchResponseResultHighlights `json:"highlights" api:"required"`
 	// Markdown scrape status and content for this result.
 	Markdown WebSearchResponseResultMarkdown `json:"markdown" api:"required"`
 	// Relevance to the original query.
@@ -1988,6 +1991,7 @@ type WebSearchResponseResult struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description respjson.Field
+		Highlights  respjson.Field
 		Markdown    respjson.Field
 		Relevance   respjson.Field
 		Title       respjson.Field
@@ -2000,6 +2004,31 @@ type WebSearchResponseResult struct {
 // Returns the unmodified JSON received from the API
 func (r WebSearchResponseResult) RawJSON() string { return r.JSON.raw }
 func (r *WebSearchResponseResult) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Highlights status and passages for this result.
+type WebSearchResponseResultHighlights struct {
+	// Per-result highlights outcome. Inspect this before reading `highlights`.
+	//
+	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "CONTENT_TOO_LARGE",
+	// "WEBSITE_ACCESS_ERROR", "ERROR".
+	Code string `json:"code" api:"required"`
+	// Passages relevant to the query, in page order. Null unless
+	// highlightsOptions.enabled is true and the page was read.
+	Highlights []string `json:"highlights" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Highlights  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebSearchResponseResultHighlights) RawJSON() string { return r.JSON.raw }
+func (r *WebSearchResponseResultHighlights) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3792,6 +3821,9 @@ type WebSearchParams struct {
 	//
 	// Any of "last_24_hours", "last_week", "last_month", "last_year".
 	Freshness WebSearchParamsFreshness `json:"freshness,omitzero"`
+	// Passages from each result page that are relevant to the query. Pages are read
+	// with the `markdownOptions` settings.
+	HighlightsOptions WebSearchParamsHighlightsOptions `json:"highlightsOptions,omitzero"`
 	// Allowlist — only return results from these domains. Example: ["arxiv.org",
 	// "github.com"].
 	IncludeDomains []string `json:"includeDomains,omitzero"`
@@ -4073,9 +4105,27 @@ const (
 	WebSearchParamsFreshnessLastYear    WebSearchParamsFreshness = "last_year"
 )
 
+// Passages from each result page that are relevant to the query. Pages are read
+// with the `markdownOptions` settings.
+type WebSearchParamsHighlightsOptions struct {
+	// Return relevant passages for each result. Adds 1 credit per 10 results.
+	Enabled param.Opt[bool] `json:"enabled,omitzero"`
+	// Maximum combined length of passages per result.
+	MaxCharacters param.Opt[int64] `json:"maxCharacters,omitzero"`
+	paramObj
+}
+
+func (r WebSearchParamsHighlightsOptions) MarshalJSON() (data []byte, err error) {
+	type shadow WebSearchParamsHighlightsOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebSearchParamsHighlightsOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Inline Markdown scraping for each result. Set `enabled: true` to activate.
 type WebSearchParamsMarkdownOptions struct {
-	// Scrape each result to Markdown. Off by default to keep search cheap and fast.
+	// Scrape each result to Markdown. Adds 1 credit per 10 results.
 	Enabled param.Opt[bool] `json:"enabled,omitzero"`
 	// Render iframe contents into the Markdown.
 	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
@@ -4083,8 +4133,8 @@ type WebSearchParamsMarkdownOptions struct {
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Keep hyperlinks in the Markdown.
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Cache TTL in ms for scraped Markdown keyed by URL + options. Default 1 day, max
-	// 30 days. Set to 0 to force a fresh scrape.
+	// Cache TTL in ms for scraped Markdown keyed by URL + options. Default 15 days,
+	// max 30 days. Set to 0 to force a fresh scrape.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Truncate inline base64 image payloads to keep responses small.
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`

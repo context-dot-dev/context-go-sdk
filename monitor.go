@@ -498,6 +498,8 @@ type MonitorNewResponseTargetUnion struct {
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorNewResponseTargetPage].
+	Actions []MonitorNewResponseTargetPageActionUnion `json:"actions"`
+	// This field is from variant [MonitorNewResponseTargetPage].
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// This field is from variant [MonitorNewResponseTargetPage].
 	IncludeSelectors []string `json:"include_selectors"`
@@ -521,6 +523,7 @@ type MonitorNewResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -597,6 +600,10 @@ type MonitorNewResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	// Public HTTP(S) page URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
+	// Optional browser actions executed in array order after the page loads, before
+	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
+	// Changes create a new baseline.
+	Actions []MonitorNewResponseTargetPageActionUnion `json:"actions" api:"nullable"`
 	// Remove matching regions after inclusions. Changes create a new baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
@@ -611,6 +618,7 @@ type MonitorNewResponseTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -625,6 +633,216 @@ func (r MonitorNewResponseTargetPage) RawJSON() string { return r.JSON.raw }
 func (r *MonitorNewResponseTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// MonitorNewResponseTargetPageActionUnion contains all possible properties and
+// values from [MonitorNewResponseTargetPageActionWait],
+// [MonitorNewResponseTargetPageActionPerform],
+// [MonitorNewResponseTargetPageActionScroll].
+//
+// Use the [MonitorNewResponseTargetPageActionUnion.AsAny] method to switch on the
+// variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorNewResponseTargetPageActionUnion struct {
+	// Any of "wait", "perform", "scroll".
+	Do string `json:"do"`
+	// This field is from variant [MonitorNewResponseTargetPageActionWait].
+	TimeMs int64 `json:"timeMs"`
+	// This field is from variant [MonitorNewResponseTargetPageActionPerform].
+	Action string `json:"action"`
+	// This field is from variant [MonitorNewResponseTargetPageActionScroll].
+	Amount MonitorNewResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// This field is from variant [MonitorNewResponseTargetPageActionScroll].
+	Container string `json:"container"`
+	// This field is from variant [MonitorNewResponseTargetPageActionScroll].
+	Direction string `json:"direction"`
+	// This field is from variant [MonitorNewResponseTargetPageActionScroll].
+	MaxScrolls int64 `json:"maxScrolls"`
+	JSON       struct {
+		Do         respjson.Field
+		TimeMs     respjson.Field
+		Action     respjson.Field
+		Amount     respjson.Field
+		Container  respjson.Field
+		Direction  respjson.Field
+		MaxScrolls respjson.Field
+		raw        string
+	} `json:"-"`
+}
+
+// anyMonitorNewResponseTargetPageAction is implemented by each variant of
+// [MonitorNewResponseTargetPageActionUnion] to add type safety for the return type
+// of [MonitorNewResponseTargetPageActionUnion.AsAny]
+type anyMonitorNewResponseTargetPageAction interface {
+	implMonitorNewResponseTargetPageActionUnion()
+}
+
+func (MonitorNewResponseTargetPageActionWait) implMonitorNewResponseTargetPageActionUnion()    {}
+func (MonitorNewResponseTargetPageActionPerform) implMonitorNewResponseTargetPageActionUnion() {}
+func (MonitorNewResponseTargetPageActionScroll) implMonitorNewResponseTargetPageActionUnion()  {}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := MonitorNewResponseTargetPageActionUnion.AsAny().(type) {
+//	case contextdev.MonitorNewResponseTargetPageActionWait:
+//	case contextdev.MonitorNewResponseTargetPageActionPerform:
+//	case contextdev.MonitorNewResponseTargetPageActionScroll:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u MonitorNewResponseTargetPageActionUnion) AsAny() anyMonitorNewResponseTargetPageAction {
+	switch u.Do {
+	case "wait":
+		return u.AsWait()
+	case "perform":
+		return u.AsPerform()
+	case "scroll":
+		return u.AsScroll()
+	}
+	return nil
+}
+
+func (u MonitorNewResponseTargetPageActionUnion) AsWait() (v MonitorNewResponseTargetPageActionWait) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorNewResponseTargetPageActionUnion) AsPerform() (v MonitorNewResponseTargetPageActionPerform) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorNewResponseTargetPageActionUnion) AsScroll() (v MonitorNewResponseTargetPageActionScroll) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorNewResponseTargetPageActionUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorNewResponseTargetPageActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+type MonitorNewResponseTargetPageActionWait struct {
+	// Use `wait` to pause for a fixed duration.
+	Do constant.Wait `json:"do" default:"wait"`
+	// Time to pause in milliseconds before the next action.
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		TimeMs      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseTargetPageActionWait) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseTargetPageActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+type MonitorNewResponseTargetPageActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
+	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	Do constant.Perform `json:"do" default:"perform"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Action      respjson.Field
+		Do          respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseTargetPageActionPerform) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseTargetPageActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+type MonitorNewResponseTargetPageActionScroll struct {
+	// Use `scroll` to move through the page or a container.
+	Do constant.Scroll `json:"do" default:"scroll"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount MonitorNewResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container string `json:"container"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls int64 `json:"maxScrolls"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		Amount      respjson.Field
+		Container   respjson.Field
+		Direction   respjson.Field
+		MaxScrolls  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseTargetPageActionScroll) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseTargetPageActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorNewResponseTargetPageActionScrollAmountUnion contains all possible
+// properties and values from [int64], [string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfInt OfMonitorNewResponseTargetPageActionScrollAmountString]
+type MonitorNewResponseTargetPageActionScrollAmountUnion struct {
+	// This field will be present if the value is a [int64] instead of an object.
+	OfInt int64 `json:",inline"`
+	// This field will be present if the value is a [string] instead of an object.
+	OfMonitorNewResponseTargetPageActionScrollAmountString string `json:",inline"`
+	JSON                                                   struct {
+		OfInt                                                  respjson.Field
+		OfMonitorNewResponseTargetPageActionScrollAmountString respjson.Field
+		raw                                                    string
+	} `json:"-"`
+}
+
+func (u MonitorNewResponseTargetPageActionScrollAmountUnion) AsInt() (v int64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorNewResponseTargetPageActionScrollAmountUnion) AsMonitorNewResponseTargetPageActionScrollAmountString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorNewResponseTargetPageActionScrollAmountUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorNewResponseTargetPageActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorNewResponseTargetPageActionScrollAmountString string
+
+const (
+	MonitorNewResponseTargetPageActionScrollAmountStringViewport MonitorNewResponseTargetPageActionScrollAmountString = "viewport"
+	MonitorNewResponseTargetPageActionScrollAmountStringMax      MonitorNewResponseTargetPageActionScrollAmountString = "max"
+)
 
 // Watch a site’s URL inventory for confirmed additions and removals.
 type MonitorNewResponseTargetSitemap struct {
@@ -1166,6 +1384,8 @@ type MonitorGetResponseTargetUnion struct {
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorGetResponseTargetPage].
+	Actions []MonitorGetResponseTargetPageActionUnion `json:"actions"`
+	// This field is from variant [MonitorGetResponseTargetPage].
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// This field is from variant [MonitorGetResponseTargetPage].
 	IncludeSelectors []string `json:"include_selectors"`
@@ -1189,6 +1409,7 @@ type MonitorGetResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -1265,6 +1486,10 @@ type MonitorGetResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	// Public HTTP(S) page URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
+	// Optional browser actions executed in array order after the page loads, before
+	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
+	// Changes create a new baseline.
+	Actions []MonitorGetResponseTargetPageActionUnion `json:"actions" api:"nullable"`
 	// Remove matching regions after inclusions. Changes create a new baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
@@ -1279,6 +1504,7 @@ type MonitorGetResponseTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -1293,6 +1519,216 @@ func (r MonitorGetResponseTargetPage) RawJSON() string { return r.JSON.raw }
 func (r *MonitorGetResponseTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// MonitorGetResponseTargetPageActionUnion contains all possible properties and
+// values from [MonitorGetResponseTargetPageActionWait],
+// [MonitorGetResponseTargetPageActionPerform],
+// [MonitorGetResponseTargetPageActionScroll].
+//
+// Use the [MonitorGetResponseTargetPageActionUnion.AsAny] method to switch on the
+// variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorGetResponseTargetPageActionUnion struct {
+	// Any of "wait", "perform", "scroll".
+	Do string `json:"do"`
+	// This field is from variant [MonitorGetResponseTargetPageActionWait].
+	TimeMs int64 `json:"timeMs"`
+	// This field is from variant [MonitorGetResponseTargetPageActionPerform].
+	Action string `json:"action"`
+	// This field is from variant [MonitorGetResponseTargetPageActionScroll].
+	Amount MonitorGetResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// This field is from variant [MonitorGetResponseTargetPageActionScroll].
+	Container string `json:"container"`
+	// This field is from variant [MonitorGetResponseTargetPageActionScroll].
+	Direction string `json:"direction"`
+	// This field is from variant [MonitorGetResponseTargetPageActionScroll].
+	MaxScrolls int64 `json:"maxScrolls"`
+	JSON       struct {
+		Do         respjson.Field
+		TimeMs     respjson.Field
+		Action     respjson.Field
+		Amount     respjson.Field
+		Container  respjson.Field
+		Direction  respjson.Field
+		MaxScrolls respjson.Field
+		raw        string
+	} `json:"-"`
+}
+
+// anyMonitorGetResponseTargetPageAction is implemented by each variant of
+// [MonitorGetResponseTargetPageActionUnion] to add type safety for the return type
+// of [MonitorGetResponseTargetPageActionUnion.AsAny]
+type anyMonitorGetResponseTargetPageAction interface {
+	implMonitorGetResponseTargetPageActionUnion()
+}
+
+func (MonitorGetResponseTargetPageActionWait) implMonitorGetResponseTargetPageActionUnion()    {}
+func (MonitorGetResponseTargetPageActionPerform) implMonitorGetResponseTargetPageActionUnion() {}
+func (MonitorGetResponseTargetPageActionScroll) implMonitorGetResponseTargetPageActionUnion()  {}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := MonitorGetResponseTargetPageActionUnion.AsAny().(type) {
+//	case contextdev.MonitorGetResponseTargetPageActionWait:
+//	case contextdev.MonitorGetResponseTargetPageActionPerform:
+//	case contextdev.MonitorGetResponseTargetPageActionScroll:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u MonitorGetResponseTargetPageActionUnion) AsAny() anyMonitorGetResponseTargetPageAction {
+	switch u.Do {
+	case "wait":
+		return u.AsWait()
+	case "perform":
+		return u.AsPerform()
+	case "scroll":
+		return u.AsScroll()
+	}
+	return nil
+}
+
+func (u MonitorGetResponseTargetPageActionUnion) AsWait() (v MonitorGetResponseTargetPageActionWait) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorGetResponseTargetPageActionUnion) AsPerform() (v MonitorGetResponseTargetPageActionPerform) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorGetResponseTargetPageActionUnion) AsScroll() (v MonitorGetResponseTargetPageActionScroll) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorGetResponseTargetPageActionUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorGetResponseTargetPageActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+type MonitorGetResponseTargetPageActionWait struct {
+	// Use `wait` to pause for a fixed duration.
+	Do constant.Wait `json:"do" default:"wait"`
+	// Time to pause in milliseconds before the next action.
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		TimeMs      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseTargetPageActionWait) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseTargetPageActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+type MonitorGetResponseTargetPageActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
+	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	Do constant.Perform `json:"do" default:"perform"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Action      respjson.Field
+		Do          respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseTargetPageActionPerform) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseTargetPageActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+type MonitorGetResponseTargetPageActionScroll struct {
+	// Use `scroll` to move through the page or a container.
+	Do constant.Scroll `json:"do" default:"scroll"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount MonitorGetResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container string `json:"container"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls int64 `json:"maxScrolls"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		Amount      respjson.Field
+		Container   respjson.Field
+		Direction   respjson.Field
+		MaxScrolls  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseTargetPageActionScroll) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseTargetPageActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorGetResponseTargetPageActionScrollAmountUnion contains all possible
+// properties and values from [int64], [string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfInt OfMonitorGetResponseTargetPageActionScrollAmountString]
+type MonitorGetResponseTargetPageActionScrollAmountUnion struct {
+	// This field will be present if the value is a [int64] instead of an object.
+	OfInt int64 `json:",inline"`
+	// This field will be present if the value is a [string] instead of an object.
+	OfMonitorGetResponseTargetPageActionScrollAmountString string `json:",inline"`
+	JSON                                                   struct {
+		OfInt                                                  respjson.Field
+		OfMonitorGetResponseTargetPageActionScrollAmountString respjson.Field
+		raw                                                    string
+	} `json:"-"`
+}
+
+func (u MonitorGetResponseTargetPageActionScrollAmountUnion) AsInt() (v int64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorGetResponseTargetPageActionScrollAmountUnion) AsMonitorGetResponseTargetPageActionScrollAmountString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorGetResponseTargetPageActionScrollAmountUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorGetResponseTargetPageActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorGetResponseTargetPageActionScrollAmountString string
+
+const (
+	MonitorGetResponseTargetPageActionScrollAmountStringViewport MonitorGetResponseTargetPageActionScrollAmountString = "viewport"
+	MonitorGetResponseTargetPageActionScrollAmountStringMax      MonitorGetResponseTargetPageActionScrollAmountString = "max"
+)
 
 // Watch a site’s URL inventory for confirmed additions and removals.
 type MonitorGetResponseTargetSitemap struct {
@@ -1835,6 +2271,8 @@ type MonitorUpdateResponseTargetUnion struct {
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorUpdateResponseTargetPage].
+	Actions []MonitorUpdateResponseTargetPageActionUnion `json:"actions"`
+	// This field is from variant [MonitorUpdateResponseTargetPage].
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// This field is from variant [MonitorUpdateResponseTargetPage].
 	IncludeSelectors []string `json:"include_selectors"`
@@ -1858,6 +2296,7 @@ type MonitorUpdateResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -1934,6 +2373,10 @@ type MonitorUpdateResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	// Public HTTP(S) page URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
+	// Optional browser actions executed in array order after the page loads, before
+	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
+	// Changes create a new baseline.
+	Actions []MonitorUpdateResponseTargetPageActionUnion `json:"actions" api:"nullable"`
 	// Remove matching regions after inclusions. Changes create a new baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
@@ -1948,6 +2391,7 @@ type MonitorUpdateResponseTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -1962,6 +2406,217 @@ func (r MonitorUpdateResponseTargetPage) RawJSON() string { return r.JSON.raw }
 func (r *MonitorUpdateResponseTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// MonitorUpdateResponseTargetPageActionUnion contains all possible properties and
+// values from [MonitorUpdateResponseTargetPageActionWait],
+// [MonitorUpdateResponseTargetPageActionPerform],
+// [MonitorUpdateResponseTargetPageActionScroll].
+//
+// Use the [MonitorUpdateResponseTargetPageActionUnion.AsAny] method to switch on
+// the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorUpdateResponseTargetPageActionUnion struct {
+	// Any of "wait", "perform", "scroll".
+	Do string `json:"do"`
+	// This field is from variant [MonitorUpdateResponseTargetPageActionWait].
+	TimeMs int64 `json:"timeMs"`
+	// This field is from variant [MonitorUpdateResponseTargetPageActionPerform].
+	Action string `json:"action"`
+	// This field is from variant [MonitorUpdateResponseTargetPageActionScroll].
+	Amount MonitorUpdateResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// This field is from variant [MonitorUpdateResponseTargetPageActionScroll].
+	Container string `json:"container"`
+	// This field is from variant [MonitorUpdateResponseTargetPageActionScroll].
+	Direction string `json:"direction"`
+	// This field is from variant [MonitorUpdateResponseTargetPageActionScroll].
+	MaxScrolls int64 `json:"maxScrolls"`
+	JSON       struct {
+		Do         respjson.Field
+		TimeMs     respjson.Field
+		Action     respjson.Field
+		Amount     respjson.Field
+		Container  respjson.Field
+		Direction  respjson.Field
+		MaxScrolls respjson.Field
+		raw        string
+	} `json:"-"`
+}
+
+// anyMonitorUpdateResponseTargetPageAction is implemented by each variant of
+// [MonitorUpdateResponseTargetPageActionUnion] to add type safety for the return
+// type of [MonitorUpdateResponseTargetPageActionUnion.AsAny]
+type anyMonitorUpdateResponseTargetPageAction interface {
+	implMonitorUpdateResponseTargetPageActionUnion()
+}
+
+func (MonitorUpdateResponseTargetPageActionWait) implMonitorUpdateResponseTargetPageActionUnion() {}
+func (MonitorUpdateResponseTargetPageActionPerform) implMonitorUpdateResponseTargetPageActionUnion() {
+}
+func (MonitorUpdateResponseTargetPageActionScroll) implMonitorUpdateResponseTargetPageActionUnion() {}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := MonitorUpdateResponseTargetPageActionUnion.AsAny().(type) {
+//	case contextdev.MonitorUpdateResponseTargetPageActionWait:
+//	case contextdev.MonitorUpdateResponseTargetPageActionPerform:
+//	case contextdev.MonitorUpdateResponseTargetPageActionScroll:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u MonitorUpdateResponseTargetPageActionUnion) AsAny() anyMonitorUpdateResponseTargetPageAction {
+	switch u.Do {
+	case "wait":
+		return u.AsWait()
+	case "perform":
+		return u.AsPerform()
+	case "scroll":
+		return u.AsScroll()
+	}
+	return nil
+}
+
+func (u MonitorUpdateResponseTargetPageActionUnion) AsWait() (v MonitorUpdateResponseTargetPageActionWait) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorUpdateResponseTargetPageActionUnion) AsPerform() (v MonitorUpdateResponseTargetPageActionPerform) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorUpdateResponseTargetPageActionUnion) AsScroll() (v MonitorUpdateResponseTargetPageActionScroll) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorUpdateResponseTargetPageActionUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorUpdateResponseTargetPageActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+type MonitorUpdateResponseTargetPageActionWait struct {
+	// Use `wait` to pause for a fixed duration.
+	Do constant.Wait `json:"do" default:"wait"`
+	// Time to pause in milliseconds before the next action.
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		TimeMs      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseTargetPageActionWait) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseTargetPageActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+type MonitorUpdateResponseTargetPageActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
+	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	Do constant.Perform `json:"do" default:"perform"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Action      respjson.Field
+		Do          respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseTargetPageActionPerform) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseTargetPageActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+type MonitorUpdateResponseTargetPageActionScroll struct {
+	// Use `scroll` to move through the page or a container.
+	Do constant.Scroll `json:"do" default:"scroll"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount MonitorUpdateResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container string `json:"container"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls int64 `json:"maxScrolls"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		Amount      respjson.Field
+		Container   respjson.Field
+		Direction   respjson.Field
+		MaxScrolls  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseTargetPageActionScroll) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseTargetPageActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorUpdateResponseTargetPageActionScrollAmountUnion contains all possible
+// properties and values from [int64], [string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfInt OfMonitorUpdateResponseTargetPageActionScrollAmountString]
+type MonitorUpdateResponseTargetPageActionScrollAmountUnion struct {
+	// This field will be present if the value is a [int64] instead of an object.
+	OfInt int64 `json:",inline"`
+	// This field will be present if the value is a [string] instead of an object.
+	OfMonitorUpdateResponseTargetPageActionScrollAmountString string `json:",inline"`
+	JSON                                                      struct {
+		OfInt                                                     respjson.Field
+		OfMonitorUpdateResponseTargetPageActionScrollAmountString respjson.Field
+		raw                                                       string
+	} `json:"-"`
+}
+
+func (u MonitorUpdateResponseTargetPageActionScrollAmountUnion) AsInt() (v int64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorUpdateResponseTargetPageActionScrollAmountUnion) AsMonitorUpdateResponseTargetPageActionScrollAmountString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorUpdateResponseTargetPageActionScrollAmountUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorUpdateResponseTargetPageActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorUpdateResponseTargetPageActionScrollAmountString string
+
+const (
+	MonitorUpdateResponseTargetPageActionScrollAmountStringViewport MonitorUpdateResponseTargetPageActionScrollAmountString = "viewport"
+	MonitorUpdateResponseTargetPageActionScrollAmountStringMax      MonitorUpdateResponseTargetPageActionScrollAmountString = "max"
+)
 
 // Watch a site’s URL inventory for confirmed additions and removals.
 type MonitorUpdateResponseTargetSitemap struct {
@@ -2543,6 +3198,8 @@ type MonitorListResponseDataTargetUnion struct {
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorListResponseDataTargetPage].
+	Actions []MonitorListResponseDataTargetPageActionUnion `json:"actions"`
+	// This field is from variant [MonitorListResponseDataTargetPage].
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// This field is from variant [MonitorListResponseDataTargetPage].
 	IncludeSelectors []string `json:"include_selectors"`
@@ -2566,6 +3223,7 @@ type MonitorListResponseDataTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -2642,6 +3300,10 @@ type MonitorListResponseDataTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	// Public HTTP(S) page URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
+	// Optional browser actions executed in array order after the page loads, before
+	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
+	// Changes create a new baseline.
+	Actions []MonitorListResponseDataTargetPageActionUnion `json:"actions" api:"nullable"`
 	// Remove matching regions after inclusions. Changes create a new baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
@@ -2656,6 +3318,7 @@ type MonitorListResponseDataTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -2670,6 +3333,220 @@ func (r MonitorListResponseDataTargetPage) RawJSON() string { return r.JSON.raw 
 func (r *MonitorListResponseDataTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// MonitorListResponseDataTargetPageActionUnion contains all possible properties
+// and values from [MonitorListResponseDataTargetPageActionWait],
+// [MonitorListResponseDataTargetPageActionPerform],
+// [MonitorListResponseDataTargetPageActionScroll].
+//
+// Use the [MonitorListResponseDataTargetPageActionUnion.AsAny] method to switch on
+// the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorListResponseDataTargetPageActionUnion struct {
+	// Any of "wait", "perform", "scroll".
+	Do string `json:"do"`
+	// This field is from variant [MonitorListResponseDataTargetPageActionWait].
+	TimeMs int64 `json:"timeMs"`
+	// This field is from variant [MonitorListResponseDataTargetPageActionPerform].
+	Action string `json:"action"`
+	// This field is from variant [MonitorListResponseDataTargetPageActionScroll].
+	Amount MonitorListResponseDataTargetPageActionScrollAmountUnion `json:"amount"`
+	// This field is from variant [MonitorListResponseDataTargetPageActionScroll].
+	Container string `json:"container"`
+	// This field is from variant [MonitorListResponseDataTargetPageActionScroll].
+	Direction string `json:"direction"`
+	// This field is from variant [MonitorListResponseDataTargetPageActionScroll].
+	MaxScrolls int64 `json:"maxScrolls"`
+	JSON       struct {
+		Do         respjson.Field
+		TimeMs     respjson.Field
+		Action     respjson.Field
+		Amount     respjson.Field
+		Container  respjson.Field
+		Direction  respjson.Field
+		MaxScrolls respjson.Field
+		raw        string
+	} `json:"-"`
+}
+
+// anyMonitorListResponseDataTargetPageAction is implemented by each variant of
+// [MonitorListResponseDataTargetPageActionUnion] to add type safety for the return
+// type of [MonitorListResponseDataTargetPageActionUnion.AsAny]
+type anyMonitorListResponseDataTargetPageAction interface {
+	implMonitorListResponseDataTargetPageActionUnion()
+}
+
+func (MonitorListResponseDataTargetPageActionWait) implMonitorListResponseDataTargetPageActionUnion() {
+}
+func (MonitorListResponseDataTargetPageActionPerform) implMonitorListResponseDataTargetPageActionUnion() {
+}
+func (MonitorListResponseDataTargetPageActionScroll) implMonitorListResponseDataTargetPageActionUnion() {
+}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := MonitorListResponseDataTargetPageActionUnion.AsAny().(type) {
+//	case contextdev.MonitorListResponseDataTargetPageActionWait:
+//	case contextdev.MonitorListResponseDataTargetPageActionPerform:
+//	case contextdev.MonitorListResponseDataTargetPageActionScroll:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u MonitorListResponseDataTargetPageActionUnion) AsAny() anyMonitorListResponseDataTargetPageAction {
+	switch u.Do {
+	case "wait":
+		return u.AsWait()
+	case "perform":
+		return u.AsPerform()
+	case "scroll":
+		return u.AsScroll()
+	}
+	return nil
+}
+
+func (u MonitorListResponseDataTargetPageActionUnion) AsWait() (v MonitorListResponseDataTargetPageActionWait) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorListResponseDataTargetPageActionUnion) AsPerform() (v MonitorListResponseDataTargetPageActionPerform) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorListResponseDataTargetPageActionUnion) AsScroll() (v MonitorListResponseDataTargetPageActionScroll) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorListResponseDataTargetPageActionUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorListResponseDataTargetPageActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+type MonitorListResponseDataTargetPageActionWait struct {
+	// Use `wait` to pause for a fixed duration.
+	Do constant.Wait `json:"do" default:"wait"`
+	// Time to pause in milliseconds before the next action.
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		TimeMs      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataTargetPageActionWait) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataTargetPageActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+type MonitorListResponseDataTargetPageActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
+	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	Do constant.Perform `json:"do" default:"perform"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Action      respjson.Field
+		Do          respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataTargetPageActionPerform) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataTargetPageActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+type MonitorListResponseDataTargetPageActionScroll struct {
+	// Use `scroll` to move through the page or a container.
+	Do constant.Scroll `json:"do" default:"scroll"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount MonitorListResponseDataTargetPageActionScrollAmountUnion `json:"amount"`
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container string `json:"container"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls int64 `json:"maxScrolls"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		Amount      respjson.Field
+		Container   respjson.Field
+		Direction   respjson.Field
+		MaxScrolls  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataTargetPageActionScroll) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataTargetPageActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorListResponseDataTargetPageActionScrollAmountUnion contains all possible
+// properties and values from [int64], [string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfInt
+// OfMonitorListResponseDataTargetPageActionScrollAmountString]
+type MonitorListResponseDataTargetPageActionScrollAmountUnion struct {
+	// This field will be present if the value is a [int64] instead of an object.
+	OfInt int64 `json:",inline"`
+	// This field will be present if the value is a [string] instead of an object.
+	OfMonitorListResponseDataTargetPageActionScrollAmountString string `json:",inline"`
+	JSON                                                        struct {
+		OfInt                                                       respjson.Field
+		OfMonitorListResponseDataTargetPageActionScrollAmountString respjson.Field
+		raw                                                         string
+	} `json:"-"`
+}
+
+func (u MonitorListResponseDataTargetPageActionScrollAmountUnion) AsInt() (v int64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorListResponseDataTargetPageActionScrollAmountUnion) AsMonitorListResponseDataTargetPageActionScrollAmountString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorListResponseDataTargetPageActionScrollAmountUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorListResponseDataTargetPageActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorListResponseDataTargetPageActionScrollAmountString string
+
+const (
+	MonitorListResponseDataTargetPageActionScrollAmountStringViewport MonitorListResponseDataTargetPageActionScrollAmountString = "viewport"
+	MonitorListResponseDataTargetPageActionScrollAmountStringMax      MonitorListResponseDataTargetPageActionScrollAmountString = "max"
+)
 
 // Watch a site’s URL inventory for confirmed additions and removals.
 type MonitorListResponseDataTargetSitemap struct {
@@ -4244,6 +5121,8 @@ type MonitorRotateWebhookSecretResponseTargetUnion struct {
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorRotateWebhookSecretResponseTargetPage].
+	Actions []MonitorRotateWebhookSecretResponseTargetPageActionUnion `json:"actions"`
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetPage].
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// This field is from variant [MonitorRotateWebhookSecretResponseTargetPage].
 	IncludeSelectors []string `json:"include_selectors"`
@@ -4267,6 +5146,7 @@ type MonitorRotateWebhookSecretResponseTargetUnion struct {
 	JSON   struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -4346,6 +5226,10 @@ type MonitorRotateWebhookSecretResponseTargetPage struct {
 	Type constant.Page `json:"type" default:"page"`
 	// Public HTTP(S) page URL to monitor.
 	URL string `json:"url" api:"required" format:"uri"`
+	// Optional browser actions executed in array order after the page loads, before
+	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
+	// Changes create a new baseline.
+	Actions []MonitorRotateWebhookSecretResponseTargetPageActionUnion `json:"actions" api:"nullable"`
 	// Remove matching regions after inclusions. Changes create a new baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
 	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
@@ -4360,6 +5244,7 @@ type MonitorRotateWebhookSecretResponseTargetPage struct {
 	JSON struct {
 		Type                respjson.Field
 		URL                 respjson.Field
+		Actions             respjson.Field
 		ExcludeSelectors    respjson.Field
 		IncludeSelectors    respjson.Field
 		Instructions        respjson.Field
@@ -4374,6 +5259,232 @@ func (r MonitorRotateWebhookSecretResponseTargetPage) RawJSON() string { return 
 func (r *MonitorRotateWebhookSecretResponseTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// MonitorRotateWebhookSecretResponseTargetPageActionUnion contains all possible
+// properties and values from
+// [MonitorRotateWebhookSecretResponseTargetPageActionWait],
+// [MonitorRotateWebhookSecretResponseTargetPageActionPerform],
+// [MonitorRotateWebhookSecretResponseTargetPageActionScroll].
+//
+// Use the [MonitorRotateWebhookSecretResponseTargetPageActionUnion.AsAny] method
+// to switch on the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type MonitorRotateWebhookSecretResponseTargetPageActionUnion struct {
+	// Any of "wait", "perform", "scroll".
+	Do string `json:"do"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseTargetPageActionWait].
+	TimeMs int64 `json:"timeMs"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseTargetPageActionPerform].
+	Action string `json:"action"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseTargetPageActionScroll].
+	Amount MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseTargetPageActionScroll].
+	Container string `json:"container"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseTargetPageActionScroll].
+	Direction string `json:"direction"`
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseTargetPageActionScroll].
+	MaxScrolls int64 `json:"maxScrolls"`
+	JSON       struct {
+		Do         respjson.Field
+		TimeMs     respjson.Field
+		Action     respjson.Field
+		Amount     respjson.Field
+		Container  respjson.Field
+		Direction  respjson.Field
+		MaxScrolls respjson.Field
+		raw        string
+	} `json:"-"`
+}
+
+// anyMonitorRotateWebhookSecretResponseTargetPageAction is implemented by each
+// variant of [MonitorRotateWebhookSecretResponseTargetPageActionUnion] to add type
+// safety for the return type of
+// [MonitorRotateWebhookSecretResponseTargetPageActionUnion.AsAny]
+type anyMonitorRotateWebhookSecretResponseTargetPageAction interface {
+	implMonitorRotateWebhookSecretResponseTargetPageActionUnion()
+}
+
+func (MonitorRotateWebhookSecretResponseTargetPageActionWait) implMonitorRotateWebhookSecretResponseTargetPageActionUnion() {
+}
+func (MonitorRotateWebhookSecretResponseTargetPageActionPerform) implMonitorRotateWebhookSecretResponseTargetPageActionUnion() {
+}
+func (MonitorRotateWebhookSecretResponseTargetPageActionScroll) implMonitorRotateWebhookSecretResponseTargetPageActionUnion() {
+}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := MonitorRotateWebhookSecretResponseTargetPageActionUnion.AsAny().(type) {
+//	case contextdev.MonitorRotateWebhookSecretResponseTargetPageActionWait:
+//	case contextdev.MonitorRotateWebhookSecretResponseTargetPageActionPerform:
+//	case contextdev.MonitorRotateWebhookSecretResponseTargetPageActionScroll:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u MonitorRotateWebhookSecretResponseTargetPageActionUnion) AsAny() anyMonitorRotateWebhookSecretResponseTargetPageAction {
+	switch u.Do {
+	case "wait":
+		return u.AsWait()
+	case "perform":
+		return u.AsPerform()
+	case "scroll":
+		return u.AsScroll()
+	}
+	return nil
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetPageActionUnion) AsWait() (v MonitorRotateWebhookSecretResponseTargetPageActionWait) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetPageActionUnion) AsPerform() (v MonitorRotateWebhookSecretResponseTargetPageActionPerform) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetPageActionUnion) AsScroll() (v MonitorRotateWebhookSecretResponseTargetPageActionScroll) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorRotateWebhookSecretResponseTargetPageActionUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *MonitorRotateWebhookSecretResponseTargetPageActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+type MonitorRotateWebhookSecretResponseTargetPageActionWait struct {
+	// Use `wait` to pause for a fixed duration.
+	Do constant.Wait `json:"do" default:"wait"`
+	// Time to pause in milliseconds before the next action.
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		TimeMs      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseTargetPageActionWait) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseTargetPageActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+type MonitorRotateWebhookSecretResponseTargetPageActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
+	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	Do constant.Perform `json:"do" default:"perform"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Action      respjson.Field
+		Do          respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseTargetPageActionPerform) RawJSON() string {
+	return r.JSON.raw
+}
+func (r *MonitorRotateWebhookSecretResponseTargetPageActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+type MonitorRotateWebhookSecretResponseTargetPageActionScroll struct {
+	// Use `scroll` to move through the page or a container.
+	Do constant.Scroll `json:"do" default:"scroll"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion `json:"amount"`
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container string `json:"container"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls int64 `json:"maxScrolls"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Do          respjson.Field
+		Amount      respjson.Field
+		Container   respjson.Field
+		Direction   respjson.Field
+		MaxScrolls  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseTargetPageActionScroll) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseTargetPageActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion contains all
+// possible properties and values from [int64], [string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfInt
+// OfMonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString]
+type MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion struct {
+	// This field will be present if the value is a [int64] instead of an object.
+	OfInt int64 `json:",inline"`
+	// This field will be present if the value is a [string] instead of an object.
+	OfMonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString string `json:",inline"`
+	JSON                                                                   struct {
+		OfInt                                                                  respjson.Field
+		OfMonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString respjson.Field
+		raw                                                                    string
+	} `json:"-"`
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion) AsInt() (v int64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion) AsMonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion) RawJSON() string {
+	return u.JSON.raw
+}
+
+func (r *MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString string
+
+const (
+	MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountStringViewport MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString = "viewport"
+	MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountStringMax      MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString = "max"
+)
 
 // Watch a site’s URL inventory for confirmed additions and removals.
 type MonitorRotateWebhookSecretResponseTargetSitemap struct {
@@ -4830,6 +5941,10 @@ type MonitorNewParamsTargetPage struct {
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
+	// Optional browser actions executed in array order after the page loads, before
+	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
+	// Changes create a new baseline.
+	Actions []MonitorNewParamsTargetPageActionUnion `json:"actions,omitzero"`
 	// Remove matching regions after inclusions. Changes create a new baseline.
 	ExcludeSelectors []string `json:"exclude_selectors,omitzero"`
 	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
@@ -4849,6 +5964,137 @@ func (r MonitorNewParamsTargetPage) MarshalJSON() (data []byte, err error) {
 func (r *MonitorNewParamsTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type MonitorNewParamsTargetPageActionUnion struct {
+	OfWait    *MonitorNewParamsTargetPageActionWait    `json:",omitzero,inline"`
+	OfPerform *MonitorNewParamsTargetPageActionPerform `json:",omitzero,inline"`
+	OfScroll  *MonitorNewParamsTargetPageActionScroll  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u MonitorNewParamsTargetPageActionUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfWait, u.OfPerform, u.OfScroll)
+}
+func (u *MonitorNewParamsTargetPageActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[MonitorNewParamsTargetPageActionUnion](
+		"do",
+		apijson.Discriminator[MonitorNewParamsTargetPageActionWait]("wait"),
+		apijson.Discriminator[MonitorNewParamsTargetPageActionPerform]("perform"),
+		apijson.Discriminator[MonitorNewParamsTargetPageActionScroll]("scroll"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type MonitorNewParamsTargetPageActionWait struct {
+	// Time to pause in milliseconds before the next action.
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// Use `wait` to pause for a fixed duration.
+	//
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `json:"do" default:"wait"`
+	paramObj
+}
+
+func (r MonitorNewParamsTargetPageActionWait) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorNewParamsTargetPageActionWait
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorNewParamsTargetPageActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type MonitorNewParamsTargetPageActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
+	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	//
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `json:"do" default:"perform"`
+	paramObj
+}
+
+func (r MonitorNewParamsTargetPageActionPerform) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorNewParamsTargetPageActionPerform
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorNewParamsTargetPageActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+//
+// The property Do is required.
+type MonitorNewParamsTargetPageActionScroll struct {
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container param.Opt[string] `json:"container,omitzero"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount MonitorNewParamsTargetPageActionScrollAmountUnion `json:"amount,omitzero"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction,omitzero"`
+	// Use `scroll` to move through the page or a container.
+	//
+	// This field can be elided, and will marshal its zero value as "scroll".
+	Do constant.Scroll `json:"do" default:"scroll"`
+	paramObj
+}
+
+func (r MonitorNewParamsTargetPageActionScroll) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorNewParamsTargetPageActionScroll
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorNewParamsTargetPageActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[MonitorNewParamsTargetPageActionScroll](
+		"direction", "up", "down", "left", "right",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type MonitorNewParamsTargetPageActionScrollAmountUnion struct {
+	OfInt param.Opt[int64] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfMonitorNewsTargetPageActionScrollAmountString)
+	OfMonitorNewsTargetPageActionScrollAmountString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u MonitorNewParamsTargetPageActionScrollAmountUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfInt, u.OfMonitorNewsTargetPageActionScrollAmountString)
+}
+func (u *MonitorNewParamsTargetPageActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type MonitorNewParamsTargetPageActionScrollAmountString string
+
+const (
+	MonitorNewParamsTargetPageActionScrollAmountStringViewport MonitorNewParamsTargetPageActionScrollAmountString = "viewport"
+	MonitorNewParamsTargetPageActionScrollAmountStringMax      MonitorNewParamsTargetPageActionScrollAmountString = "max"
+)
 
 // Watch a site’s URL inventory for confirmed additions and removals.
 //
@@ -5238,6 +6484,10 @@ type MonitorUpdateParamsTargetPage struct {
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
 	// Normalize whitespace before comparing or analyzing text.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
+	// Optional browser actions executed in array order after the page loads, before
+	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
+	// Changes create a new baseline.
+	Actions []MonitorUpdateParamsTargetPageActionUnion `json:"actions,omitzero"`
 	// Remove matching regions after inclusions. Changes create a new baseline.
 	ExcludeSelectors []string `json:"exclude_selectors,omitzero"`
 	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
@@ -5257,6 +6507,137 @@ func (r MonitorUpdateParamsTargetPage) MarshalJSON() (data []byte, err error) {
 func (r *MonitorUpdateParamsTargetPage) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type MonitorUpdateParamsTargetPageActionUnion struct {
+	OfWait    *MonitorUpdateParamsTargetPageActionWait    `json:",omitzero,inline"`
+	OfPerform *MonitorUpdateParamsTargetPageActionPerform `json:",omitzero,inline"`
+	OfScroll  *MonitorUpdateParamsTargetPageActionScroll  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u MonitorUpdateParamsTargetPageActionUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfWait, u.OfPerform, u.OfScroll)
+}
+func (u *MonitorUpdateParamsTargetPageActionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[MonitorUpdateParamsTargetPageActionUnion](
+		"do",
+		apijson.Discriminator[MonitorUpdateParamsTargetPageActionWait]("wait"),
+		apijson.Discriminator[MonitorUpdateParamsTargetPageActionPerform]("perform"),
+		apijson.Discriminator[MonitorUpdateParamsTargetPageActionScroll]("scroll"),
+	)
+}
+
+// Pause for a fixed number of milliseconds before continuing to the next action.
+//
+// The properties Do, TimeMs are required.
+type MonitorUpdateParamsTargetPageActionWait struct {
+	// Time to pause in milliseconds before the next action.
+	TimeMs int64 `json:"timeMs" api:"required"`
+	// Use `wait` to pause for a fixed duration.
+	//
+	// This field can be elided, and will marshal its zero value as "wait".
+	Do constant.Wait `json:"do" default:"wait"`
+	paramObj
+}
+
+func (r MonitorUpdateParamsTargetPageActionWait) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorUpdateParamsTargetPageActionWait
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorUpdateParamsTargetPageActionWait) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Resolve and perform one natural-language browser action.
+//
+// The properties Action, Do are required.
+type MonitorUpdateParamsTargetPageActionPerform struct {
+	// One browser instruction, such as clicking a button or entering text.
+	Action string `json:"action" api:"required"`
+	// Use `perform` for a plain-language browser instruction.
+	//
+	// This field can be elided, and will marshal its zero value as "perform".
+	Do constant.Perform `json:"do" default:"perform"`
+	paramObj
+}
+
+func (r MonitorUpdateParamsTargetPageActionPerform) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorUpdateParamsTargetPageActionPerform
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorUpdateParamsTargetPageActionPerform) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scroll the page or a selected scrollable container, waiting adaptively for
+// content and dimensions to settle after each iteration.
+//
+// The property Do is required.
+type MonitorUpdateParamsTargetPageActionScroll struct {
+	// CSS selector for the first matching scroll container. Defaults to the page.
+	Container param.Opt[string] `json:"container,omitzero"`
+	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
+	// changing. Defaults to 1.
+	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
+	// Pixels per scroll, one visible viewport, or the current scroll boundary.
+	// Defaults to viewport.
+	Amount MonitorUpdateParamsTargetPageActionScrollAmountUnion `json:"amount,omitzero"`
+	// Direction to scroll. Defaults to down.
+	//
+	// Any of "up", "down", "left", "right".
+	Direction string `json:"direction,omitzero"`
+	// Use `scroll` to move through the page or a container.
+	//
+	// This field can be elided, and will marshal its zero value as "scroll".
+	Do constant.Scroll `json:"do" default:"scroll"`
+	paramObj
+}
+
+func (r MonitorUpdateParamsTargetPageActionScroll) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorUpdateParamsTargetPageActionScroll
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorUpdateParamsTargetPageActionScroll) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[MonitorUpdateParamsTargetPageActionScroll](
+		"direction", "up", "down", "left", "right",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type MonitorUpdateParamsTargetPageActionScrollAmountUnion struct {
+	OfInt param.Opt[int64] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfMonitorUpdatesTargetPageActionScrollAmountString)
+	OfMonitorUpdatesTargetPageActionScrollAmountString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u MonitorUpdateParamsTargetPageActionScrollAmountUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfInt, u.OfMonitorUpdatesTargetPageActionScrollAmountString)
+}
+func (u *MonitorUpdateParamsTargetPageActionScrollAmountUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type MonitorUpdateParamsTargetPageActionScrollAmountString string
+
+const (
+	MonitorUpdateParamsTargetPageActionScrollAmountStringViewport MonitorUpdateParamsTargetPageActionScrollAmountString = "viewport"
+	MonitorUpdateParamsTargetPageActionScrollAmountStringMax      MonitorUpdateParamsTargetPageActionScrollAmountString = "max"
+)
 
 // Watch a site’s URL inventory for confirmed additions and removals.
 //

@@ -341,6 +341,10 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 		Country:        contextdev.WebSearchParamsCountryAf,
 		ExcludeDomains: []string{"string"},
 		Freshness:      contextdev.WebSearchParamsFreshnessLast24Hours,
+		HighlightsOptions: contextdev.WebSearchParamsHighlightsOptions{
+			Enabled:       contextdev.Bool(true),
+			MaxCharacters: contextdev.Int(100),
+		},
 		IncludeDomains: []string{"string"},
 		MarkdownOptions: contextdev.WebSearchParamsMarkdownOptions{
 			Enabled:       contextdev.Bool(true),

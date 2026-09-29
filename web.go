@@ -2762,7 +2762,7 @@ type WebScrapeParams struct {
 	SharedParams WebScrapeParamsSharedParams `json:"sharedParams,omitzero"`
 	// Labels for tracking request usage. Not retained when zdr is enabled.
 	Tags []string `json:"tags,omitzero"`
-	// Deadline for the whole request. Defaults to 60000 ms with `fail`. Fixed waits
+	// Deadline for the whole request. Defaults to 90000 ms with `fail`. Fixed waits
 	// must end before it.
 	TimeoutOpts WebScrapeParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// `enabled` turns on zero data retention. Your organization must have ZDR enabled.
@@ -3344,7 +3344,7 @@ func (u *WebScrapeParamsSharedParamsWaitForUnion) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Deadline for the whole request. Defaults to 60000 ms with `fail`. Fixed waits
+// Deadline for the whole request. Defaults to 90000 ms with `fail`. Fixed waits
 // must end before it.
 //
 // The property Milliseconds is required.

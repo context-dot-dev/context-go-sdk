@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.22.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.21.0...v2.22.0) (2026-09-29)
+
+
+### Features
+
+* **answers:** route people and company research with faster answers ([#1336](https://github.com/context-dot-dev/context-go-sdk/issues/1336)) ([33c28b0](https://github.com/context-dot-dev/context-go-sdk/commit/33c28b0294d1056cb287f4803f30f51b22f3d013))
+* **api:** explain failed scrape outputs and fix agent-reported bugs ([#1360](https://github.com/context-dot-dev/context-go-sdk/issues/1360)) ([df2a489](https://github.com/context-dot-dev/context-go-sdk/commit/df2a489b402b9cbebfdd2839cd8b3581b0e02921))
+* **monitors:** support browser actions on page monitors ([#1365](https://github.com/context-dot-dev/context-go-sdk/issues/1365)) ([68d008e](https://github.com/context-dot-dev/context-go-sdk/commit/68d008e1764520e7b430b09ae2eb7ea50bcb3f39))
+* **scrape:** default cache age to three days and allow one year ([#1339](https://github.com/context-dot-dev/context-go-sdk/issues/1339)) ([7b5c821](https://github.com/context-dot-dev/context-go-sdk/commit/7b5c821c217cd79485a1832556900f424579adc8))
+* **search:** add highlights to web search and bill page reads per 10 results ([#1387](https://github.com/context-dot-dev/context-go-sdk/issues/1387)) ([fe55677](https://github.com/context-dot-dev/context-go-sdk/commit/fe556774b7ba47a1c2bce501c3a91d5c4a957ed7))
+* **web-search:** extend page cache defaults ([#1408](https://github.com/context-dot-dev/context-go-sdk/issues/1408)) ([3235469](https://github.com/context-dot-dev/context-go-sdk/commit/323546996101884ca06cd410a87f974bf5edfe85))
+
+
+### Bug Fixes
+
+* **api:** document search domain limits and clarify scrape parameter errors ([#1388](https://github.com/context-dot-dev/context-go-sdk/issues/1388)) ([cd8384b](https://github.com/context-dot-dev/context-go-sdk/commit/cd8384b268eca348b29f8509b49609a5be27408e))
+* **scrape:** resolve extracted URLs from source references ([#1333](https://github.com/context-dot-dev/context-go-sdk/issues/1333)) ([2976f62](https://github.com/context-dot-dev/context-go-sdk/commit/2976f626b9911c01b834eaffe0e1fb0e9e2a8104))
+
+
+### Documentation
+
+* **openapi:** complete concise API reference metadata ([#1329](https://github.com/context-dot-dev/context-go-sdk/issues/1329)) ([dac40cd](https://github.com/context-dot-dev/context-go-sdk/commit/dac40cd36f38e2c8c6e02cdf54a8fd28595b1ab8))
+* **scrape:** rename endpoint to Scrape Anything ([#1341](https://github.com/context-dot-dev/context-go-sdk/issues/1341)) ([1ba05f0](https://github.com/context-dot-dev/context-go-sdk/commit/1ba05f093d30000873484d2bc14c6246c7d1947e))
+
 ## [2.21.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.20.0...v2.21.0) (2026-09-27)
 
 

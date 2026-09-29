@@ -218,7 +218,7 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			},
 		},
 		ProductParams: contextdev.WebScrapeParamsProductParams{
-			UseAIFallback: contextdev.Bool(true),
+			DedupeImages: contextdev.Bool(true),
 		},
 		ScreenshotParams: contextdev.WebScrapeParamsScreenshotParams{
 			Area: contextdev.WebScrapeParamsScreenshotParamsAreaUnion{

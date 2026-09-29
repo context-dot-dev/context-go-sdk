@@ -2744,15 +2744,15 @@ type WebScrapeParams struct {
 	// Maximum age of a cached output, in milliseconds. `0` fetches fresh. Defaults to
 	// 3 days (259200000 ms). Maximum: 1 year (31536000000 ms).
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Required when `formats.highlights` is `true`.
+	// Requires `formats.highlights: true`; required when it is set.
 	HighlightsParams WebScrapeParamsHighlightsParams `json:"highlightsParams,omitzero"`
 	// Image options. Requires formats.images: true.
 	ImageParams WebScrapeParamsImageParams `json:"imageParams,omitzero"`
-	// Required when formats.json is true.
+	// Requires `formats.json: true`; required when it is set.
 	JsonParams WebScrapeParamsJsonParams `json:"jsonParams,omitzero"`
 	// Markdown options. Requires `formats.markdown`.
 	MarkdownParams WebScrapeParamsMarkdownParams `json:"markdownParams,omitzero"`
-	// Required when formats.parse is true.
+	// Requires `formats.parse: true`; required when it is set.
 	ParseParams WebScrapeParamsParseParams `json:"parseParams,omitzero"`
 	// Product options. Requires formats.product: true.
 	ProductParams WebScrapeParamsProductParams `json:"productParams,omitzero"`
@@ -2811,7 +2811,7 @@ func (r *WebScrapeParamsFormats) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Required when `formats.highlights` is `true`.
+// Requires `formats.highlights: true`; required when it is set.
 //
 // The property Query is required.
 type WebScrapeParamsHighlightsParams struct {
@@ -2857,12 +2857,12 @@ func init() {
 	)
 }
 
-// Required when formats.json is true.
+// Requires `formats.json: true`; required when it is set.
 //
 // The property Schema is required.
 type WebScrapeParamsJsonParams struct {
-	// JSON Schema for a top-level object, up to 50 KB. Use optional or nullable fields
-	// for missing facts.
+	// JSON Schema (not an example object) for a top-level object, up to 50 KB. Use
+	// optional or nullable fields for missing facts.
 	Schema map[string]any `json:"schema,omitzero" api:"required"`
 	// Extra guidance, such as which facts to prefer or how to read a field.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
@@ -2905,7 +2905,7 @@ func init() {
 	)
 }
 
-// Required when formats.parse is true.
+// Requires `formats.parse: true`; required when it is set.
 //
 // The property Rules is required.
 type WebScrapeParamsParseParams struct {
@@ -3814,8 +3814,8 @@ type WebSearchParams struct {
 	// "tv", "ug", "ua", "ae", "gb", "us", "um", "uy", "uz", "vu", "ve", "vn", "vg",
 	// "vi", "wf", "eh", "ye", "zm", "zw".
 	Country WebSearchParamsCountry `json:"country,omitzero"`
-	// Blocklist — drop results from these domains. Example: ["pinterest.com",
-	// "reddit.com"].
+	// Blocklist — drop results from these domains. Up to 100 domains. Example:
+	// ["pinterest.com", "reddit.com"].
 	ExcludeDomains []string `json:"excludeDomains,omitzero"`
 	// Restrict results to content published within this window.
 	//
@@ -3824,8 +3824,8 @@ type WebSearchParams struct {
 	// Passages from each result page that are relevant to the query. Pages are read
 	// with the `markdownOptions` settings.
 	HighlightsOptions WebSearchParamsHighlightsOptions `json:"highlightsOptions,omitzero"`
-	// Allowlist — only return results from these domains. Example: ["arxiv.org",
-	// "github.com"].
+	// Allowlist — only return results from these domains. Up to 100 domains. Example:
+	// ["arxiv.org", "github.com"].
 	IncludeDomains []string `json:"includeDomains,omitzero"`
 	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
 	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`

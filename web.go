@@ -2969,8 +2969,8 @@ func init() {
 
 // Product options. Requires formats.product: true.
 type WebScrapeParamsProductParams struct {
-	// Use an AI model when the page has no structured product data.
-	UseAIFallback param.Opt[bool] `json:"useAIFallback,omitzero"`
+	// Drop visually duplicate product images, keeping the largest copy.
+	DedupeImages param.Opt[bool] `json:"dedupeImages,omitzero"`
 	paramObj
 }
 

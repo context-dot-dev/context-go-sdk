@@ -47,7 +47,7 @@ func (r *LogService) Get(ctx context.Context, requestID string, opts ...option.R
 		err = errors.New("missing required request_id parameter")
 		return nil, err
 	}
-	path := fmt.Sprintf("logs/%s", requestID)
+	path := fmt.Sprintf("org/logs/%s", requestID)
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
 	return res, err
 }
@@ -56,7 +56,7 @@ func (r *LogService) Get(ctx context.Context, requestID string, opts ...option.R
 // include batch settlements and monitor runs.
 func (r *LogService) List(ctx context.Context, query LogListParams, opts ...option.RequestOption) (res *LogListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
-	path := "logs"
+	path := "org/logs"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
 	return res, err
 }

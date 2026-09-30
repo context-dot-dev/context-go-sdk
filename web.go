@@ -1140,7 +1140,7 @@ func (r *WebScrapeResponseBytes) UnmarshalJSON(data []byte) error {
 }
 
 type WebScrapeResponseBytesData struct {
-	// Body as base64, after HTTP decompression. Up to 20 MiB decoded.
+	// Body as base64, after HTTP decompression. Up to 50 MiB decoded.
 	Base64      string `json:"base64" api:"required"`
 	ContentType string `json:"contentType" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].

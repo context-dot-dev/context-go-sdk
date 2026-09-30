@@ -295,10 +295,10 @@ const (
 
 // PDF page-range options as a JSON object, e.g. {"start": 2, "end": 5}.
 type ParseHandleParamsPdf struct {
-	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
-	// Must be greater than or equal to start when both are provided.
+	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
+	// be >= start.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	// First 1-based PDF page to parse.
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	paramObj
 }

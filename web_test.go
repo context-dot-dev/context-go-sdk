@@ -339,13 +339,13 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 	_, err := client.Web.Search(context.TODO(), contextdev.WebSearchParams{
 		Query:          "Stripe API authentication",
 		Country:        contextdev.WebSearchParamsCountryAf,
-		ExcludeDomains: []string{"string"},
+		ExcludeDomains: []string{"xxx"},
 		Freshness:      contextdev.WebSearchParamsFreshnessLast24Hours,
 		HighlightsOptions: contextdev.WebSearchParamsHighlightsOptions{
 			Enabled:       contextdev.Bool(true),
 			MaxCharacters: contextdev.Int(100),
 		},
-		IncludeDomains: []string{"string"},
+		IncludeDomains: []string{"xxx"},
 		MarkdownOptions: contextdev.WebSearchParamsMarkdownOptions{
 			Enabled:       contextdev.Bool(true),
 			IncludeFrames: contextdev.Bool(true),
@@ -399,12 +399,12 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 	_, err := client.Web.WebCrawlMd(context.TODO(), contextdev.WebWebCrawlMdParams{
 		URL:              "https://example.com",
 		Country:          contextdev.WebWebCrawlMdParamsCountryDe,
-		ExcludeSelectors: []string{"string"},
+		ExcludeSelectors: []string{"x"},
 		FollowSubdomains: contextdev.Bool(true),
 		IncludeFrames:    contextdev.Bool(true),
 		IncludeImages:    contextdev.Bool(true),
 		IncludeLinks:     contextdev.Bool(true),
-		IncludeSelectors: []string{"string"},
+		IncludeSelectors: []string{"x"},
 		MaxAgeMs:         contextdev.Int(0),
 		MaxDepth:         contextdev.Int(0),
 		MaxPages:         contextdev.Int(10),

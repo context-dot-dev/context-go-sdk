@@ -55,7 +55,9 @@ func TestBatchListWithOptionalParams(t *testing.T) {
 		Q:          contextdev.String("batch_1a2b"),
 		SearchType: contextdev.BatchListParamsSearchTypeExact,
 		Status:     contextdev.BatchListParamsStatusQueued,
-		Tags:       contextdev.String("docs,competitor"),
+		Tags: contextdev.BatchListParamsTagsUnion{
+			OfString: contextdev.String("docs,competitor"),
+		},
 	})
 	if err != nil {
 		var apierr *contextdev.Error
@@ -129,7 +131,7 @@ func TestBatchGetResultsWithOptionalParams(t *testing.T) {
 		context.TODO(),
 		"batch_9f2c8a",
 		contextdev.BatchGetResultsParams{
-			Cursor: contextdev.String("cursor"),
+			Cursor: contextdev.String("321669910225:155771193"),
 			Limit:  contextdev.Int(1),
 		},
 	)
@@ -203,7 +205,7 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 				DelaysSeconds: []int64{10, 60, 300, 1800, 7200, 21600, 57600},
 			},
 		},
-		WebhookURL:     contextdev.String("webhookUrl"),
+		WebhookURL:     contextdev.String("https://example.com"),
 		IdempotencyKey: contextdev.String("Idempotency-Key"),
 	})
 	if err != nil {

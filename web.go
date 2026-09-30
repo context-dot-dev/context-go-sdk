@@ -3791,6 +3791,11 @@ type WebSearchParams struct {
 	NumResults param.Opt[int64] `json:"numResults,omitzero"`
 	// Currently has no effect.
 	QueryFanout param.Opt[bool] `json:"queryFanout,omitzero"`
+	// Passages from each result page that are relevant to the query. Pages are read
+	// with the `markdownOptions` settings.
+	HighlightsOptions WebSearchParamsHighlightsOptions `json:"highlightsOptions,omitzero"`
+	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
+	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
 	// Two-letter ISO 3166-1 alpha-2 country code to localize results to a specific
 	// country (maps to Google's `gl` parameter). Example: "us", "gb", "de".
 	//
@@ -3821,14 +3826,9 @@ type WebSearchParams struct {
 	//
 	// Any of "last_24_hours", "last_week", "last_month", "last_year".
 	Freshness WebSearchParamsFreshness `json:"freshness,omitzero"`
-	// Passages from each result page that are relevant to the query. Pages are read
-	// with the `markdownOptions` settings.
-	HighlightsOptions WebSearchParamsHighlightsOptions `json:"highlightsOptions,omitzero"`
 	// Allowlist — only return results from these domains. Up to 100 domains. Example:
 	// ["arxiv.org", "github.com"].
 	IncludeDomains []string `json:"includeDomains,omitzero"`
-	// Inline Markdown scraping for each result. Set `enabled: true` to activate.
-	MarkdownOptions WebSearchParamsMarkdownOptions `json:"markdownOptions,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
@@ -4125,6 +4125,14 @@ func (r *WebSearchParamsHighlightsOptions) UnmarshalJSON(data []byte) error {
 
 // Inline Markdown scraping for each result. Set `enabled: true` to activate.
 type WebSearchParamsMarkdownOptions struct {
+	// Maximum cache age in milliseconds for result page content. Defaults to 180 days
+	// (15552000000 ms) when Markdown is requested, or 365 days (31536000000 ms) when
+	// only highlights are requested. Explicit values override either default. Maximum:
+	// 365 days. Set to 0 to force a fresh scrape.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Extra wait after page load before rendering, in ms (0–30000). Useful for
+	// JS-heavy pages.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
 	// Scrape each result to Markdown. Adds 1 credit per 10 results.
 	Enabled param.Opt[bool] `json:"enabled,omitzero"`
 	// Render iframe contents into the Markdown.
@@ -4133,19 +4141,11 @@ type WebSearchParamsMarkdownOptions struct {
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Keep hyperlinks in the Markdown.
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Maximum cache age in milliseconds for result page content. Defaults to 180 days
-	// (15552000000 ms) when Markdown is requested, or 365 days (31536000000 ms) when
-	// only highlights are requested. Explicit values override either default. Maximum:
-	// 365 days. Set to 0 to force a fresh scrape.
-	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Truncate inline base64 image payloads to keep responses small.
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
 	// Strip nav, header, footer, and sidebar — keep only the primary article content.
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
-	// Extra wait after page load before rendering, in ms (0–30000). Useful for
-	// JS-heavy pages.
-	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
-	// PDF handling. Use start/end to bound text extraction and OCR to a page range.
+	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf WebSearchParamsMarkdownOptionsPdf `json:"pdf,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts WebSearchParamsMarkdownOptionsTimeoutOpts `json:"timeoutOpts,omitzero"`
@@ -4160,14 +4160,14 @@ func (r *WebSearchParamsMarkdownOptions) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// PDF handling. Use start/end to bound text extraction and OCR to a page range.
+// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type WebSearchParamsMarkdownOptionsPdf struct {
 	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
 	// be >= start.
 	End param.Opt[int64] `json:"end,omitzero"`
 	// Parse PDF URLs. When false, PDF results are skipped with WEBSITE_ACCESS_ERROR.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First PDF page to parse (1-based, inclusive). Defaults to page 1.
+	// First 1-based PDF page to parse.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
@@ -4248,6 +4248,11 @@ const (
 type WebWebCrawlMdParams struct {
 	// Start URL, including `http://` or `https://`.
 	URL string `json:"url" api:"required" format:"uri"`
+	// Maximum cache age in milliseconds. Defaults to 1 day; `0` fetches fresh.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Browser wait time in milliseconds after initial page load for each crawled page.
+	// Defaults to 3500 (3.5 seconds). Min: 0. Max: 30000 (30 seconds).
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
 	// When true, follow links on subdomains of the starting URL's domain (e.g.
 	// docs.example.com when starting from example.com). www and apex are always
 	// treated as equivalent.
@@ -4259,8 +4264,6 @@ type WebWebCrawlMdParams struct {
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Preserve hyperlinks in the Markdown output
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Maximum cache age in milliseconds. Defaults to 1 day; `0` fetches fresh.
-	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
 	// Maximum link depth from the starting URL (0 = only the starting page)
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum pages to crawl.
@@ -4280,9 +4283,10 @@ type WebWebCrawlMdParams struct {
 	// Extract only the main content, stripping headers, footers, sidebars, and
 	// navigation
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
-	// Browser wait time in milliseconds after initial page load for each crawled page.
-	// Defaults to 3500 (3.5 seconds). Min: 0. Max: 30000 (30 seconds).
-	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Remove matching elements after inclusions. Exclusions take precedence.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Keep matching HTML subtrees before converting each page to Markdown.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// Fetch from this country (ISO 3166-1 alpha-2).
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
@@ -4302,10 +4306,6 @@ type WebWebCrawlMdParams struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country WebWebCrawlMdParamsCountry `json:"country,omitzero"`
-	// Remove matching elements after inclusions. Exclusions take precedence.
-	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Keep matching HTML subtrees before converting each page to Markdown.
-	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
 	// Labels for filtering usage in the dashboard.
@@ -4540,15 +4540,15 @@ const (
 
 // PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type WebWebCrawlMdParamsPdf struct {
-	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
-	// Must be greater than or equal to start when both are provided.
+	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
+	// be >= start.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// Read scanned PDF pages with OCR; preserve pages that already contain text.
+	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// When true, PDF pages are fetched and parsed. When false, PDF pages are skipped
 	// entirely (not included in results and not counted as failures).
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	// First 1-based PDF page to parse.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }

@@ -1673,8 +1673,6 @@ type BatchListParams struct {
 	// Free-text search term, matched against the batch id, crawl source (start URL or
 	// sitemap domain), and tags.
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
-	// Comma-separated list of tags to filter by (matches batches having any of them).
-	Tags param.Opt[string] `query:"tags,omitzero" json:"-"`
 	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
 	// matching.
 	//
@@ -1684,6 +1682,9 @@ type BatchListParams struct {
 	//
 	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
 	Status BatchListParamsStatus `query:"status,omitzero" json:"-"`
+	// Tags to filter by (matches batches having any of them). Pass repeated `tags`
+	// params or one comma-separated list, e.g. `tags=docs,competitor`.
+	Tags BatchListParamsTagsUnion `query:"tags,omitzero" json:"-"`
 	paramObj
 }
 
@@ -1716,6 +1717,15 @@ const (
 	BatchListParamsStatusFailed     BatchListParamsStatus = "failed"
 )
 
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchListParamsTagsUnion struct {
+	OfString      param.Opt[string] `query:",omitzero,inline"`
+	OfStringArray []string          `query:",omitzero,inline"`
+	paramUnion
+}
+
 type BatchGetResultsParams struct {
 	// next_cursor from the previous page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
@@ -1738,7 +1748,7 @@ type BatchSubmitParams struct {
 	Input BatchSubmitParamsInputUnion `json:"input,omitzero" api:"required"`
 	// Legacy URL notified when the batch finishes. Preserves one best-effort attempt.
 	// Cannot be combined with webhook.
-	WebhookURL param.Opt[string] `json:"webhookUrl,omitzero"`
+	WebhookURL param.Opt[string] `json:"webhookUrl,omitzero" format:"uri"`
 	// Unique key per submission. Retrying with the same key and body returns the
 	// original batch; a different body returns `409`.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
@@ -1916,8 +1926,7 @@ type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-	// detection/OCR to an inclusive 1-based page range.
+	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -1936,17 +1945,16 @@ func init() {
 	)
 }
 
-// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-// detection/OCR to an inclusive 1-based page range.
+// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf struct {
-	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
-	// Must be greater than or equal to start when both are provided.
+	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
+	// be >= start.
 	End param.Opt[int64] `json:"end,omitzero"`
 	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	// First 1-based PDF page to parse.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
@@ -2040,8 +2048,7 @@ type BatchSubmitParamsInputScrapeDataHTMLOptions struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-	// detection/OCR to an inclusive 1-based page range.
+	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf BatchSubmitParamsInputScrapeDataHTMLOptionsPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -2060,17 +2067,16 @@ func init() {
 	)
 }
 
-// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-// detection/OCR to an inclusive 1-based page range.
+// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type BatchSubmitParamsInputScrapeDataHTMLOptionsPdf struct {
-	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
-	// Must be greater than or equal to start when both are provided.
+	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
+	// be >= start.
 	End param.Opt[int64] `json:"end,omitzero"`
 	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	// First 1-based PDF page to parse.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
@@ -2307,8 +2313,7 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-	// detection/OCR to an inclusive 1-based page range.
+	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -2327,17 +2332,16 @@ func init() {
 	)
 }
 
-// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-// detection/OCR to an inclusive 1-based page range.
+// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf struct {
-	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
-	// Must be greater than or equal to start when both are provided.
+	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
+	// be >= start.
 	End param.Opt[int64] `json:"end,omitzero"`
 	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	// First 1-based PDF page to parse.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
@@ -2521,8 +2525,7 @@ type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-	// detection/OCR to an inclusive 1-based page range.
+	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf BatchSubmitParamsInputCrawlDataHTMLOptionsPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -2541,17 +2544,16 @@ func init() {
 	)
 }
 
-// PDF parsing controls. Use start/end to limit text extraction and embedded-image
-// detection/OCR to an inclusive 1-based page range.
+// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type BatchSubmitParamsInputCrawlDataHTMLOptionsPdf struct {
-	// Last 1-based PDF page to parse. When omitted, parsing ends at the last page.
-	// Must be greater than or equal to start when both are provided.
+	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
+	// be >= start.
 	End param.Opt[int64] `json:"end,omitzero"`
 	// Read scanned PDF pages with OCR; preserve pages that already have text.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse. When omitted, parsing starts at the first page.
+	// First 1-based PDF page to parse.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }

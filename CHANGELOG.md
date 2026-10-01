@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.23.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.22.0...v2.23.0) (2026-09-30)
+
+
+### Features
+
+* **logs:** serve request logs at /org/logs ([#1442](https://github.com/context-dot-dev/context-go-sdk/issues/1442)) ([e909afe](https://github.com/context-dot-dev/context-go-sdk/commit/e909afe7d4b55efea928ac6a36e327e73ba443b7))
+* **scrape:** accept documents up to 50 MB ([#1436](https://github.com/context-dot-dev/context-go-sdk/issues/1436)) ([2a243f3](https://github.com/context-dot-dev/context-go-sdk/commit/2a243f335626c921c7db7332bfd1193f1dd79fd2))
+* **scrape:** add productParams.dedupeImages, always run product AI fallback ([#1423](https://github.com/context-dot-dev/context-go-sdk/issues/1423)) ([cf4ebc1](https://github.com/context-dot-dev/context-go-sdk/commit/cf4ebc126edc2e566b32ccd74abb360c68ef131f))
+* **scrape:** default POST /web/scrape deadline to 90s ([#1428](https://github.com/context-dot-dev/context-go-sdk/issues/1428)) ([52f3c75](https://github.com/context-dot-dev/context-go-sdk/commit/52f3c75c297c29c65d996db2d9976e1907d13207))
+
+
+### Bug Fixes
+
+* **api:** derive OpenAPI request docs from runtime Zod schemas ([#1421](https://github.com/context-dot-dev/context-go-sdk/issues/1421)) ([ea1be99](https://github.com/context-dot-dev/context-go-sdk/commit/ea1be99507800e33c6149d2244ac94ecf654407d))
+
 ## [2.22.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.21.0...v2.22.0) (2026-09-29)
 
 

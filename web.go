@@ -110,9 +110,8 @@ func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, o
 type WebAnswersResponse struct {
 	// The answer, in the shape requested by json_format.
 	JsonContent map[string]any `json:"json_content" api:"required"`
-	// Public evidence URLs from searches, pages, or company/profile records, in
-	// first-seen order. A listed URL may identify a record without its page being
-	// read.
+	// URLs of the pages and company/profile records read for the answer, followed by
+	// URLs cited in json_content.
 	Sources []string `json:"sources" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata WebAnswersResponseKeyMetadata `json:"key_metadata"`

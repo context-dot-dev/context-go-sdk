@@ -1307,6 +1307,11 @@ type WebScrapeResponseJson struct {
 	Success bool `json:"success" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
+	// True when the page was too long to read in full, so values found only in the
+	// unread parts may be missing.
+	//
+	// Any of true.
+	IsTruncated bool `json:"isTruncated"`
 	// Explanation of the failure and possible next steps.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -1315,6 +1320,7 @@ type WebScrapeResponseJson struct {
 		Requested   respjson.Field
 		Success     respjson.Field
 		ErrorCode   respjson.Field
+		IsTruncated respjson.Field
 		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string

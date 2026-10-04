@@ -2012,7 +2012,7 @@ type WebSearchResponseResultHighlights struct {
 	// Per-result highlights outcome. Inspect this before reading `highlights`.
 	//
 	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "CONTENT_TOO_LARGE",
-	// "WEBSITE_ACCESS_ERROR", "ERROR".
+	// "WEBSITE_ACCESS_ERROR", "WEBSITE_BLOCKED", "ERROR".
 	Code string `json:"code" api:"required"`
 	// Passages relevant to the query, in page order. Null unless
 	// highlightsOptions.enabled is true and the page was read.
@@ -2037,7 +2037,7 @@ type WebSearchResponseResultMarkdown struct {
 	// Per-result scrape outcome. Inspect this before reading `markdown`.
 	//
 	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "CONTENT_TOO_LARGE",
-	// "WEBSITE_ACCESS_ERROR", "ERROR".
+	// "WEBSITE_ACCESS_ERROR", "WEBSITE_BLOCKED", "ERROR".
 	Code string `json:"code" api:"required"`
 	// GFM Markdown of the page. Null unless markdownOptions.enabled is true and
 	// scraping succeeded.

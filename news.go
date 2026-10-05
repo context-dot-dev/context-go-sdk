@@ -424,8 +424,8 @@ type NewsSearchParamsFilterBy struct {
 	// Publisher countries to include, as lowercase ISO 3166-1 alpha-2 codes. Up to 3.
 	//
 	// Any of "ae", "ar", "au", "ca", "cg", "ch", "cl", "cz", "de", "fi", "fr", "gb",
-	// "hk", "il", "in", "jp", "kr", "mx", "ng", "nl", "qa", "sa", "se", "sg", "us",
-	// "za".
+	// "hk", "il", "in", "jp", "kr", "mx", "ng", "nl", "pk", "qa", "sa", "se", "sg",
+	// "us", "za".
 	SourceCountry []string `json:"sourceCountry,omitzero"`
 	// Publisher domains to include. Up to 3.
 	SourceDomain []string `json:"sourceDomain,omitzero"`

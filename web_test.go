@@ -337,10 +337,11 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.Search(context.TODO(), contextdev.WebSearchParams{
-		Query:          "Stripe API authentication",
-		Country:        contextdev.WebSearchParamsCountryAf,
-		ExcludeDomains: []string{"xxx"},
-		Freshness:      contextdev.WebSearchParamsFreshnessLast24Hours,
+		Query:                    "Stripe API authentication",
+		Country:                  contextdev.WebSearchParamsCountryAf,
+		DescriptionMaxCharacters: contextdev.Int(0),
+		ExcludeDomains:           []string{"xxx"},
+		Freshness:                contextdev.WebSearchParamsFreshnessLast24Hours,
 		HighlightsOptions: contextdev.WebSearchParamsHighlightsOptions{
 			Enabled:       contextdev.Bool(true),
 			MaxCharacters: contextdev.Int(100),

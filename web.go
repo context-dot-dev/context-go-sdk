@@ -3792,6 +3792,8 @@ type WebSearchParams struct {
 	// Search query. Accepts natural language as well as Google-style search operators
 	// such as `site:`, `-site:`, `inurl:`, `intitle:`, quoted phrases, and `OR`.
 	Query string `json:"query" api:"required"`
+	// Maximum length of each result's `description`, in characters.
+	DescriptionMaxCharacters param.Opt[int64] `json:"descriptionMaxCharacters,omitzero"`
 	// Number of results to request and return (10–100). Defaults to 10.
 	NumResults param.Opt[int64] `json:"numResults,omitzero"`
 	// Currently has no effect.

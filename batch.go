@@ -41,7 +41,7 @@ func NewBatchService(opts ...option.RequestOption) (r BatchService) {
 	return
 }
 
-// Get batch progress and result download links. Result files are deleted 7 days
+// Get batch progress and result download links. Result files are deleted 180 days
 // after the batch finishes.
 func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
@@ -88,8 +88,8 @@ func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...optio
 	return res, err
 }
 
-// Page through a finished batch’s results as JSON. Results remain available for 7
-// days.
+// Page through a finished batch’s results as JSON. Results remain available for
+// 180 days.
 func (r *BatchService) GetResults(ctx context.Context, batchID string, query BatchGetResultsParams, opts ...option.RequestOption) (res *BatchGetResultsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -329,7 +329,7 @@ type BatchGetResponse struct {
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Result download links; null until the batch finishes. Files are deleted 7 days
+	// Result download links; null until the batch finishes. Files are deleted 180 days
 	// after the batch finishes.
 	Results BatchGetResponseResults `json:"results" api:"required"`
 	// Current state. `completed`, `cancelled`, and `failed` are final.
@@ -462,7 +462,7 @@ func (r *BatchGetResponseProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Result download links; null until the batch finishes. Files are deleted 7 days
+// Result download links; null until the batch finishes. Files are deleted 180 days
 // after the batch finishes.
 type BatchGetResponseResults struct {
 	// When these links expire (24 hours after this response).
@@ -620,7 +620,7 @@ type BatchListResponseData struct {
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
 	// Pages attempted so far. Use `status` to check completion.
 	Progress BatchListResponseDataProgress `json:"progress" api:"required"`
-	// Result download links; null until the batch finishes. Files are deleted 7 days
+	// Result download links; null until the batch finishes. Files are deleted 180 days
 	// after the batch finishes.
 	Results BatchListResponseDataResults `json:"results" api:"required"`
 	// Current state. `completed`, `cancelled`, and `failed` are final.
@@ -708,7 +708,7 @@ func (r *BatchListResponseDataProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Result download links; null until the batch finishes. Files are deleted 7 days
+// Result download links; null until the batch finishes. Files are deleted 180 days
 // after the batch finishes.
 type BatchListResponseDataResults struct {
 	// When these links expire (24 hours after this response).

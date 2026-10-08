@@ -1,4 +1,4 @@
-# Context Dev Go API Library
+# Context.dev Go SDK API Library
 
 <!-- x-release-please-start-version -->
 
@@ -6,7 +6,7 @@
 
 <!-- x-release-please-end -->
 
-The Context Dev Go library provides convenient access to the [Context Dev REST API](https://docs.context.dev/)
+The Context.dev Go SDK library provides convenient access to the [Context Dev REST API](https://docs.context.dev/)
 from applications written in Go.
 
 It is generated with [Stainless](https://www.stainless.com/).
@@ -56,15 +56,17 @@ func main() {
 	client := contextdev.NewClient(
 		option.WithAPIKey("My API Key"), // defaults to os.LookupEnv("CONTEXT_DEV_API_KEY")
 	)
-	brand, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
+	page, err := client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
+		Formats: contextdev.WebScrapeParamsFormats{
+			Markdown: contextdev.Bool(true),
+			HTML:     contextdev.Bool(true),
 		},
+		URL: "https://example.com",
 	})
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("%+v\n", brand.RequestID)
+	fmt.Printf("%+v\n", page.RequestID)
 }
 
 ```
@@ -270,7 +272,7 @@ client := contextdev.NewClient(
 	option.WithHeader("X-Some-Header", "custom_header_info"),
 )
 
-client.Brand.Get(context.TODO(), ...,
+client.Web.Scrape(context.TODO(), ...,
 	// Override the header
 	option.WithHeader("X-Some-Header", "some_other_custom_header_info"),
 	// Add an undocumented field to the request body, using sjson syntax
@@ -301,10 +303,11 @@ When the API returns a non-success status code, we return an error with type
 To handle errors, we recommend that you use the `errors.As` pattern:
 
 ```go
-_, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-	OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-		Domain: "stripe.com",
+_, err := client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
+	Formats: contextdev.WebScrapeParamsFormats{
+		Markdown: contextdev.Bool(true),
 	},
+	URL: "https://example.com",
 })
 if err != nil {
 	var apierr *contextdev.Error
@@ -312,7 +315,7 @@ if err != nil {
 		println(string(apierr.DumpRequest(true)))  // Prints the serialized HTTP request
 		println(string(apierr.DumpResponse(true))) // Prints the serialized HTTP response
 	}
-	panic(err.Error()) // GET "/brand/retrieve": 400 Bad Request { ... }
+	panic(err.Error()) // GET "/web/scrape": 400 Bad Request { ... }
 }
 ```
 
@@ -330,12 +333,13 @@ To set a per-retry timeout, use `option.WithRequestTimeout()`.
 // This sets the timeout for the request, including all the retries.
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
-client.Brand.Get(
+client.Web.Scrape(
 	ctx,
-	contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
+	contextdev.WebScrapeParams{
+		Formats: contextdev.WebScrapeParamsFormats{
+			Markdown: contextdev.Bool(true),
 		},
+		URL: "https://example.com",
 	},
 	// This sets the per-retry timeout
 	option.WithRequestTimeout(20*time.Second),
@@ -370,12 +374,13 @@ client := contextdev.NewClient(
 )
 
 // Override per-request:
-client.Brand.Get(
+client.Web.Scrape(
 	context.TODO(),
-	contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
+	contextdev.WebScrapeParams{
+		Formats: contextdev.WebScrapeParamsFormats{
+			Markdown: contextdev.Bool(true),
 		},
+		URL: "https://example.com",
 	},
 	option.WithMaxRetries(5),
 )
@@ -389,19 +394,20 @@ you need to examine response headers, status codes, or other details.
 ```go
 // Create a variable to store the HTTP response
 var response *http.Response
-brand, err := client.Brand.Get(
+page, err := client.Web.Scrape(
 	context.TODO(),
-	contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
+	contextdev.WebScrapeParams{
+		Formats: contextdev.WebScrapeParamsFormats{
+			Markdown: contextdev.Bool(true),
 		},
+		URL: "https://example.com",
 	},
 	option.WithResponseInto(&response),
 )
 if err != nil {
 	// handle error
 }
-fmt.Printf("%+v\n", brand)
+fmt.Printf("%+v\n", page)
 
 fmt.Printf("Status Code: %d\n", response.StatusCode)
 fmt.Printf("Headers: %+#v\n", response.Header)

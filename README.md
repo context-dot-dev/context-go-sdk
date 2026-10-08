@@ -38,6 +38,10 @@ This library requires Go 1.22+.
 
 ## Usage
 
+Set `CONTEXT_DEV_API_KEY` to your API key; the client reads it automatically.
+
+### Scrape markdown and HTML
+
 The full API of this library can be found in [api.md](api.md).
 
 ```go
@@ -48,24 +52,23 @@ import (
 	"fmt"
 
 	"github.com/context-dot-dev/context-go-sdk/v2"
-	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 func main() {
-	client := contextdev.NewClient(
-		option.WithAPIKey("My API Key"), // defaults to os.LookupEnv("CONTEXT_DEV_API_KEY")
-	)
-	brand, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
+	client := contextdev.NewClient()
+	page, err := client.Web.Scrape(context.Background(), contextdev.WebScrapeParams{
+		URL: "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{
+			Markdown: contextdev.Bool(true),
+			HTML:     contextdev.Bool(true),
 		},
 	})
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
-	fmt.Printf("%+v\n", brand.RequestID)
+	fmt.Println(page.Markdown.Data)
+	fmt.Println(page.HTML.Data)
 }
-
 ```
 
 ### Extract structured JSON
@@ -106,11 +109,72 @@ func main() {
 }
 ```
 
+### Extract relevant highlights
+
+Return the passages that answer a question about the page.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/context-dot-dev/context-go-sdk/v2"
+)
+
+func main() {
+	client := contextdev.NewClient()
+	page, err := client.Web.Scrape(context.Background(), contextdev.WebScrapeParams{
+		URL: "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{
+			Highlights: contextdev.Bool(true),
+		},
+		HighlightsParams: contextdev.WebScrapeParamsHighlightsParams{
+			Query: "What is this domain used for?",
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(page.Highlights.Data)
+}
+```
+
+### Take a screenshot
+
+The screenshot is returned as a base64 image data URL.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/context-dot-dev/context-go-sdk/v2"
+)
+
+func main() {
+	client := contextdev.NewClient()
+	page, err := client.Web.Scrape(context.Background(), contextdev.WebScrapeParams{
+		URL: "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{
+			Screenshot: contextdev.Bool(true),
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(page.Screenshot.Data)
+}
+```
+
 ## What you can do
 
 | Task | Method |
 | --- | --- |
-| Scrape a URL to markdown, HTML, JSON or a screenshot | `client.Web.Scrape` |
+| Scrape a URL to markdown, HTML, JSON, highlights or a screenshot | `client.Web.Scrape` |
 | Crawl a site and get every page as markdown | `client.Web.WebCrawlMd` |
 | Map every URL on a domain | `client.Web.MapURLs` |
 | Search the web | `client.Web.Search` |
@@ -325,7 +389,10 @@ client := contextdev.NewClient(
 	option.WithHeader("X-Some-Header", "custom_header_info"),
 )
 
-client.Brand.Get(context.TODO(), ...,
+client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
+	URL:     "https://example.com",
+	Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
+},
 	// Override the header
 	option.WithHeader("X-Some-Header", "some_other_custom_header_info"),
 	// Add an undocumented field to the request body, using sjson syntax
@@ -356,10 +423,9 @@ When the API returns a non-success status code, we return an error with type
 To handle errors, we recommend that you use the `errors.As` pattern:
 
 ```go
-_, err := client.Brand.Get(context.TODO(), contextdev.BrandGetParams{
-	OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-		Domain: "stripe.com",
-	},
+_, err := client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
+	URL:     "https://example.com",
+	Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 })
 if err != nil {
 	var apierr *contextdev.Error
@@ -367,7 +433,7 @@ if err != nil {
 		println(string(apierr.DumpRequest(true)))  // Prints the serialized HTTP request
 		println(string(apierr.DumpResponse(true))) // Prints the serialized HTTP response
 	}
-	panic(err.Error()) // GET "/brand/retrieve": 400 Bad Request { ... }
+	panic(err.Error())
 }
 ```
 
@@ -385,12 +451,11 @@ To set a per-retry timeout, use `option.WithRequestTimeout()`.
 // This sets the timeout for the request, including all the retries.
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
-client.Brand.Get(
+client.Web.Scrape(
 	ctx,
-	contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
-		},
+	contextdev.WebScrapeParams{
+		URL:     "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 	},
 	// This sets the per-retry timeout
 	option.WithRequestTimeout(20*time.Second),
@@ -425,12 +490,11 @@ client := contextdev.NewClient(
 )
 
 // Override per-request:
-client.Brand.Get(
+client.Web.Scrape(
 	context.TODO(),
-	contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
-		},
+	contextdev.WebScrapeParams{
+		URL:     "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 	},
 	option.WithMaxRetries(5),
 )
@@ -444,19 +508,18 @@ you need to examine response headers, status codes, or other details.
 ```go
 // Create a variable to store the HTTP response
 var response *http.Response
-brand, err := client.Brand.Get(
+page, err := client.Web.Scrape(
 	context.TODO(),
-	contextdev.BrandGetParams{
-		OfByDomain: &contextdev.BrandGetParamsBodyByDomain{
-			Domain: "stripe.com",
-		},
+	contextdev.WebScrapeParams{
+		URL:     "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 	},
 	option.WithResponseInto(&response),
 )
 if err != nil {
 	// handle error
 }
-fmt.Printf("%+v\n", brand)
+fmt.Printf("%+v\n", page)
 
 fmt.Printf("Status Code: %d\n", response.StatusCode)
 fmt.Printf("Headers: %+#v\n", response.Header)

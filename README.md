@@ -6,10 +6,9 @@
 
 <!-- x-release-please-end -->
 
-The Context.dev Go SDK library provides convenient access to the [Context Dev REST API](https://docs.context.dev/)
-from applications written in Go.
+Context.dev is a web scraping API for AI agents and LLMs. This SDK turns any URL into clean, LLM-ready markdown, crawls whole sites, searches the web, takes screenshots and extracts structured JSON against a schema you define, all with one API key. Proxies, JavaScript rendering and anti-bot handling run on Context.dev's side, so there is no headless browser to host.
 
-It is generated with [Stainless](https://www.stainless.com/).
+The REST API documentation can be found on [docs.context.dev](https://docs.context.dev/).
 
 ## Installation
 
@@ -39,6 +38,10 @@ This library requires Go 1.22+.
 
 ## Usage
 
+Set `CONTEXT_DEV_API_KEY` to your API key; the client reads it automatically.
+
+### Scrape markdown and HTML
+
 The full API of this library can be found in [api.md](api.md).
 
 ```go
@@ -49,27 +52,141 @@ import (
 	"fmt"
 
 	"github.com/context-dot-dev/context-go-sdk/v2"
-	"github.com/context-dot-dev/context-go-sdk/v2/option"
 )
 
 func main() {
-	client := contextdev.NewClient(
-		option.WithAPIKey("My API Key"), // defaults to os.LookupEnv("CONTEXT_DEV_API_KEY")
-	)
-	page, err := client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
+	client := contextdev.NewClient()
+	page, err := client.Web.Scrape(context.Background(), contextdev.WebScrapeParams{
+		URL: "https://example.com",
 		Formats: contextdev.WebScrapeParamsFormats{
 			Markdown: contextdev.Bool(true),
 			HTML:     contextdev.Bool(true),
 		},
-		URL: "https://example.com",
 	})
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
-	fmt.Printf("%+v\n", page.RequestID)
+	fmt.Println(page.Markdown.Data)
+	fmt.Println(page.HTML.Data)
 }
-
 ```
+
+### Extract structured JSON
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/context-dot-dev/context-go-sdk/v2"
+)
+
+func main() {
+	client := contextdev.NewClient()
+	page, err := client.Web.Scrape(context.Background(), contextdev.WebScrapeParams{
+		URL: "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{
+			Json: contextdev.Bool(true),
+		},
+		JsonParams: contextdev.WebScrapeParamsJsonParams{
+			Schema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"title":       map[string]any{"type": []string{"string", "null"}},
+					"description": map[string]any{"type": []string{"string", "null"}},
+				},
+				"required":             []string{"title", "description"},
+				"additionalProperties": false,
+			},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v\n", page.Json.Data)
+}
+```
+
+### Extract relevant highlights
+
+Return the passages that answer a question about the page.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/context-dot-dev/context-go-sdk/v2"
+)
+
+func main() {
+	client := contextdev.NewClient()
+	page, err := client.Web.Scrape(context.Background(), contextdev.WebScrapeParams{
+		URL: "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{
+			Highlights: contextdev.Bool(true),
+		},
+		HighlightsParams: contextdev.WebScrapeParamsHighlightsParams{
+			Query: "What is this domain used for?",
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(page.Highlights.Data)
+}
+```
+
+### Take a screenshot
+
+The screenshot is returned as a base64 image data URL.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/context-dot-dev/context-go-sdk/v2"
+)
+
+func main() {
+	client := contextdev.NewClient()
+	page, err := client.Web.Scrape(context.Background(), contextdev.WebScrapeParams{
+		URL: "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{
+			Screenshot: contextdev.Bool(true),
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(page.Screenshot.Data)
+}
+```
+
+## What you can do
+
+| Task | Method |
+| --- | --- |
+| Scrape a URL to markdown, HTML, JSON, highlights or a screenshot | `client.Web.Scrape` |
+| Crawl a site and get every page as markdown | `client.Web.WebCrawlMd` |
+| Map every URL on a domain | `client.Web.MapURLs` |
+| Search the web | `client.Web.Search` |
+| Take a screenshot of a page | `client.Web.Screenshot` |
+| Parse PDFs and documents | `client.Parse.Handle` |
+| Run thousands of URLs as a batch | `client.Batch.Submit` |
+| Watch a page for changes | `client.Monitors.New` |
+| Look up a company's logo, colors and brand data | `client.Brand.Get` |
+
+## Use it from an AI agent
+
+Context.dev also ships as a plugin for [Claude](https://github.com/context-dot-dev/claude-plugin), [Cursor](https://github.com/context-dot-dev/cursor-plugin) and [Gemini CLI](https://github.com/context-dot-dev/gemini-cli-context), and as tools for [LangChain](https://github.com/context-dot-dev/langchain-context) and [Haystack](https://github.com/context-dot-dev/context-haystack).
 
 ### Request fields
 
@@ -272,7 +389,10 @@ client := contextdev.NewClient(
 	option.WithHeader("X-Some-Header", "custom_header_info"),
 )
 
-client.Web.Scrape(context.TODO(), ...,
+client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
+	URL:     "https://example.com",
+	Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
+},
 	// Override the header
 	option.WithHeader("X-Some-Header", "some_other_custom_header_info"),
 	// Add an undocumented field to the request body, using sjson syntax
@@ -304,10 +424,8 @@ To handle errors, we recommend that you use the `errors.As` pattern:
 
 ```go
 _, err := client.Web.Scrape(context.TODO(), contextdev.WebScrapeParams{
-	Formats: contextdev.WebScrapeParamsFormats{
-		Markdown: contextdev.Bool(true),
-	},
-	URL: "https://example.com",
+	URL:     "https://example.com",
+	Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 })
 if err != nil {
 	var apierr *contextdev.Error
@@ -315,7 +433,7 @@ if err != nil {
 		println(string(apierr.DumpRequest(true)))  // Prints the serialized HTTP request
 		println(string(apierr.DumpResponse(true))) // Prints the serialized HTTP response
 	}
-	panic(err.Error()) // GET "/web/scrape": 400 Bad Request { ... }
+	panic(err.Error())
 }
 ```
 
@@ -336,10 +454,8 @@ defer cancel()
 client.Web.Scrape(
 	ctx,
 	contextdev.WebScrapeParams{
-		Formats: contextdev.WebScrapeParamsFormats{
-			Markdown: contextdev.Bool(true),
-		},
-		URL: "https://example.com",
+		URL:     "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 	},
 	// This sets the per-retry timeout
 	option.WithRequestTimeout(20*time.Second),
@@ -377,10 +493,8 @@ client := contextdev.NewClient(
 client.Web.Scrape(
 	context.TODO(),
 	contextdev.WebScrapeParams{
-		Formats: contextdev.WebScrapeParamsFormats{
-			Markdown: contextdev.Bool(true),
-		},
-		URL: "https://example.com",
+		URL:     "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 	},
 	option.WithMaxRetries(5),
 )
@@ -397,10 +511,8 @@ var response *http.Response
 page, err := client.Web.Scrape(
 	context.TODO(),
 	contextdev.WebScrapeParams{
-		Formats: contextdev.WebScrapeParamsFormats{
-			Markdown: contextdev.Bool(true),
-		},
-		URL: "https://example.com",
+		URL:     "https://example.com",
+		Formats: contextdev.WebScrapeParamsFormats{Markdown: contextdev.Bool(true)},
 	},
 	option.WithResponseInto(&response),
 )

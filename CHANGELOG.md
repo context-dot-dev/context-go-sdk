@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.24.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.23.0...v2.24.0) (2026-10-07)
+
+
+### Features
+
+* **batches:** keep batch result files for 180 days ([#1638](https://github.com/context-dot-dev/context-go-sdk/issues/1638)) ([04b5f2d](https://github.com/context-dot-dev/context-go-sdk/commit/04b5f2d3a16768bed1489e9fba3fcd00163e304d))
+* **news:** add Google News sitemap feeds for 52 sites from the NEEDLE 4-star gaps ([#1612](https://github.com/context-dot-dev/context-go-sdk/issues/1612)) ([6e58bf5](https://github.com/context-dot-dev/context-go-sdk/commit/6e58bf59ee503be2964e57ce04061e102de5f8c6))
+* **search:** /web/search - for news results extend description with matching passages from article. ([3feafed](https://github.com/context-dot-dev/context-go-sdk/commit/3feafedcdf1d0ea1ff4e7acb011b0a7dde451f27))
+
+
+### Bug Fixes
+
+* **answers:** keep page links for the agent and only cite URLs it actually saw ([#1571](https://github.com/context-dot-dev/context-go-sdk/issues/1571)) ([0d26eeb](https://github.com/context-dot-dev/context-go-sdk/commit/0d26eeb3e4e78d6e66a7919ab52a32b03e21cf16))
+* **scrape:** keep the relevant sections of long pages for JSON extraction ([#1582](https://github.com/context-dot-dev/context-go-sdk/issues/1582)) ([370c460](https://github.com/context-dot-dev/context-go-sdk/commit/370c460665c4916628a3db08394cbfdd2ded1247))
+* **search:** shorter default page-read budget and blocked-page codes for search results ([#1573](https://github.com/context-dot-dev/context-go-sdk/issues/1573)) ([15f91b0](https://github.com/context-dot-dev/context-go-sdk/commit/15f91b0cd75211f0dc5a8a4950ef4410a761a476))
+
 ## [2.23.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.22.0...v2.23.0) (2026-09-30)
 
 

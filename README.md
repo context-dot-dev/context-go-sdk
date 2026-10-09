@@ -27,7 +27,7 @@ Or to pin the version:
 <!-- x-release-please-start-version -->
 
 ```sh
-go get -u 'github.com/context-dot-dev/context-go-sdk/v2@v2.24.0'
+go get -u 'github.com/context-dot-dev/context-go-sdk/v2@v2.25.0'
 ```
 
 <!-- x-release-please-end -->

@@ -4140,7 +4140,7 @@ type WebSearchParamsMarkdownOptions struct {
 	// Extra wait after page load before rendering, in ms (0–30000). Useful for
 	// JS-heavy pages.
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
-	// Scrape each result to Markdown. Adds 1 credit per 10 results.
+	// Scrape each result to Markdown. Adds 1 credit per result with Markdown.
 	Enabled param.Opt[bool] `json:"enabled,omitzero"`
 	// Render iframe contents into the Markdown.
 	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`

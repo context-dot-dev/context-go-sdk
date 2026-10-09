@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.25.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.24.0...v2.25.0) (2026-10-09)
+
+
+### Features
+
+* **web-search:** charge markdown per delivered page ([#1729](https://github.com/context-dot-dev/context-go-sdk/issues/1729)) ([6f9d584](https://github.com/context-dot-dev/context-go-sdk/commit/6f9d584636feb99773453a6c71505ca2de81a68b))
+
+
+### Documentation
+
+* demonstrate scraping formats throughout README ([2907ebc](https://github.com/context-dot-dev/context-go-sdk/commit/2907ebc60539e1e9c2ddd31addccde43a7a88a77))
+* lead README with Context.dev capabilities ([9fbd853](https://github.com/context-dot-dev/context-go-sdk/commit/9fbd8538ac8cc9f40225d8db9b6ee5b5dae8d987))
+* reconcile custom scraping README with generated examples ([813d0ce](https://github.com/context-dot-dev/context-go-sdk/commit/813d0ce2ed413a9eb3babe34c903866410861930))
+* remove Stainless README attribution ([2b5f5d8](https://github.com/context-dot-dev/context-go-sdk/commit/2b5f5d8c7578fb2b4c2b2de53e2d1ff35e105beb))
+
 ## [2.24.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.23.0...v2.24.0) (2026-10-07)
 
 

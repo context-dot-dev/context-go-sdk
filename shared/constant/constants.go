@@ -42,6 +42,7 @@ type NotFound string      // Always "not_found"
 type Ok string            // Always "ok"
 type Page string          // Always "page"
 type Perform string       // Always "perform"
+type Prebuilt string      // Always "prebuilt"
 type Scrape string        // Always "scrape"
 type Scroll string        // Always "scroll"
 type Semantic string      // Always "semantic"
@@ -75,6 +76,7 @@ func (c NotFound) Default() NotFound           { return "not_found" }
 func (c Ok) Default() Ok                       { return "ok" }
 func (c Page) Default() Page                   { return "page" }
 func (c Perform) Default() Perform             { return "perform" }
+func (c Prebuilt) Default() Prebuilt           { return "prebuilt" }
 func (c Scrape) Default() Scrape               { return "scrape" }
 func (c Scroll) Default() Scroll               { return "scroll" }
 func (c Semantic) Default() Semantic           { return "semantic" }
@@ -108,6 +110,7 @@ func (c NotFound) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Ok) MarshalJSON() ([]byte, error)            { return marshalString(c) }
 func (c Page) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Perform) MarshalJSON() ([]byte, error)       { return marshalString(c) }
+func (c Prebuilt) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Scrape) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c Scroll) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c Semantic) MarshalJSON() ([]byte, error)      { return marshalString(c) }

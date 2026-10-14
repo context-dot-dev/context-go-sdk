@@ -203,18 +203,21 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			InlineImages:  "placeholder",
 		},
 		MaxAgeMs: contextdev.Int(0),
-		ParseParams: contextdev.WebScrapeParamsParseParams{
-			Rules: map[string]contextdev.WebScrapeParamsParseParamsRuleUnion{
-				"title": {
-					OfString: contextdev.String("h1"),
-				},
-				"links": {
-					OfWebScrapesParseParamsRuleObject: &contextdev.WebScrapeParamsParseParamsRuleObject{
-						Selector: "a",
-						Output:   "text",
-						Type:     "list",
+		ParseParams: contextdev.WebScrapeParamsParseParamsUnion{
+			OfCustomParser: &contextdev.WebScrapeParamsParseParamsCustomParser{
+				Rules: map[string]contextdev.WebScrapeParamsParseParamsCustomParserRuleUnion{
+					"title": {
+						OfString: contextdev.String("h1"),
+					},
+					"links": {
+						OfWebScrapesParseParamsCustomParserRuleObject: &contextdev.WebScrapeParamsParseParamsCustomParserRuleObject{
+							Selector: "a",
+							Output:   "text",
+							Type:     "list",
+						},
 					},
 				},
+				Type: "custom",
 			},
 		},
 		ProductParams: contextdev.WebScrapeParamsProductParams{

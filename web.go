@@ -1063,8 +1063,9 @@ type WebScrapeResponse struct {
 	Markdown WebScrapeResponseMarkdown `json:"markdown" api:"required"`
 	// Page metadata. Fields are omitted when not found.
 	Metadata WebScrapeResponseMetadata `json:"metadata" api:"required"`
-	// Fields from `parseParams.rules`, after content filters. Unmatched fields are
-	// `null` (`[]` for lists).
+	// Custom rules return fields after content filters; unmatched fields are null ([]
+	// for lists). The google-maps parser returns business records in data.results and
+	// reads Maps data directly, independently of DOM filters and other outputs.
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
@@ -1587,13 +1588,19 @@ func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Fields from `parseParams.rules`, after content filters. Unmatched fields are
-// `null` (`[]` for lists).
+// Custom rules return fields after content filters; unmatched fields are null ([]
+// for lists). The google-maps parser returns business records in data.results and
+// reads Maps data directly, independently of DOM filters and other outputs.
 type WebScrapeResponseParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
 	// `true` if returned, `false` if it failed, `null` if not requested.
 	Success bool `json:"success" api:"required"`
+	// The selected prebuilt parser name, or custom when type is omitted, custom rules
+	// are used, or parsing is not requested.
+	//
+	// Any of "custom", "google-maps".
+	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
 	// Explanation of the failure and possible next steps.
@@ -1603,6 +1610,7 @@ type WebScrapeResponseParsed struct {
 		Data        respjson.Field
 		Requested   respjson.Field
 		Success     respjson.Field
+		Type        respjson.Field
 		ErrorCode   respjson.Field
 		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
@@ -2782,7 +2790,7 @@ type WebScrapeParams struct {
 	// Markdown options. Requires `formats.markdown`.
 	MarkdownParams WebScrapeParamsMarkdownParams `json:"markdownParams,omitzero"`
 	// Requires `formats.parse: true`; required when it is set.
-	ParseParams WebScrapeParamsParseParams `json:"parseParams,omitzero"`
+	ParseParams WebScrapeParamsParseParamsUnion `json:"parseParams,omitzero"`
 	// Product options. Requires formats.product: true.
 	ProductParams WebScrapeParamsProductParams `json:"productParams,omitzero"`
 	// Screenshot options. Requires formats.screenshot: true.
@@ -2823,7 +2831,7 @@ type WebScrapeParamsFormats struct {
 	Json param.Opt[bool] `json:"json,omitzero"`
 	// Page content as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
-	// Fields extracted with `parseParams.rules`, returned as `parsed`.
+	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
 	// Product details such as name, price, and availability.
 	Product param.Opt[bool] `json:"product,omitzero"`
@@ -2934,42 +2942,66 @@ func init() {
 	)
 }
 
-// Requires `formats.parse: true`; required when it is set.
+// Only one field can be non-zero.
 //
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsParseParamsUnion struct {
+	OfCustomParser   *WebScrapeParamsParseParamsCustomParser   `json:",omitzero,inline"`
+	OfPrebuiltParser *WebScrapeParamsParseParamsPrebuiltParser `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsParseParamsUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfCustomParser, u.OfPrebuiltParser)
+}
+func (u *WebScrapeParamsParseParamsUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
 // The property Rules is required.
-type WebScrapeParamsParseParams struct {
+type WebScrapeParamsParseParamsCustomParser struct {
 	// Field names mapped to CSS selectors (`h1`, `a@href`) or rule objects. Max 100
 	// fields, 5 levels.
-	Rules map[string]WebScrapeParamsParseParamsRuleUnion `json:"rules,omitzero" api:"required"`
+	Rules map[string]WebScrapeParamsParseParamsCustomParserRuleUnion `json:"rules,omitzero" api:"required"`
+	// Extract fields using custom CSS rules. This is the default when type is omitted.
+	//
+	// Any of "custom".
+	Type string `json:"type,omitzero"`
 	paramObj
 }
 
-func (r WebScrapeParamsParseParams) MarshalJSON() (data []byte, err error) {
-	type shadow WebScrapeParamsParseParams
+func (r WebScrapeParamsParseParamsCustomParser) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsParseParamsCustomParser
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *WebScrapeParamsParseParams) UnmarshalJSON(data []byte) error {
+func (r *WebScrapeParamsParseParamsCustomParser) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsCustomParser](
+		"type", "custom",
+	)
 }
 
 // Only one field can be non-zero.
 //
 // Use [param.IsOmitted] to confirm if a field is set.
-type WebScrapeParamsParseParamsRuleUnion struct {
-	OfString                          param.Opt[string]                     `json:",omitzero,inline"`
-	OfWebScrapesParseParamsRuleObject *WebScrapeParamsParseParamsRuleObject `json:",omitzero,inline"`
+type WebScrapeParamsParseParamsCustomParserRuleUnion struct {
+	OfString                                      param.Opt[string]                                 `json:",omitzero,inline"`
+	OfWebScrapesParseParamsCustomParserRuleObject *WebScrapeParamsParseParamsCustomParserRuleObject `json:",omitzero,inline"`
 	paramUnion
 }
 
-func (u WebScrapeParamsParseParamsRuleUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfString, u.OfWebScrapesParseParamsRuleObject)
+func (u WebScrapeParamsParseParamsCustomParserRuleUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfString, u.OfWebScrapesParseParamsCustomParserRuleObject)
 }
-func (u *WebScrapeParamsParseParamsRuleUnion) UnmarshalJSON(data []byte) error {
+func (u *WebScrapeParamsParseParamsCustomParserRuleUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, u)
 }
 
 // The property Selector is required.
-type WebScrapeParamsParseParamsRuleObject struct {
+type WebScrapeParamsParseParamsCustomParserRuleObject struct {
 	// CSS selector to match within the current page or parent rule.
 	Selector string `json:"selector" api:"required"`
 	// Return text, HTML, an attribute such as `@href`, or nested field rules. Defaults
@@ -2982,17 +3014,46 @@ type WebScrapeParamsParseParamsRuleObject struct {
 	paramObj
 }
 
-func (r WebScrapeParamsParseParamsRuleObject) MarshalJSON() (data []byte, err error) {
-	type shadow WebScrapeParamsParseParamsRuleObject
+func (r WebScrapeParamsParseParamsCustomParserRuleObject) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsParseParamsCustomParserRuleObject
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *WebScrapeParamsParseParamsRuleObject) UnmarshalJSON(data []byte) error {
+func (r *WebScrapeParamsParseParamsCustomParserRuleObject) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsRuleObject](
+	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsCustomParserRuleObject](
 		"type", "item", "list",
+	)
+}
+
+// The properties Parser, Type are required.
+type WebScrapeParamsParseParamsPrebuiltParser struct {
+	// Parse Google Maps business data into data.results. Accepts Maps place, search,
+	// and internal data URLs. Uses a US exit and English labels regardless of hl or
+	// Accept-Language, and reads Maps data independently of DOM filters.
+	//
+	// Any of "google-maps".
+	Parser string `json:"parser,omitzero" api:"required"`
+	// Use a prebuilt parser instead of custom rules.
+	//
+	// This field can be elided, and will marshal its zero value as "prebuilt".
+	Type constant.Prebuilt `json:"type" default:"prebuilt"`
+	paramObj
+}
+
+func (r WebScrapeParamsParseParamsPrebuiltParser) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsParseParamsPrebuiltParser
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsParseParamsPrebuiltParser) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
+		"parser", "google-maps",
 	)
 }
 
@@ -3129,7 +3190,7 @@ type WebScrapeParamsSharedParams struct {
 	Parsers WebScrapeParamsSharedParamsParsers `json:"parsers,omitzero"`
 	// Create or reuse an authenticated browser profile. Requires a paid plan and an
 	// HTTPS target. Profiles persist session state, bypass shared caches, and cannot
-	// be combined with ZDR, custom headers, or raw bytes.
+	// be combined with ZDR, custom headers, raw bytes, or prebuilt parsers.
 	Profile WebScrapeParamsSharedParamsProfileUnion `json:"profile,omitzero"`
 	// Emulate a light or dark color scheme.
 	//

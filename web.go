@@ -1064,8 +1064,12 @@ type WebScrapeResponse struct {
 	// Page metadata. Fields are omitted when not found.
 	Metadata WebScrapeResponseMetadata `json:"metadata" api:"required"`
 	// Custom rules return fields after content filters; unmatched fields are null ([]
-	// for lists). The google-maps parser returns business records in data.results and
-	// reads Maps data directly, independently of DOM filters and other outputs.
+	// for lists). The google-maps parser returns business records in data.results, and
+	// the google-play parser returns one app record as data, google-play-reviews
+	// returns data.reviews, app-store and app-store-reviews do the same for the App
+	// Store, emails, phone-numbers, and links return data.emails, data.phone_numbers,
+	// and data.links from the rendered page; the store and Maps parsers read their
+	// data directly, independently of DOM filters and other outputs.
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
@@ -1589,8 +1593,12 @@ func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error
 }
 
 // Custom rules return fields after content filters; unmatched fields are null ([]
-// for lists). The google-maps parser returns business records in data.results and
-// reads Maps data directly, independently of DOM filters and other outputs.
+// for lists). The google-maps parser returns business records in data.results, and
+// the google-play parser returns one app record as data, google-play-reviews
+// returns data.reviews, app-store and app-store-reviews do the same for the App
+// Store, emails, phone-numbers, and links return data.emails, data.phone_numbers,
+// and data.links from the rendered page; the store and Maps parsers read their
+// data directly, independently of DOM filters and other outputs.
 type WebScrapeResponseParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -1599,7 +1607,8 @@ type WebScrapeResponseParsed struct {
 	// The selected prebuilt parser name, or custom when type is omitted, custom rules
 	// are used, or parsing is not requested.
 	//
-	// Any of "custom", "google-maps".
+	// Any of "custom", "google-maps", "google-play", "google-play-reviews",
+	// "app-store", "app-store-reviews", "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -3030,11 +3039,31 @@ func init() {
 
 // The properties Parser, Type are required.
 type WebScrapeParamsParseParamsPrebuiltParser struct {
-	// Parse Google Maps business data into data.results. Accepts Maps place, search,
-	// and internal data URLs. Uses a US exit and English labels regardless of hl or
-	// Accept-Language, and reads Maps data independently of DOM filters.
+	// google-maps parses Google Maps business data into data.results. Accepts Maps
+	// place, search, and internal data URLs. Uses a US exit and English labels
+	// regardless of hl or Accept-Language. google-play parses a Play Store app into
+	// data: details, developer contact, ratings, price, permissions, and data safety.
+	// google-play-reviews returns the 200 newest reviews of the app, with developer
+	// replies, in data.reviews. Both Play parsers accept app details URLs
+	// (play.google.com/store/apps/details?id=…); hl and gl set the language and
+	// storefront, defaulting to en and us. app-store parses an App Store app into
+	// data: details, developer, ratings, price, version, and screenshots.
+	// app-store-reviews returns up to the 500 newest reviews in data.reviews. Both App
+	// Store parsers accept app URLs (apps.apple.com/us/app/…/id…); the country in the
+	// path sets the storefront, defaulting to us. emails accepts any page and returns
+	// its email addresses as data.emails ([{ email }]), read from mailto links,
+	// Cloudflare-protected addresses, and visible text. phone-numbers accepts any page
+	// and returns its valid phone numbers in E.164 as data.phone_numbers ([{ phone
+	// }]), read from tel links and visible text; numbers without a country code are
+	// read for the country of the site TLD, defaulting to US. links accepts any page
+	// and returns its unique http(s) links as data.links ([{ url, text }]), with
+	// absolute URLs; text falls back to aria-label or image alt and is null when a
+	// link has none. The emails parser reads the rendered page and respects content
+	// filters; the other prebuilt parsers read their data independently of DOM
+	// filters.
 	//
-	// Any of "google-maps".
+	// Any of "google-maps", "google-play", "google-play-reviews", "app-store",
+	// "app-store-reviews", "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// Use a prebuilt parser instead of custom rules.
 	//
@@ -3053,7 +3082,7 @@ func (r *WebScrapeParamsParseParamsPrebuiltParser) UnmarshalJSON(data []byte) er
 
 func init() {
 	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
-		"parser", "google-maps",
+		"parser", "google-maps", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "emails", "phone-numbers", "links",
 	)
 }
 

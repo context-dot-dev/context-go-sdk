@@ -3947,7 +3947,7 @@ type WebSearchParams struct {
 	Query string `json:"query" api:"required"`
 	// Maximum length of each result's `description`, in characters.
 	DescriptionMaxCharacters param.Opt[int64] `json:"descriptionMaxCharacters,omitzero"`
-	// Number of results to request and return (10–100). Defaults to 10.
+	// Number of results to request and return (1–100). Defaults to 10.
 	NumResults param.Opt[int64] `json:"numResults,omitzero"`
 	// Currently has no effect.
 	QueryFanout param.Opt[bool] `json:"queryFanout,omitzero"`

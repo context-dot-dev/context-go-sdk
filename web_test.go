@@ -249,6 +249,11 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 					StartPage: contextdev.Int(1),
 				},
 			},
+			Profile: contextdev.WebScrapeParamsSharedParamsProfileUnion{
+				OfExisting: &contextdev.WebScrapeParamsSharedParamsProfileExisting{
+					ProfileID: "prof_210b9798eb53baa4e69d31c1071cf03d",
+				},
+			},
 			SettleAnimations: contextdev.Bool(true),
 			Theme:            "light",
 			Viewport: contextdev.WebScrapeParamsSharedParamsViewport{

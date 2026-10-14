@@ -1068,6 +1068,9 @@ type WebScrapeResponse struct {
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
+	// Authenticated browser profile used for this scrape, or null when no profile was
+	// requested. New and existing profile requests both return the profile ID.
+	Profile WebScrapeResponseProfile `json:"profile" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -1094,6 +1097,7 @@ type WebScrapeResponse struct {
 		Metadata      respjson.Field
 		Parsed        respjson.Field
 		Product       respjson.Field
+		Profile       respjson.Field
 		RequestID     respjson.Field
 		Screenshot    respjson.Field
 		URL           respjson.Field
@@ -1751,6 +1755,26 @@ type WebScrapeResponseProductDataProductVariant struct {
 // Returns the unmodified JSON received from the API
 func (r WebScrapeResponseProductDataProductVariant) RawJSON() string { return r.JSON.raw }
 func (r *WebScrapeResponseProductDataProductVariant) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Authenticated browser profile used for this scrape, or null when no profile was
+// requested. New and existing profile requests both return the profile ID.
+type WebScrapeResponseProfile struct {
+	// Save this ID after creating a profile, then reuse it as
+	// sharedParams.profile.profileId with type "existing".
+	ID string `json:"id" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ID          respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebScrapeResponseProfile) RawJSON() string { return r.JSON.raw }
+func (r *WebScrapeResponseProfile) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -3103,6 +3127,10 @@ type WebScrapeParamsSharedParams struct {
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// Document parsing options.
 	Parsers WebScrapeParamsSharedParamsParsers `json:"parsers,omitzero"`
+	// Create or reuse an authenticated browser profile. Requires a paid plan and an
+	// HTTPS target. Profiles persist session state, bypass shared caches, and cannot
+	// be combined with ZDR, custom headers, or raw bytes.
+	Profile WebScrapeParamsSharedParamsProfileUnion `json:"profile,omitzero"`
 	// Emulate a light or dark color scheme.
 	//
 	// Any of "light", "dark".
@@ -3313,6 +3341,70 @@ func init() {
 	apijson.RegisterFieldValidator[WebScrapeParamsSharedParamsParsersPdf](
 		"ocr", "off", "auto",
 	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsSharedParamsProfileUnion struct {
+	OfExisting *WebScrapeParamsSharedParamsProfileExisting `json:",omitzero,inline"`
+	OfNew      *WebScrapeParamsSharedParamsProfileNew      `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsSharedParamsProfileUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfExisting, u.OfNew)
+}
+func (u *WebScrapeParamsSharedParamsProfileUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[WebScrapeParamsSharedParamsProfileUnion](
+		"type",
+		apijson.Discriminator[WebScrapeParamsSharedParamsProfileExisting]("existing"),
+		apijson.Discriminator[WebScrapeParamsSharedParamsProfileNew]("new"),
+	)
+}
+
+// The properties ProfileID, Type are required.
+type WebScrapeParamsSharedParamsProfileExisting struct {
+	// The ID returned in profile.id by an earlier scrape.
+	ProfileID string `json:"profileId" api:"required"`
+	// Reuse a saved browser profile.
+	//
+	// This field can be elided, and will marshal its zero value as "existing".
+	Type constant.Existing `json:"type" default:"existing"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsProfileExisting) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsProfileExisting
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsProfileExisting) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The properties Identifier, Password, Type are required.
+type WebScrapeParamsSharedParamsProfileNew struct {
+	// Username or email for the target website.
+	Identifier string `json:"identifier" api:"required"`
+	// Password used to sign in. It is never stored in the profile.
+	Password string `json:"password" api:"required"`
+	// Sign in and create a browser profile.
+	//
+	// This field can be elided, and will marshal its zero value as "new".
+	Type constant.New `json:"type" default:"new"`
+	paramObj
+}
+
+func (r WebScrapeParamsSharedParamsProfileNew) MarshalJSON() (data []byte, err error) {
+	type shadow WebScrapeParamsSharedParamsProfileNew
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebScrapeParamsSharedParamsProfileNew) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 // Browser size in pixels. Omit for 1920 × 1080. When provided, missing dimensions

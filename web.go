@@ -3482,6 +3482,8 @@ type WebScrapeParamsSharedParamsProfileNew struct {
 	Identifier string `json:"identifier" api:"required"`
 	// Password used to sign in. It is never stored in the profile.
 	Password string `json:"password" api:"required"`
+	// Optional label shown when listing profiles with `GET /org/browser/profiles`.
+	Description param.Opt[string] `json:"description,omitzero"`
 	// Sign in and create a browser profile.
 	//
 	// This field can be elided, and will marshal its zero value as "new".

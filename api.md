@@ -190,6 +190,18 @@ Methods:
 - <code title="get /org/logs/{request_id}">client.Logs.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogService.Get">Get</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, requestID <a href="https://pkg.go.dev/builtin#string">string</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogGetResponse">LogGetResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 - <code title="get /org/logs">client.Logs.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogService.List">List</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogListParams">LogListParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#LogListResponse">LogListResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
+# Browser
+
+## Profiles
+
+Response Types:
+
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BrowserProfileListResponse">BrowserProfileListResponse</a>
+
+Methods:
+
+- <code title="get /org/browser/profiles">client.Browser.Profiles.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BrowserProfileService.List">List</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BrowserProfileListParams">BrowserProfileListParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#BrowserProfileListResponse">BrowserProfileListResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
 # Feedback
 
 Response Types:

@@ -32,7 +32,8 @@ type Client struct {
 	// Search live and historical news about a company.
 	News NewsService
 	// Read your organization's API request logs.
-	Logs LogService
+	Logs    LogService
+	Browser BrowserService
 	// Report API issues and documentation mismatches.
 	Feedback FeedbackService
 }
@@ -78,6 +79,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.People = NewPersonService(opts...)
 	r.News = NewNewsService(opts...)
 	r.Logs = NewLogService(opts...)
+	r.Browser = NewBrowserService(opts...)
 	r.Feedback = NewFeedbackService(opts...)
 
 	return

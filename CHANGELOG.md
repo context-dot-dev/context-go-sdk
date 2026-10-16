@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.26.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.25.0...v2.26.0) (2026-10-16)
+
+
+### Features
+
+* **batch:** support Scrape Anything batches up to 100k URLs ([#1883](https://github.com/context-dot-dev/context-go-sdk/issues/1883)) ([248f02c](https://github.com/context-dot-dev/context-go-sdk/commit/248f02c600c1ff32cca00836d6e2782b554ad228))
+* **scrape:** add App Store app and reviews prebuilt parsers ([#1859](https://github.com/context-dot-dev/context-go-sdk/issues/1859)) ([819f520](https://github.com/context-dot-dev/context-go-sdk/commit/819f520a267f8dd9ee77492b7a48bb8aa0a79eed))
+* **scrape:** add emails prebuilt parser ([#1862](https://github.com/context-dot-dev/context-go-sdk/issues/1862)) ([819f520](https://github.com/context-dot-dev/context-go-sdk/commit/819f520a267f8dd9ee77492b7a48bb8aa0a79eed))
+* **scrape:** add Google Play app and reviews prebuilt parsers ([#1857](https://github.com/context-dot-dev/context-go-sdk/issues/1857)) ([819f520](https://github.com/context-dot-dev/context-go-sdk/commit/819f520a267f8dd9ee77492b7a48bb8aa0a79eed))
+* **scrape:** add links prebuilt parser ([#1865](https://github.com/context-dot-dev/context-go-sdk/issues/1865)) ([819f520](https://github.com/context-dot-dev/context-go-sdk/commit/819f520a267f8dd9ee77492b7a48bb8aa0a79eed))
+* **scrape:** add phone-numbers prebuilt parser ([#1863](https://github.com/context-dot-dev/context-go-sdk/issues/1863)) ([819f520](https://github.com/context-dot-dev/context-go-sdk/commit/819f520a267f8dd9ee77492b7a48bb8aa0a79eed))
+* **scrape:** list browser profiles and label them with descriptions ([#1914](https://github.com/context-dot-dev/context-go-sdk/issues/1914)) ([f5f5fa5](https://github.com/context-dot-dev/context-go-sdk/commit/f5f5fa5147ad84c028df27d27adbc4bc53367abe))
+* **search:** allow requesting a single result ([#1880](https://github.com/context-dot-dev/context-go-sdk/issues/1880)) ([0b26fce](https://github.com/context-dot-dev/context-go-sdk/commit/0b26fcef0e82e1195fd588fa447e1997d157a30a))
+
 ## [2.25.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.24.0...v2.25.0) (2026-10-14)
 
 

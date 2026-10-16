@@ -32,9 +32,7 @@ type Error string         // Always "error"
 type Exact string         // Always "exact"
 type Existing string      // Always "existing"
 type Extract string       // Always "extract"
-type HTML string          // Always "html"
 type Isin string          // Always "isin"
-type Markdown string      // Always "markdown"
 type Monitor string       // Always "monitor"
 type Name string          // Always "name"
 type New string           // Always "new"
@@ -66,9 +64,7 @@ func (c Error) Default() Error                 { return "error" }
 func (c Exact) Default() Exact                 { return "exact" }
 func (c Existing) Default() Existing           { return "existing" }
 func (c Extract) Default() Extract             { return "extract" }
-func (c HTML) Default() HTML                   { return "html" }
 func (c Isin) Default() Isin                   { return "isin" }
-func (c Markdown) Default() Markdown           { return "markdown" }
 func (c Monitor) Default() Monitor             { return "monitor" }
 func (c Name) Default() Name                   { return "name" }
 func (c New) Default() New                     { return "new" }
@@ -100,9 +96,7 @@ func (c Error) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Exact) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Existing) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Extract) MarshalJSON() ([]byte, error)       { return marshalString(c) }
-func (c HTML) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Isin) MarshalJSON() ([]byte, error)          { return marshalString(c) }
-func (c Markdown) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Monitor) MarshalJSON() ([]byte, error)       { return marshalString(c) }
 func (c Name) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c New) MarshalJSON() ([]byte, error)           { return marshalString(c) }

@@ -4020,6 +4020,9 @@ type WebSearchParams struct {
 	// Allowlist — only return results from these domains. Up to 100 domains. Example:
 	// ["arxiv.org", "github.com"].
 	IncludeDomains []string `json:"includeDomains,omitzero"`
+	// Languages to return results in, as BCP 47 language codes such as `en` or `de`,
+	// or "all" for any language. Defaults to "all". Example: ["en", "de"].
+	Languages WebSearchParamsLanguagesUnion `json:"languages,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
@@ -4313,6 +4316,30 @@ func (r WebSearchParamsHighlightsOptions) MarshalJSON() (data []byte, err error)
 func (r *WebSearchParamsHighlightsOptions) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebSearchParamsLanguagesUnion struct {
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebSearchsLanguagesString)
+	OfWebSearchsLanguagesString         param.Opt[string] `json:",omitzero,inline"`
+	OfWebSearchsLanguagesArrayItemArray []string          `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebSearchParamsLanguagesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfWebSearchsLanguagesString, u.OfWebSearchsLanguagesArrayItemArray)
+}
+func (u *WebSearchParamsLanguagesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type WebSearchParamsLanguagesString string
+
+const (
+	WebSearchParamsLanguagesStringAll WebSearchParamsLanguagesString = "all"
+)
 
 // Inline Markdown scraping for each result. Set `enabled: true` to activate.
 type WebSearchParamsMarkdownOptions struct {

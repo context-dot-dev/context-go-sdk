@@ -37,7 +37,7 @@ func TestNewsSearchWithOptionalParams(t *testing.T) {
 		},
 		Cursor: contextdev.String("cursor"),
 		FilterBy: contextdev.NewsSearchParamsFilterBy{
-			ArticleLanguage: []string{"ar"},
+			ArticleLanguage: []string{"am"},
 			ArticleType:     []string{"editorial"},
 			Date: contextdev.NewsSearchParamsFilterByDate{
 				From: contextdev.Int(0),

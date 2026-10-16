@@ -412,8 +412,12 @@ func (r *NewsSearchParamsSearchByEntityIsin) UnmarshalJSON(data []byte) error {
 type NewsSearchParamsFilterBy struct {
 	// Article languages to include. Up to 3.
 	//
-	// Any of "ar", "de", "en", "es", "fr", "hi", "it", "ja", "ko", "nl", "pt", "ru",
-	// "zh".
+	// Any of "am", "ar", "az", "be", "bg", "bn", "ca", "ceb", "cs", "cy", "da", "de",
+	// "el", "en", "es", "et", "eu", "fa", "fi", "fr", "gu", "ha", "haw", "he", "hi",
+	// "hr", "hu", "hy", "id", "is", "it", "ja", "ka", "kk", "kn", "ko", "ku", "ky",
+	// "lo", "lt", "lv", "mk", "ml", "mn", "mr", "ms", "ne", "nl", "no", "or", "pa",
+	// "pl", "ps", "pt", "ro", "ru", "sk", "sl", "so", "sq", "sr", "sv", "sw", "ta",
+	// "te", "th", "tl", "tr", "uk", "ur", "uz", "vi", "yo", "zh".
 	ArticleLanguage []string `json:"articleLanguage,omitzero"`
 	// Article types to include. Up to 3.
 	//

@@ -355,6 +355,9 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 			MaxCharacters: contextdev.Int(100),
 		},
 		IncludeDomains: []string{"xxx"},
+		Languages: contextdev.WebSearchParamsLanguagesUnion{
+			OfWebSearchsLanguagesString: contextdev.String("all"),
+		},
 		MarkdownOptions: contextdev.WebSearchParamsMarkdownOptions{
 			Enabled:       contextdev.Bool(true),
 			IncludeFrames: contextdev.Bool(true),

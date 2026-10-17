@@ -1067,10 +1067,11 @@ type WebScrapeResponse struct {
 	// for lists). The google-maps parser returns business records in data.results,
 	// google-maps-reviews returns data.reviews, and the google-play parser returns one
 	// app record as data, google-play-reviews returns data.reviews, app-store and
-	// app-store-reviews do the same for the App Store, emails, phone-numbers, and
-	// links return data.emails, data.phone_numbers, and data.links from the rendered
-	// page; the store and Maps parsers read their data directly, independently of DOM
-	// filters and other outputs.
+	// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
+	// for a G2 product, emails, phone-numbers, and links return data.emails,
+	// data.phone_numbers, and data.links from the rendered page; the store, Maps, and
+	// G2 parsers read their data directly, independently of DOM filters and other
+	// outputs.
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
@@ -1597,10 +1598,11 @@ func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error
 // for lists). The google-maps parser returns business records in data.results,
 // google-maps-reviews returns data.reviews, and the google-play parser returns one
 // app record as data, google-play-reviews returns data.reviews, app-store and
-// app-store-reviews do the same for the App Store, emails, phone-numbers, and
-// links return data.emails, data.phone_numbers, and data.links from the rendered
-// page; the store and Maps parsers read their data directly, independently of DOM
-// filters and other outputs.
+// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
+// for a G2 product, emails, phone-numbers, and links return data.emails,
+// data.phone_numbers, and data.links from the rendered page; the store, Maps, and
+// G2 parsers read their data directly, independently of DOM filters and other
+// outputs.
 type WebScrapeResponseParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -1610,7 +1612,7 @@ type WebScrapeResponseParsed struct {
 	// are used, or parsing is not requested.
 	//
 	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
-	// "google-play-reviews", "app-store", "app-store-reviews", "emails",
+	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails",
 	// "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
@@ -3061,20 +3063,25 @@ type WebScrapeParamsParseParamsPrebuiltParser struct {
 	// data: details, developer, ratings, price, version, and screenshots.
 	// app-store-reviews returns up to the 500 newest reviews in data.reviews. Both App
 	// Store parsers accept app URLs (apps.apple.com/us/app/…/id…); the country in the
-	// path sets the storefront, defaulting to us. emails accepts any page and returns
-	// its email addresses as data.emails ([{ email }]), read from mailto links,
-	// Cloudflare-protected addresses, and visible text. phone-numbers accepts any page
-	// and returns its valid phone numbers in E.164 as data.phone_numbers ([{ phone
-	// }]), read from tel links and visible text; numbers without a country code are
-	// read for the country of the site TLD, defaulting to US. links accepts any page
-	// and returns its unique http(s) links as data.links ([{ url, text }]), with
-	// absolute URLs; text falls back to aria-label or image alt and is null when a
-	// link has none. The emails parser reads the rendered page and respects content
-	// filters; the other prebuilt parsers read their data independently of DOM
-	// filters.
+	// path sets the storefront, defaulting to us. g2-reviews returns the 25 most
+	// recently published reviews of a G2 product in data.reviews (rating, title,
+	// likes, dislikes, problems_solved, reviewer role, company size, and industry),
+	// plus data.product. It accepts G2 product URLs (g2.com/products/…), follows
+	// renamed products, and keeps star-rating filters from the URL
+	// (filters[nps_score][]=1 to 5); other filters, sort orders, and pages are
+	// ignored. emails accepts any page and returns its email addresses as data.emails
+	// ([{ email }]), read from mailto links, Cloudflare-protected addresses, and
+	// visible text. phone-numbers accepts any page and returns its valid phone numbers
+	// in E.164 as data.phone_numbers ([{ phone }]), read from tel links and visible
+	// text; numbers without a country code are read for the country of the site TLD,
+	// defaulting to US. links accepts any page and returns its unique http(s) links as
+	// data.links ([{ url, text }]), with absolute URLs; text falls back to aria-label
+	// or image alt and is null when a link has none. The emails parser reads the
+	// rendered page and respects content filters; the other prebuilt parsers read
+	// their data independently of DOM filters.
 	//
 	// Any of "google-maps", "google-maps-reviews", "google-play",
-	// "google-play-reviews", "app-store", "app-store-reviews", "emails",
+	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails",
 	// "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
@@ -3103,7 +3110,7 @@ func (r *WebScrapeParamsParseParamsPrebuiltParser) UnmarshalJSON(data []byte) er
 
 func init() {
 	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",

@@ -45,8 +45,10 @@ func (r *BrandService) Get(ctx context.Context, body BrandGetParams, opts ...opt
 	return res, err
 }
 
-// Find up to 10 brands by name or domain, ordered by popularity. Use the returned
-// domain to retrieve a full brand profile.
+// Find up to 10 brands by name or domain, ordered by popularity. Optionally filter
+// by country and primary language; both filters must match when provided together.
+// Results include description, country, and language when available. Use the
+// returned domain to retrieve a full brand profile.
 func (r *BrandService) Search(ctx context.Context, query BrandSearchParams, opts ...option.RequestOption) (res *BrandSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "brand/search"
@@ -714,11 +716,60 @@ type BrandSearchResponseResult struct {
 	Logo string `json:"logo" api:"required"`
 	// The brand's name. Empty string when unknown.
 	Name string `json:"name" api:"required"`
+	// The brand's country, when available, as an uppercase ISO 3166-1 alpha-2 code.
+	//
+	// Any of "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
+	// "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ",
+	// "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY", "BZ", "CA",
+	// "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU",
+	// "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE",
+	// "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK", "FM", "FO", "FR", "GA", "GB",
+	// "GD", "GE", "GF", "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ", "GR", "GS",
+	// "GT", "GU", "GW", "GY", "HK", "HM", "HN", "HR", "HT", "HU", "ID", "IE", "IL",
+	// "IM", "IN", "IO", "IQ", "IR", "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG",
+	// "KH", "KI", "KM", "KN", "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI",
+	// "LK", "LR", "LS", "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG",
+	// "MH", "MK", "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV",
+	// "MW", "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP",
+	// "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PN",
+	// "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW", "SA", "SB",
+	// "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SR",
+	// "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF", "TG", "TH", "TJ", "TK",
+	// "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW", "TZ", "UA", "UG", "UM", "US",
+	// "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT",
+	// "ZA", "ZM", "ZW".
+	Country string `json:"country"`
+	// The brand's description, when available.
+	Description string `json:"description"`
+	// The brand's primary language, when available.
+	//
+	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
+	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
+	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
+	// "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi",
+	// "fijian", "finnish", "french", "galician", "georgian", "german", "greek",
+	// "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi",
+	// "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian",
+	// "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean",
+	// "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian",
+	// "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese",
+	// "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo",
+	// "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian",
+	// "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi",
+	// "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili",
+	// "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan",
+	// "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu",
+	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
+	// "zulu".
+	Language string `json:"language"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Domain      respjson.Field
 		Logo        respjson.Field
 		Name        respjson.Field
+		Country     respjson.Field
+		Description respjson.Field
+		Language    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -1397,6 +1448,51 @@ type BrandSearchParams struct {
 	// Maximum number of typos tolerated when matching, from 0 to 2. Defaults to 0 (no
 	// typo tolerance).
 	TypoTolerance param.Opt[int64] `query:"typoTolerance,omitzero" json:"-"`
+	// Only return brands in this country, as an uppercase ISO 3166-1 alpha-2 code such
+	// as US or GB.
+	//
+	// Any of "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
+	// "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ",
+	// "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY", "BZ", "CA",
+	// "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU",
+	// "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE",
+	// "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK", "FM", "FO", "FR", "GA", "GB",
+	// "GD", "GE", "GF", "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ", "GR", "GS",
+	// "GT", "GU", "GW", "GY", "HK", "HM", "HN", "HR", "HT", "HU", "ID", "IE", "IL",
+	// "IM", "IN", "IO", "IQ", "IR", "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG",
+	// "KH", "KI", "KM", "KN", "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI",
+	// "LK", "LR", "LS", "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG",
+	// "MH", "MK", "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV",
+	// "MW", "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP",
+	// "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PN",
+	// "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW", "SA", "SB",
+	// "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SR",
+	// "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF", "TG", "TH", "TJ", "TK",
+	// "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW", "TZ", "UA", "UG", "UM", "US",
+	// "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT",
+	// "ZA", "ZM", "ZW".
+	Country BrandSearchParamsCountry `query:"country,omitzero" json:"-"`
+	// Only return brands with this primary language, such as english or french.
+	//
+	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
+	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
+	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
+	// "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi",
+	// "fijian", "finnish", "french", "galician", "georgian", "german", "greek",
+	// "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi",
+	// "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian",
+	// "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean",
+	// "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian",
+	// "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese",
+	// "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo",
+	// "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian",
+	// "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi",
+	// "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili",
+	// "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan",
+	// "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu",
+	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
+	// "zulu".
+	Language BrandSearchParamsLanguage `query:"language,omitzero" json:"-"`
 	// Fields to match the search term against, as a comma-separated list or repeated
 	// parameter: 'name', 'domain', or both. Defaults to both.
 	//
@@ -1414,3 +1510,385 @@ func (r BrandSearchParams) URLQuery() (v url.Values, err error) {
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
 	})
 }
+
+// Only return brands in this country, as an uppercase ISO 3166-1 alpha-2 code such
+// as US or GB.
+type BrandSearchParamsCountry string
+
+const (
+	BrandSearchParamsCountryAd BrandSearchParamsCountry = "AD"
+	BrandSearchParamsCountryAe BrandSearchParamsCountry = "AE"
+	BrandSearchParamsCountryAf BrandSearchParamsCountry = "AF"
+	BrandSearchParamsCountryAg BrandSearchParamsCountry = "AG"
+	BrandSearchParamsCountryAI BrandSearchParamsCountry = "AI"
+	BrandSearchParamsCountryAl BrandSearchParamsCountry = "AL"
+	BrandSearchParamsCountryAm BrandSearchParamsCountry = "AM"
+	BrandSearchParamsCountryAo BrandSearchParamsCountry = "AO"
+	BrandSearchParamsCountryAq BrandSearchParamsCountry = "AQ"
+	BrandSearchParamsCountryAr BrandSearchParamsCountry = "AR"
+	BrandSearchParamsCountryAs BrandSearchParamsCountry = "AS"
+	BrandSearchParamsCountryAt BrandSearchParamsCountry = "AT"
+	BrandSearchParamsCountryAu BrandSearchParamsCountry = "AU"
+	BrandSearchParamsCountryAw BrandSearchParamsCountry = "AW"
+	BrandSearchParamsCountryAx BrandSearchParamsCountry = "AX"
+	BrandSearchParamsCountryAz BrandSearchParamsCountry = "AZ"
+	BrandSearchParamsCountryBa BrandSearchParamsCountry = "BA"
+	BrandSearchParamsCountryBb BrandSearchParamsCountry = "BB"
+	BrandSearchParamsCountryBd BrandSearchParamsCountry = "BD"
+	BrandSearchParamsCountryBe BrandSearchParamsCountry = "BE"
+	BrandSearchParamsCountryBf BrandSearchParamsCountry = "BF"
+	BrandSearchParamsCountryBg BrandSearchParamsCountry = "BG"
+	BrandSearchParamsCountryBh BrandSearchParamsCountry = "BH"
+	BrandSearchParamsCountryBi BrandSearchParamsCountry = "BI"
+	BrandSearchParamsCountryBj BrandSearchParamsCountry = "BJ"
+	BrandSearchParamsCountryBl BrandSearchParamsCountry = "BL"
+	BrandSearchParamsCountryBm BrandSearchParamsCountry = "BM"
+	BrandSearchParamsCountryBn BrandSearchParamsCountry = "BN"
+	BrandSearchParamsCountryBo BrandSearchParamsCountry = "BO"
+	BrandSearchParamsCountryBq BrandSearchParamsCountry = "BQ"
+	BrandSearchParamsCountryBr BrandSearchParamsCountry = "BR"
+	BrandSearchParamsCountryBs BrandSearchParamsCountry = "BS"
+	BrandSearchParamsCountryBt BrandSearchParamsCountry = "BT"
+	BrandSearchParamsCountryBv BrandSearchParamsCountry = "BV"
+	BrandSearchParamsCountryBw BrandSearchParamsCountry = "BW"
+	BrandSearchParamsCountryBy BrandSearchParamsCountry = "BY"
+	BrandSearchParamsCountryBz BrandSearchParamsCountry = "BZ"
+	BrandSearchParamsCountryCa BrandSearchParamsCountry = "CA"
+	BrandSearchParamsCountryCc BrandSearchParamsCountry = "CC"
+	BrandSearchParamsCountryCd BrandSearchParamsCountry = "CD"
+	BrandSearchParamsCountryCf BrandSearchParamsCountry = "CF"
+	BrandSearchParamsCountryCg BrandSearchParamsCountry = "CG"
+	BrandSearchParamsCountryCh BrandSearchParamsCountry = "CH"
+	BrandSearchParamsCountryCi BrandSearchParamsCountry = "CI"
+	BrandSearchParamsCountryCk BrandSearchParamsCountry = "CK"
+	BrandSearchParamsCountryCl BrandSearchParamsCountry = "CL"
+	BrandSearchParamsCountryCm BrandSearchParamsCountry = "CM"
+	BrandSearchParamsCountryCn BrandSearchParamsCountry = "CN"
+	BrandSearchParamsCountryCo BrandSearchParamsCountry = "CO"
+	BrandSearchParamsCountryCr BrandSearchParamsCountry = "CR"
+	BrandSearchParamsCountryCu BrandSearchParamsCountry = "CU"
+	BrandSearchParamsCountryCv BrandSearchParamsCountry = "CV"
+	BrandSearchParamsCountryCw BrandSearchParamsCountry = "CW"
+	BrandSearchParamsCountryCx BrandSearchParamsCountry = "CX"
+	BrandSearchParamsCountryCy BrandSearchParamsCountry = "CY"
+	BrandSearchParamsCountryCz BrandSearchParamsCountry = "CZ"
+	BrandSearchParamsCountryDe BrandSearchParamsCountry = "DE"
+	BrandSearchParamsCountryDj BrandSearchParamsCountry = "DJ"
+	BrandSearchParamsCountryDk BrandSearchParamsCountry = "DK"
+	BrandSearchParamsCountryDm BrandSearchParamsCountry = "DM"
+	BrandSearchParamsCountryDo BrandSearchParamsCountry = "DO"
+	BrandSearchParamsCountryDz BrandSearchParamsCountry = "DZ"
+	BrandSearchParamsCountryEc BrandSearchParamsCountry = "EC"
+	BrandSearchParamsCountryEe BrandSearchParamsCountry = "EE"
+	BrandSearchParamsCountryEg BrandSearchParamsCountry = "EG"
+	BrandSearchParamsCountryEh BrandSearchParamsCountry = "EH"
+	BrandSearchParamsCountryEr BrandSearchParamsCountry = "ER"
+	BrandSearchParamsCountryEs BrandSearchParamsCountry = "ES"
+	BrandSearchParamsCountryEt BrandSearchParamsCountry = "ET"
+	BrandSearchParamsCountryFi BrandSearchParamsCountry = "FI"
+	BrandSearchParamsCountryFj BrandSearchParamsCountry = "FJ"
+	BrandSearchParamsCountryFk BrandSearchParamsCountry = "FK"
+	BrandSearchParamsCountryFm BrandSearchParamsCountry = "FM"
+	BrandSearchParamsCountryFo BrandSearchParamsCountry = "FO"
+	BrandSearchParamsCountryFr BrandSearchParamsCountry = "FR"
+	BrandSearchParamsCountryGa BrandSearchParamsCountry = "GA"
+	BrandSearchParamsCountryGB BrandSearchParamsCountry = "GB"
+	BrandSearchParamsCountryGd BrandSearchParamsCountry = "GD"
+	BrandSearchParamsCountryGe BrandSearchParamsCountry = "GE"
+	BrandSearchParamsCountryGf BrandSearchParamsCountry = "GF"
+	BrandSearchParamsCountryGg BrandSearchParamsCountry = "GG"
+	BrandSearchParamsCountryGh BrandSearchParamsCountry = "GH"
+	BrandSearchParamsCountryGi BrandSearchParamsCountry = "GI"
+	BrandSearchParamsCountryGl BrandSearchParamsCountry = "GL"
+	BrandSearchParamsCountryGm BrandSearchParamsCountry = "GM"
+	BrandSearchParamsCountryGn BrandSearchParamsCountry = "GN"
+	BrandSearchParamsCountryGp BrandSearchParamsCountry = "GP"
+	BrandSearchParamsCountryGq BrandSearchParamsCountry = "GQ"
+	BrandSearchParamsCountryGr BrandSearchParamsCountry = "GR"
+	BrandSearchParamsCountryGs BrandSearchParamsCountry = "GS"
+	BrandSearchParamsCountryGt BrandSearchParamsCountry = "GT"
+	BrandSearchParamsCountryGu BrandSearchParamsCountry = "GU"
+	BrandSearchParamsCountryGw BrandSearchParamsCountry = "GW"
+	BrandSearchParamsCountryGy BrandSearchParamsCountry = "GY"
+	BrandSearchParamsCountryHk BrandSearchParamsCountry = "HK"
+	BrandSearchParamsCountryHm BrandSearchParamsCountry = "HM"
+	BrandSearchParamsCountryHn BrandSearchParamsCountry = "HN"
+	BrandSearchParamsCountryHr BrandSearchParamsCountry = "HR"
+	BrandSearchParamsCountryHt BrandSearchParamsCountry = "HT"
+	BrandSearchParamsCountryHu BrandSearchParamsCountry = "HU"
+	BrandSearchParamsCountryID BrandSearchParamsCountry = "ID"
+	BrandSearchParamsCountryIe BrandSearchParamsCountry = "IE"
+	BrandSearchParamsCountryIl BrandSearchParamsCountry = "IL"
+	BrandSearchParamsCountryIm BrandSearchParamsCountry = "IM"
+	BrandSearchParamsCountryIn BrandSearchParamsCountry = "IN"
+	BrandSearchParamsCountryIo BrandSearchParamsCountry = "IO"
+	BrandSearchParamsCountryIq BrandSearchParamsCountry = "IQ"
+	BrandSearchParamsCountryIr BrandSearchParamsCountry = "IR"
+	BrandSearchParamsCountryIs BrandSearchParamsCountry = "IS"
+	BrandSearchParamsCountryIt BrandSearchParamsCountry = "IT"
+	BrandSearchParamsCountryJe BrandSearchParamsCountry = "JE"
+	BrandSearchParamsCountryJm BrandSearchParamsCountry = "JM"
+	BrandSearchParamsCountryJo BrandSearchParamsCountry = "JO"
+	BrandSearchParamsCountryJp BrandSearchParamsCountry = "JP"
+	BrandSearchParamsCountryKe BrandSearchParamsCountry = "KE"
+	BrandSearchParamsCountryKg BrandSearchParamsCountry = "KG"
+	BrandSearchParamsCountryKh BrandSearchParamsCountry = "KH"
+	BrandSearchParamsCountryKi BrandSearchParamsCountry = "KI"
+	BrandSearchParamsCountryKm BrandSearchParamsCountry = "KM"
+	BrandSearchParamsCountryKn BrandSearchParamsCountry = "KN"
+	BrandSearchParamsCountryKp BrandSearchParamsCountry = "KP"
+	BrandSearchParamsCountryKr BrandSearchParamsCountry = "KR"
+	BrandSearchParamsCountryKw BrandSearchParamsCountry = "KW"
+	BrandSearchParamsCountryKy BrandSearchParamsCountry = "KY"
+	BrandSearchParamsCountryKz BrandSearchParamsCountry = "KZ"
+	BrandSearchParamsCountryLa BrandSearchParamsCountry = "LA"
+	BrandSearchParamsCountryLb BrandSearchParamsCountry = "LB"
+	BrandSearchParamsCountryLc BrandSearchParamsCountry = "LC"
+	BrandSearchParamsCountryLi BrandSearchParamsCountry = "LI"
+	BrandSearchParamsCountryLk BrandSearchParamsCountry = "LK"
+	BrandSearchParamsCountryLr BrandSearchParamsCountry = "LR"
+	BrandSearchParamsCountryLs BrandSearchParamsCountry = "LS"
+	BrandSearchParamsCountryLt BrandSearchParamsCountry = "LT"
+	BrandSearchParamsCountryLu BrandSearchParamsCountry = "LU"
+	BrandSearchParamsCountryLv BrandSearchParamsCountry = "LV"
+	BrandSearchParamsCountryLy BrandSearchParamsCountry = "LY"
+	BrandSearchParamsCountryMa BrandSearchParamsCountry = "MA"
+	BrandSearchParamsCountryMc BrandSearchParamsCountry = "MC"
+	BrandSearchParamsCountryMd BrandSearchParamsCountry = "MD"
+	BrandSearchParamsCountryMe BrandSearchParamsCountry = "ME"
+	BrandSearchParamsCountryMf BrandSearchParamsCountry = "MF"
+	BrandSearchParamsCountryMg BrandSearchParamsCountry = "MG"
+	BrandSearchParamsCountryMh BrandSearchParamsCountry = "MH"
+	BrandSearchParamsCountryMk BrandSearchParamsCountry = "MK"
+	BrandSearchParamsCountryMl BrandSearchParamsCountry = "ML"
+	BrandSearchParamsCountryMm BrandSearchParamsCountry = "MM"
+	BrandSearchParamsCountryMn BrandSearchParamsCountry = "MN"
+	BrandSearchParamsCountryMo BrandSearchParamsCountry = "MO"
+	BrandSearchParamsCountryMp BrandSearchParamsCountry = "MP"
+	BrandSearchParamsCountryMq BrandSearchParamsCountry = "MQ"
+	BrandSearchParamsCountryMr BrandSearchParamsCountry = "MR"
+	BrandSearchParamsCountryMs BrandSearchParamsCountry = "MS"
+	BrandSearchParamsCountryMt BrandSearchParamsCountry = "MT"
+	BrandSearchParamsCountryMu BrandSearchParamsCountry = "MU"
+	BrandSearchParamsCountryMv BrandSearchParamsCountry = "MV"
+	BrandSearchParamsCountryMw BrandSearchParamsCountry = "MW"
+	BrandSearchParamsCountryMx BrandSearchParamsCountry = "MX"
+	BrandSearchParamsCountryMy BrandSearchParamsCountry = "MY"
+	BrandSearchParamsCountryMz BrandSearchParamsCountry = "MZ"
+	BrandSearchParamsCountryNa BrandSearchParamsCountry = "NA"
+	BrandSearchParamsCountryNc BrandSearchParamsCountry = "NC"
+	BrandSearchParamsCountryNe BrandSearchParamsCountry = "NE"
+	BrandSearchParamsCountryNf BrandSearchParamsCountry = "NF"
+	BrandSearchParamsCountryNg BrandSearchParamsCountry = "NG"
+	BrandSearchParamsCountryNi BrandSearchParamsCountry = "NI"
+	BrandSearchParamsCountryNl BrandSearchParamsCountry = "NL"
+	BrandSearchParamsCountryNo BrandSearchParamsCountry = "NO"
+	BrandSearchParamsCountryNp BrandSearchParamsCountry = "NP"
+	BrandSearchParamsCountryNr BrandSearchParamsCountry = "NR"
+	BrandSearchParamsCountryNu BrandSearchParamsCountry = "NU"
+	BrandSearchParamsCountryNz BrandSearchParamsCountry = "NZ"
+	BrandSearchParamsCountryOm BrandSearchParamsCountry = "OM"
+	BrandSearchParamsCountryPa BrandSearchParamsCountry = "PA"
+	BrandSearchParamsCountryPe BrandSearchParamsCountry = "PE"
+	BrandSearchParamsCountryPf BrandSearchParamsCountry = "PF"
+	BrandSearchParamsCountryPg BrandSearchParamsCountry = "PG"
+	BrandSearchParamsCountryPh BrandSearchParamsCountry = "PH"
+	BrandSearchParamsCountryPk BrandSearchParamsCountry = "PK"
+	BrandSearchParamsCountryPl BrandSearchParamsCountry = "PL"
+	BrandSearchParamsCountryPm BrandSearchParamsCountry = "PM"
+	BrandSearchParamsCountryPn BrandSearchParamsCountry = "PN"
+	BrandSearchParamsCountryPr BrandSearchParamsCountry = "PR"
+	BrandSearchParamsCountryPs BrandSearchParamsCountry = "PS"
+	BrandSearchParamsCountryPt BrandSearchParamsCountry = "PT"
+	BrandSearchParamsCountryPw BrandSearchParamsCountry = "PW"
+	BrandSearchParamsCountryPy BrandSearchParamsCountry = "PY"
+	BrandSearchParamsCountryQa BrandSearchParamsCountry = "QA"
+	BrandSearchParamsCountryRe BrandSearchParamsCountry = "RE"
+	BrandSearchParamsCountryRo BrandSearchParamsCountry = "RO"
+	BrandSearchParamsCountryRs BrandSearchParamsCountry = "RS"
+	BrandSearchParamsCountryRu BrandSearchParamsCountry = "RU"
+	BrandSearchParamsCountryRw BrandSearchParamsCountry = "RW"
+	BrandSearchParamsCountrySa BrandSearchParamsCountry = "SA"
+	BrandSearchParamsCountrySb BrandSearchParamsCountry = "SB"
+	BrandSearchParamsCountrySc BrandSearchParamsCountry = "SC"
+	BrandSearchParamsCountrySd BrandSearchParamsCountry = "SD"
+	BrandSearchParamsCountrySe BrandSearchParamsCountry = "SE"
+	BrandSearchParamsCountrySg BrandSearchParamsCountry = "SG"
+	BrandSearchParamsCountrySh BrandSearchParamsCountry = "SH"
+	BrandSearchParamsCountrySi BrandSearchParamsCountry = "SI"
+	BrandSearchParamsCountrySj BrandSearchParamsCountry = "SJ"
+	BrandSearchParamsCountrySk BrandSearchParamsCountry = "SK"
+	BrandSearchParamsCountrySl BrandSearchParamsCountry = "SL"
+	BrandSearchParamsCountrySm BrandSearchParamsCountry = "SM"
+	BrandSearchParamsCountrySn BrandSearchParamsCountry = "SN"
+	BrandSearchParamsCountrySo BrandSearchParamsCountry = "SO"
+	BrandSearchParamsCountrySr BrandSearchParamsCountry = "SR"
+	BrandSearchParamsCountrySS BrandSearchParamsCountry = "SS"
+	BrandSearchParamsCountrySt BrandSearchParamsCountry = "ST"
+	BrandSearchParamsCountrySv BrandSearchParamsCountry = "SV"
+	BrandSearchParamsCountrySx BrandSearchParamsCountry = "SX"
+	BrandSearchParamsCountrySy BrandSearchParamsCountry = "SY"
+	BrandSearchParamsCountrySz BrandSearchParamsCountry = "SZ"
+	BrandSearchParamsCountryTc BrandSearchParamsCountry = "TC"
+	BrandSearchParamsCountryTd BrandSearchParamsCountry = "TD"
+	BrandSearchParamsCountryTf BrandSearchParamsCountry = "TF"
+	BrandSearchParamsCountryTg BrandSearchParamsCountry = "TG"
+	BrandSearchParamsCountryTh BrandSearchParamsCountry = "TH"
+	BrandSearchParamsCountryTj BrandSearchParamsCountry = "TJ"
+	BrandSearchParamsCountryTk BrandSearchParamsCountry = "TK"
+	BrandSearchParamsCountryTl BrandSearchParamsCountry = "TL"
+	BrandSearchParamsCountryTm BrandSearchParamsCountry = "TM"
+	BrandSearchParamsCountryTn BrandSearchParamsCountry = "TN"
+	BrandSearchParamsCountryTo BrandSearchParamsCountry = "TO"
+	BrandSearchParamsCountryTr BrandSearchParamsCountry = "TR"
+	BrandSearchParamsCountryTt BrandSearchParamsCountry = "TT"
+	BrandSearchParamsCountryTv BrandSearchParamsCountry = "TV"
+	BrandSearchParamsCountryTw BrandSearchParamsCountry = "TW"
+	BrandSearchParamsCountryTz BrandSearchParamsCountry = "TZ"
+	BrandSearchParamsCountryUa BrandSearchParamsCountry = "UA"
+	BrandSearchParamsCountryUg BrandSearchParamsCountry = "UG"
+	BrandSearchParamsCountryUm BrandSearchParamsCountry = "UM"
+	BrandSearchParamsCountryUs BrandSearchParamsCountry = "US"
+	BrandSearchParamsCountryUy BrandSearchParamsCountry = "UY"
+	BrandSearchParamsCountryUz BrandSearchParamsCountry = "UZ"
+	BrandSearchParamsCountryVa BrandSearchParamsCountry = "VA"
+	BrandSearchParamsCountryVc BrandSearchParamsCountry = "VC"
+	BrandSearchParamsCountryVe BrandSearchParamsCountry = "VE"
+	BrandSearchParamsCountryVg BrandSearchParamsCountry = "VG"
+	BrandSearchParamsCountryVi BrandSearchParamsCountry = "VI"
+	BrandSearchParamsCountryVn BrandSearchParamsCountry = "VN"
+	BrandSearchParamsCountryVu BrandSearchParamsCountry = "VU"
+	BrandSearchParamsCountryWf BrandSearchParamsCountry = "WF"
+	BrandSearchParamsCountryWs BrandSearchParamsCountry = "WS"
+	BrandSearchParamsCountryYe BrandSearchParamsCountry = "YE"
+	BrandSearchParamsCountryYt BrandSearchParamsCountry = "YT"
+	BrandSearchParamsCountryZa BrandSearchParamsCountry = "ZA"
+	BrandSearchParamsCountryZm BrandSearchParamsCountry = "ZM"
+	BrandSearchParamsCountryZw BrandSearchParamsCountry = "ZW"
+)
+
+// Only return brands with this primary language, such as english or french.
+type BrandSearchParamsLanguage string
+
+const (
+	BrandSearchParamsLanguageAfrikaans      BrandSearchParamsLanguage = "afrikaans"
+	BrandSearchParamsLanguageAlbanian       BrandSearchParamsLanguage = "albanian"
+	BrandSearchParamsLanguageAmharic        BrandSearchParamsLanguage = "amharic"
+	BrandSearchParamsLanguageArabic         BrandSearchParamsLanguage = "arabic"
+	BrandSearchParamsLanguageArmenian       BrandSearchParamsLanguage = "armenian"
+	BrandSearchParamsLanguageAssamese       BrandSearchParamsLanguage = "assamese"
+	BrandSearchParamsLanguageAymara         BrandSearchParamsLanguage = "aymara"
+	BrandSearchParamsLanguageAzeri          BrandSearchParamsLanguage = "azeri"
+	BrandSearchParamsLanguageBasque         BrandSearchParamsLanguage = "basque"
+	BrandSearchParamsLanguageBelarusian     BrandSearchParamsLanguage = "belarusian"
+	BrandSearchParamsLanguageBengali        BrandSearchParamsLanguage = "bengali"
+	BrandSearchParamsLanguageBosnian        BrandSearchParamsLanguage = "bosnian"
+	BrandSearchParamsLanguageBulgarian      BrandSearchParamsLanguage = "bulgarian"
+	BrandSearchParamsLanguageBurmese        BrandSearchParamsLanguage = "burmese"
+	BrandSearchParamsLanguageCantonese      BrandSearchParamsLanguage = "cantonese"
+	BrandSearchParamsLanguageCatalan        BrandSearchParamsLanguage = "catalan"
+	BrandSearchParamsLanguageCebuano        BrandSearchParamsLanguage = "cebuano"
+	BrandSearchParamsLanguageChinese        BrandSearchParamsLanguage = "chinese"
+	BrandSearchParamsLanguageCorsican       BrandSearchParamsLanguage = "corsican"
+	BrandSearchParamsLanguageCroatian       BrandSearchParamsLanguage = "croatian"
+	BrandSearchParamsLanguageCzech          BrandSearchParamsLanguage = "czech"
+	BrandSearchParamsLanguageDanish         BrandSearchParamsLanguage = "danish"
+	BrandSearchParamsLanguageDutch          BrandSearchParamsLanguage = "dutch"
+	BrandSearchParamsLanguageEnglish        BrandSearchParamsLanguage = "english"
+	BrandSearchParamsLanguageEsperanto      BrandSearchParamsLanguage = "esperanto"
+	BrandSearchParamsLanguageEstonian       BrandSearchParamsLanguage = "estonian"
+	BrandSearchParamsLanguageFarsi          BrandSearchParamsLanguage = "farsi"
+	BrandSearchParamsLanguageFijian         BrandSearchParamsLanguage = "fijian"
+	BrandSearchParamsLanguageFinnish        BrandSearchParamsLanguage = "finnish"
+	BrandSearchParamsLanguageFrench         BrandSearchParamsLanguage = "french"
+	BrandSearchParamsLanguageGalician       BrandSearchParamsLanguage = "galician"
+	BrandSearchParamsLanguageGeorgian       BrandSearchParamsLanguage = "georgian"
+	BrandSearchParamsLanguageGerman         BrandSearchParamsLanguage = "german"
+	BrandSearchParamsLanguageGreek          BrandSearchParamsLanguage = "greek"
+	BrandSearchParamsLanguageGuarani        BrandSearchParamsLanguage = "guarani"
+	BrandSearchParamsLanguageGujarati       BrandSearchParamsLanguage = "gujarati"
+	BrandSearchParamsLanguageHaitianCreole  BrandSearchParamsLanguage = "haitian-creole"
+	BrandSearchParamsLanguageHausa          BrandSearchParamsLanguage = "hausa"
+	BrandSearchParamsLanguageHawaiian       BrandSearchParamsLanguage = "hawaiian"
+	BrandSearchParamsLanguageHebrew         BrandSearchParamsLanguage = "hebrew"
+	BrandSearchParamsLanguageHindi          BrandSearchParamsLanguage = "hindi"
+	BrandSearchParamsLanguageHmong          BrandSearchParamsLanguage = "hmong"
+	BrandSearchParamsLanguageHungarian      BrandSearchParamsLanguage = "hungarian"
+	BrandSearchParamsLanguageIcelandic      BrandSearchParamsLanguage = "icelandic"
+	BrandSearchParamsLanguageIgbo           BrandSearchParamsLanguage = "igbo"
+	BrandSearchParamsLanguageIndonesian     BrandSearchParamsLanguage = "indonesian"
+	BrandSearchParamsLanguageIrish          BrandSearchParamsLanguage = "irish"
+	BrandSearchParamsLanguageItalian        BrandSearchParamsLanguage = "italian"
+	BrandSearchParamsLanguageJapanese       BrandSearchParamsLanguage = "japanese"
+	BrandSearchParamsLanguageJavanese       BrandSearchParamsLanguage = "javanese"
+	BrandSearchParamsLanguageKannada        BrandSearchParamsLanguage = "kannada"
+	BrandSearchParamsLanguageKazakh         BrandSearchParamsLanguage = "kazakh"
+	BrandSearchParamsLanguageKhmer          BrandSearchParamsLanguage = "khmer"
+	BrandSearchParamsLanguageKinyarwanda    BrandSearchParamsLanguage = "kinyarwanda"
+	BrandSearchParamsLanguageKorean         BrandSearchParamsLanguage = "korean"
+	BrandSearchParamsLanguageKurdish        BrandSearchParamsLanguage = "kurdish"
+	BrandSearchParamsLanguageKyrgyz         BrandSearchParamsLanguage = "kyrgyz"
+	BrandSearchParamsLanguageLao            BrandSearchParamsLanguage = "lao"
+	BrandSearchParamsLanguageLatin          BrandSearchParamsLanguage = "latin"
+	BrandSearchParamsLanguageLatvian        BrandSearchParamsLanguage = "latvian"
+	BrandSearchParamsLanguageLingala        BrandSearchParamsLanguage = "lingala"
+	BrandSearchParamsLanguageLithuanian     BrandSearchParamsLanguage = "lithuanian"
+	BrandSearchParamsLanguageLuxembourgish  BrandSearchParamsLanguage = "luxembourgish"
+	BrandSearchParamsLanguageMacedonian     BrandSearchParamsLanguage = "macedonian"
+	BrandSearchParamsLanguageMalagasy       BrandSearchParamsLanguage = "malagasy"
+	BrandSearchParamsLanguageMalay          BrandSearchParamsLanguage = "malay"
+	BrandSearchParamsLanguageMalayalam      BrandSearchParamsLanguage = "malayalam"
+	BrandSearchParamsLanguageMaltese        BrandSearchParamsLanguage = "maltese"
+	BrandSearchParamsLanguageMaori          BrandSearchParamsLanguage = "maori"
+	BrandSearchParamsLanguageMarathi        BrandSearchParamsLanguage = "marathi"
+	BrandSearchParamsLanguageMongolian      BrandSearchParamsLanguage = "mongolian"
+	BrandSearchParamsLanguageNepali         BrandSearchParamsLanguage = "nepali"
+	BrandSearchParamsLanguageNorwegian      BrandSearchParamsLanguage = "norwegian"
+	BrandSearchParamsLanguageOdia           BrandSearchParamsLanguage = "odia"
+	BrandSearchParamsLanguageOromo          BrandSearchParamsLanguage = "oromo"
+	BrandSearchParamsLanguagePashto         BrandSearchParamsLanguage = "pashto"
+	BrandSearchParamsLanguagePidgin         BrandSearchParamsLanguage = "pidgin"
+	BrandSearchParamsLanguagePolish         BrandSearchParamsLanguage = "polish"
+	BrandSearchParamsLanguagePortuguese     BrandSearchParamsLanguage = "portuguese"
+	BrandSearchParamsLanguagePunjabi        BrandSearchParamsLanguage = "punjabi"
+	BrandSearchParamsLanguageQuechua        BrandSearchParamsLanguage = "quechua"
+	BrandSearchParamsLanguageRomanian       BrandSearchParamsLanguage = "romanian"
+	BrandSearchParamsLanguageRussian        BrandSearchParamsLanguage = "russian"
+	BrandSearchParamsLanguageSamoan         BrandSearchParamsLanguage = "samoan"
+	BrandSearchParamsLanguageScottishGaelic BrandSearchParamsLanguage = "scottish-gaelic"
+	BrandSearchParamsLanguageSerbian        BrandSearchParamsLanguage = "serbian"
+	BrandSearchParamsLanguageSesotho        BrandSearchParamsLanguage = "sesotho"
+	BrandSearchParamsLanguageShona          BrandSearchParamsLanguage = "shona"
+	BrandSearchParamsLanguageSindhi         BrandSearchParamsLanguage = "sindhi"
+	BrandSearchParamsLanguageSinhala        BrandSearchParamsLanguage = "sinhala"
+	BrandSearchParamsLanguageSlovak         BrandSearchParamsLanguage = "slovak"
+	BrandSearchParamsLanguageSlovene        BrandSearchParamsLanguage = "slovene"
+	BrandSearchParamsLanguageSomali         BrandSearchParamsLanguage = "somali"
+	BrandSearchParamsLanguageSpanish        BrandSearchParamsLanguage = "spanish"
+	BrandSearchParamsLanguageSundanese      BrandSearchParamsLanguage = "sundanese"
+	BrandSearchParamsLanguageSwahili        BrandSearchParamsLanguage = "swahili"
+	BrandSearchParamsLanguageSwedish        BrandSearchParamsLanguage = "swedish"
+	BrandSearchParamsLanguageTagalog        BrandSearchParamsLanguage = "tagalog"
+	BrandSearchParamsLanguageTajik          BrandSearchParamsLanguage = "tajik"
+	BrandSearchParamsLanguageTamil          BrandSearchParamsLanguage = "tamil"
+	BrandSearchParamsLanguageTatar          BrandSearchParamsLanguage = "tatar"
+	BrandSearchParamsLanguageTelugu         BrandSearchParamsLanguage = "telugu"
+	BrandSearchParamsLanguageThai           BrandSearchParamsLanguage = "thai"
+	BrandSearchParamsLanguageTibetan        BrandSearchParamsLanguage = "tibetan"
+	BrandSearchParamsLanguageTigrinya       BrandSearchParamsLanguage = "tigrinya"
+	BrandSearchParamsLanguageTongan         BrandSearchParamsLanguage = "tongan"
+	BrandSearchParamsLanguageTswana         BrandSearchParamsLanguage = "tswana"
+	BrandSearchParamsLanguageTurkish        BrandSearchParamsLanguage = "turkish"
+	BrandSearchParamsLanguageTurkmen        BrandSearchParamsLanguage = "turkmen"
+	BrandSearchParamsLanguageUkrainian      BrandSearchParamsLanguage = "ukrainian"
+	BrandSearchParamsLanguageUrdu           BrandSearchParamsLanguage = "urdu"
+	BrandSearchParamsLanguageUyghur         BrandSearchParamsLanguage = "uyghur"
+	BrandSearchParamsLanguageUzbek          BrandSearchParamsLanguage = "uzbek"
+	BrandSearchParamsLanguageVietnamese     BrandSearchParamsLanguage = "vietnamese"
+	BrandSearchParamsLanguageWelsh          BrandSearchParamsLanguage = "welsh"
+	BrandSearchParamsLanguageWolof          BrandSearchParamsLanguage = "wolof"
+	BrandSearchParamsLanguageXhosa          BrandSearchParamsLanguage = "xhosa"
+	BrandSearchParamsLanguageYiddish        BrandSearchParamsLanguage = "yiddish"
+	BrandSearchParamsLanguageYoruba         BrandSearchParamsLanguage = "yoruba"
+	BrandSearchParamsLanguageZulu           BrandSearchParamsLanguage = "zulu"
+)

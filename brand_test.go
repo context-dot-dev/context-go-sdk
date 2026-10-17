@@ -64,6 +64,8 @@ func TestBrandSearchWithOptionalParams(t *testing.T) {
 	_, err := client.Brand.Search(context.TODO(), contextdev.BrandSearchParams{
 		Query:         "x",
 		Autocomplete:  contextdev.Bool(true),
+		Country:       contextdev.BrandSearchParamsCountryUs,
+		Language:      contextdev.BrandSearchParamsLanguageAfrikaans,
 		QueryBy:       []string{"name"},
 		Tags:          []string{"production", "team-alpha"},
 		TypoTolerance: contextdev.Int(0),

@@ -2036,10 +2036,11 @@ type BatchGetResultsResponseDataOkResult struct {
 	// google-maps-reviews returns data.reviews, and the google-play parser returns one
 	// app record as data, google-play-reviews returns data.reviews, app-store and
 	// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-	// for a G2 product, emails, phone-numbers, and links return data.emails,
-	// data.phone_numbers, and data.links from the rendered page; the store, Maps, and
-	// G2 parsers read their data directly, independently of DOM filters and other
-	// outputs.
+	// for a G2 product, instagram-profile and instagram-post return one record as
+	// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
+	// data.emails, data.phone_numbers, and data.links from the rendered page; the
+	// store, Maps, G2, and Instagram parsers read their data directly, independently
+	// of DOM filters and other outputs.
 	Parsed BatchGetResultsResponseDataOkResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataOkResultProduct `json:"product" api:"required"`
@@ -2571,10 +2572,11 @@ func (r *BatchGetResultsResponseDataOkResultMetadataTwitterUnion) UnmarshalJSON(
 // google-maps-reviews returns data.reviews, and the google-play parser returns one
 // app record as data, google-play-reviews returns data.reviews, app-store and
 // app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-// for a G2 product, emails, phone-numbers, and links return data.emails,
-// data.phone_numbers, and data.links from the rendered page; the store, Maps, and
-// G2 parsers read their data directly, independently of DOM filters and other
-// outputs.
+// for a G2 product, instagram-profile and instagram-post return one record as
+// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
+// data.emails, data.phone_numbers, and data.links from the rendered page; the
+// store, Maps, G2, and Instagram parsers read their data directly, independently
+// of DOM filters and other outputs.
 type BatchGetResultsResponseDataOkResultParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -2584,7 +2586,8 @@ type BatchGetResultsResponseDataOkResultParsed struct {
 	// are used, or parsing is not requested.
 	//
 	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
-	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails",
+	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
+	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
 	// "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
@@ -2892,10 +2895,11 @@ type BatchGetResultsResponseDataErrorResult struct {
 	// google-maps-reviews returns data.reviews, and the google-play parser returns one
 	// app record as data, google-play-reviews returns data.reviews, app-store and
 	// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-	// for a G2 product, emails, phone-numbers, and links return data.emails,
-	// data.phone_numbers, and data.links from the rendered page; the store, Maps, and
-	// G2 parsers read their data directly, independently of DOM filters and other
-	// outputs.
+	// for a G2 product, instagram-profile and instagram-post return one record as
+	// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
+	// data.emails, data.phone_numbers, and data.links from the rendered page; the
+	// store, Maps, G2, and Instagram parsers read their data directly, independently
+	// of DOM filters and other outputs.
 	Parsed BatchGetResultsResponseDataErrorResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataErrorResultProduct `json:"product" api:"required"`
@@ -3429,10 +3433,11 @@ func (r *BatchGetResultsResponseDataErrorResultMetadataTwitterUnion) UnmarshalJS
 // google-maps-reviews returns data.reviews, and the google-play parser returns one
 // app record as data, google-play-reviews returns data.reviews, app-store and
 // app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-// for a G2 product, emails, phone-numbers, and links return data.emails,
-// data.phone_numbers, and data.links from the rendered page; the store, Maps, and
-// G2 parsers read their data directly, independently of DOM filters and other
-// outputs.
+// for a G2 product, instagram-profile and instagram-post return one record as
+// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
+// data.emails, data.phone_numbers, and data.links from the rendered page; the
+// store, Maps, G2, and Instagram parsers read their data directly, independently
+// of DOM filters and other outputs.
 type BatchGetResultsResponseDataErrorResultParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -3442,7 +3447,8 @@ type BatchGetResultsResponseDataErrorResultParsed struct {
 	// are used, or parsing is not requested.
 	//
 	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
-	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails",
+	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
+	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
 	// "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
@@ -4369,19 +4375,31 @@ type BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser struct {
 	// plus data.product. It accepts G2 product URLs (g2.com/products/…), follows
 	// renamed products, and keeps star-rating filters from the URL
 	// (filters[nps_score][]=1 to 5); other filters, sort orders, and pages are
-	// ignored. emails accepts any page and returns its email addresses as data.emails
-	// ([{ email }]), read from mailto links, Cloudflare-protected addresses, and
-	// visible text. phone-numbers accepts any page and returns its valid phone numbers
-	// in E.164 as data.phone_numbers ([{ phone }]), read from tel links and visible
-	// text; numbers without a country code are read for the country of the site TLD,
-	// defaulting to US. links accepts any page and returns its unique http(s) links as
-	// data.links ([{ url, text }]), with absolute URLs; text falls back to aria-label
-	// or image alt and is null when a link has none. The emails parser reads the
-	// rendered page and respects content filters; the other prebuilt parsers read
-	// their data independently of DOM filters.
+	// ignored. instagram-profile parses a public profile (instagram.com/{username})
+	// into data: bio, links, follower and post counts, category, business address,
+	// similar_accounts, and latest_posts (the 12 newest). instagram-post parses a post
+	// or reel (/p/…, /reel/…) into data: caption, hashtags, mentions, like, comment,
+	// and view counts, media URLs, tagged users, collaborators, location, and the top
+	// ~14 comments in data.comments. instagram-feed returns the top posts for a
+	// hashtag or keyword (/explore/tags/…, /popular/…) or the recent posts at a
+	// location (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
+	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
+	// it. All three Instagram parsers read public data without logging in, so private
+	// accounts return no posts and follower lists are unavailable. emails accepts any
+	// page and returns its email addresses as data.emails ([{ email }]), read from
+	// mailto links, Cloudflare-protected addresses, and visible text. phone-numbers
+	// accepts any page and returns its valid phone numbers in E.164 as
+	// data.phone_numbers ([{ phone }]), read from tel links and visible text; numbers
+	// without a country code are read for the country of the site TLD, defaulting to
+	// US. links accepts any page and returns its unique http(s) links as data.links
+	// ([{ url, text }]), with absolute URLs; text falls back to aria-label or image
+	// alt and is null when a link has none. The emails parser reads the rendered page
+	// and respects content filters; the other prebuilt parsers read their data
+	// independently of DOM filters.
 	//
 	// Any of "google-maps", "google-maps-reviews", "google-play",
-	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails",
+	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
+	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
 	// "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
@@ -4410,7 +4428,7 @@ func (r *BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser) UnmarshalJSO
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",
@@ -5320,19 +5338,31 @@ type BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser struct {
 	// plus data.product. It accepts G2 product URLs (g2.com/products/…), follows
 	// renamed products, and keeps star-rating filters from the URL
 	// (filters[nps_score][]=1 to 5); other filters, sort orders, and pages are
-	// ignored. emails accepts any page and returns its email addresses as data.emails
-	// ([{ email }]), read from mailto links, Cloudflare-protected addresses, and
-	// visible text. phone-numbers accepts any page and returns its valid phone numbers
-	// in E.164 as data.phone_numbers ([{ phone }]), read from tel links and visible
-	// text; numbers without a country code are read for the country of the site TLD,
-	// defaulting to US. links accepts any page and returns its unique http(s) links as
-	// data.links ([{ url, text }]), with absolute URLs; text falls back to aria-label
-	// or image alt and is null when a link has none. The emails parser reads the
-	// rendered page and respects content filters; the other prebuilt parsers read
-	// their data independently of DOM filters.
+	// ignored. instagram-profile parses a public profile (instagram.com/{username})
+	// into data: bio, links, follower and post counts, category, business address,
+	// similar_accounts, and latest_posts (the 12 newest). instagram-post parses a post
+	// or reel (/p/…, /reel/…) into data: caption, hashtags, mentions, like, comment,
+	// and view counts, media URLs, tagged users, collaborators, location, and the top
+	// ~14 comments in data.comments. instagram-feed returns the top posts for a
+	// hashtag or keyword (/explore/tags/…, /popular/…) or the recent posts at a
+	// location (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
+	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
+	// it. All three Instagram parsers read public data without logging in, so private
+	// accounts return no posts and follower lists are unavailable. emails accepts any
+	// page and returns its email addresses as data.emails ([{ email }]), read from
+	// mailto links, Cloudflare-protected addresses, and visible text. phone-numbers
+	// accepts any page and returns its valid phone numbers in E.164 as
+	// data.phone_numbers ([{ phone }]), read from tel links and visible text; numbers
+	// without a country code are read for the country of the site TLD, defaulting to
+	// US. links accepts any page and returns its unique http(s) links as data.links
+	// ([{ url, text }]), with absolute URLs; text falls back to aria-label or image
+	// alt and is null when a link has none. The emails parser reads the rendered page
+	// and respects content filters; the other prebuilt parsers read their data
+	// independently of DOM filters.
 	//
 	// Any of "google-maps", "google-maps-reviews", "google-play",
-	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails",
+	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
+	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
 	// "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
@@ -5361,7 +5391,7 @@ func (r *BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser) UnmarshalJSON
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",

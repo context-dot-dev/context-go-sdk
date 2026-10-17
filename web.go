@@ -1064,12 +1064,13 @@ type WebScrapeResponse struct {
 	// Page metadata. Fields are omitted when not found.
 	Metadata WebScrapeResponseMetadata `json:"metadata" api:"required"`
 	// Custom rules return fields after content filters; unmatched fields are null ([]
-	// for lists). The google-maps parser returns business records in data.results, and
-	// the google-play parser returns one app record as data, google-play-reviews
-	// returns data.reviews, app-store and app-store-reviews do the same for the App
-	// Store, emails, phone-numbers, and links return data.emails, data.phone_numbers,
-	// and data.links from the rendered page; the store and Maps parsers read their
-	// data directly, independently of DOM filters and other outputs.
+	// for lists). The google-maps parser returns business records in data.results,
+	// google-maps-reviews returns data.reviews, and the google-play parser returns one
+	// app record as data, google-play-reviews returns data.reviews, app-store and
+	// app-store-reviews do the same for the App Store, emails, phone-numbers, and
+	// links return data.emails, data.phone_numbers, and data.links from the rendered
+	// page; the store and Maps parsers read their data directly, independently of DOM
+	// filters and other outputs.
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
@@ -1593,12 +1594,13 @@ func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error
 }
 
 // Custom rules return fields after content filters; unmatched fields are null ([]
-// for lists). The google-maps parser returns business records in data.results, and
-// the google-play parser returns one app record as data, google-play-reviews
-// returns data.reviews, app-store and app-store-reviews do the same for the App
-// Store, emails, phone-numbers, and links return data.emails, data.phone_numbers,
-// and data.links from the rendered page; the store and Maps parsers read their
-// data directly, independently of DOM filters and other outputs.
+// for lists). The google-maps parser returns business records in data.results,
+// google-maps-reviews returns data.reviews, and the google-play parser returns one
+// app record as data, google-play-reviews returns data.reviews, app-store and
+// app-store-reviews do the same for the App Store, emails, phone-numbers, and
+// links return data.emails, data.phone_numbers, and data.links from the rendered
+// page; the store and Maps parsers read their data directly, independently of DOM
+// filters and other outputs.
 type WebScrapeResponseParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -1607,8 +1609,9 @@ type WebScrapeResponseParsed struct {
 	// The selected prebuilt parser name, or custom when type is omitted, custom rules
 	// are used, or parsing is not requested.
 	//
-	// Any of "custom", "google-maps", "google-play", "google-play-reviews",
-	// "app-store", "app-store-reviews", "emails", "phone-numbers", "links".
+	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
+	// "google-play-reviews", "app-store", "app-store-reviews", "emails",
+	// "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -3041,8 +3044,16 @@ func init() {
 type WebScrapeParamsParseParamsPrebuiltParser struct {
 	// google-maps parses Google Maps business data into data.results. Accepts Maps
 	// place, search, and internal data URLs. Uses a US exit and English labels
-	// regardless of hl or Accept-Language. google-play parses a Play Store app into
-	// data: details, developer contact, ratings, price, permissions, and data safety.
+	// regardless of hl or Accept-Language. google-maps-reviews returns the reviews of
+	// a place in data.reviews, in the same shape as the Serper reviews API (rating,
+	// date, isoDate, snippet, translatedSnippet, likes, user, media, response, link,
+	// id), plus language, guided ratings in details, and user.isLocalGuide; data also
+	// carries the place featureId, cid, and sort. sort and limit pick the order and
+	// count, and oldest is exact. It accepts Maps place, search, and ?cid= URLs, plus
+	// search.google.com/local/reviews URLs, so the google_maps_url and
+	// google_reviews_url fields of google-maps results work as input. An unknown place
+	// returns no reviews. google-play parses a Play Store app into data: details,
+	// developer contact, ratings, price, permissions, and data safety.
 	// google-play-reviews returns the 200 newest reviews of the app, with developer
 	// replies, in data.reviews. Both Play parsers accept app details URLs
 	// (play.google.com/store/apps/details?id=…); hl and gl set the language and
@@ -3062,9 +3073,19 @@ type WebScrapeParamsParseParamsPrebuiltParser struct {
 	// filters; the other prebuilt parsers read their data independently of DOM
 	// filters.
 	//
-	// Any of "google-maps", "google-play", "google-play-reviews", "app-store",
-	// "app-store-reviews", "emails", "phone-numbers", "links".
+	// Any of "google-maps", "google-maps-reviews", "google-play",
+	// "google-play-reviews", "app-store", "app-store-reviews", "emails",
+	// "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
+	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
+	// maximum 1000.
+	Limit param.Opt[int64] `json:"limit,omitzero"`
+	// google-maps-reviews only. Order of data.reviews. newest, relevant, highest, and
+	// lowest follow Google; oldest returns the earliest reviews first, which Google
+	// itself does not offer.
+	//
+	// Any of "newest", "oldest", "relevant", "highest", "lowest".
+	Sort string `json:"sort,omitzero"`
 	// Use a prebuilt parser instead of custom rules.
 	//
 	// This field can be elided, and will marshal its zero value as "prebuilt".
@@ -3082,7 +3103,10 @@ func (r *WebScrapeParamsParseParamsPrebuiltParser) UnmarshalJSON(data []byte) er
 
 func init() {
 	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "emails", "phone-numbers", "links",
+	)
+	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
+		"sort", "newest", "oldest", "relevant", "highest", "lowest",
 	)
 }
 

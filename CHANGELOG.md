@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.27.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.26.0...v2.27.0) (2026-10-17)
+
+
+### Features
+
+* **brand:** add search metadata and country and language filters ([#1945](https://github.com/context-dot-dev/context-go-sdk/issues/1945)) ([e44e828](https://github.com/context-dot-dev/context-go-sdk/commit/e44e828911e0b7e78e04db151bc8b96497f1b307))
+* **scrape:** add g2-reviews prebuilt parser ([#1933](https://github.com/context-dot-dev/context-go-sdk/issues/1933)) ([6ecae2f](https://github.com/context-dot-dev/context-go-sdk/commit/6ecae2f0073f3f9a2bf7ab3f1cbdbd06de4f1c35))
+* **scrape:** add google-maps-reviews prebuilt parser with oldest-first sort ([#1928](https://github.com/context-dot-dev/context-go-sdk/issues/1928)) ([350a5a4](https://github.com/context-dot-dev/context-go-sdk/commit/350a5a4aa31a02e7aab61102d1338f34fe01893d))
+* **scrape:** add Instagram profile, post, and feed prebuilt parsers ([#1905](https://github.com/context-dot-dev/context-go-sdk/issues/1905)) ([642b742](https://github.com/context-dot-dev/context-go-sdk/commit/642b742fbed0cb97004caa714f4166850eb9e4ab))
+* **search:** add languages filter to web search ([#1833](https://github.com/context-dot-dev/context-go-sdk/issues/1833)) ([734bb49](https://github.com/context-dot-dev/context-go-sdk/commit/734bb491a0ecee207a43a8554563020db6948819))
+
 ## [2.26.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.25.0...v2.26.0) (2026-10-16)
 
 

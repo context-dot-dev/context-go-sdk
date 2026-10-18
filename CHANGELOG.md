@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.29.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.28.0...v2.29.0) (2026-10-18)
+
+
+### Features
+
+* **scrape:** add TikTok profile and video prebuilt parsers ([#1956](https://github.com/context-dot-dev/context-go-sdk/issues/1956)) ([c3763bb](https://github.com/context-dot-dev/context-go-sdk/commit/c3763bbd74070404ec6744acaa77e0e7404dcd15))
+
 ## [2.28.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.27.0...v2.28.0) (2026-10-18)
 
 

@@ -2037,10 +2037,13 @@ type BatchGetResultsResponseDataOkResult struct {
 	// app record as data, google-play-reviews returns data.reviews, app-store and
 	// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
 	// for a G2 product, instagram-profile and instagram-post return one record as
-	// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
-	// data.emails, data.phone_numbers, and data.links from the rendered page; the
-	// store, Maps, G2, and Instagram parsers read their data directly, independently
-	// of DOM filters and other outputs.
+	// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
+	// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
+	// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
+	// data.users, emails, phone-numbers, and links return data.emails,
+	// data.phone_numbers, and data.links from the rendered page; the store, Maps, G2,
+	// Instagram, and TikTok parsers read their data directly, independently of DOM
+	// filters and other outputs.
 	Parsed BatchGetResultsResponseDataOkResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataOkResultProduct `json:"product" api:"required"`
@@ -2573,10 +2576,13 @@ func (r *BatchGetResultsResponseDataOkResultMetadataTwitterUnion) UnmarshalJSON(
 // app record as data, google-play-reviews returns data.reviews, app-store and
 // app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
 // for a G2 product, instagram-profile and instagram-post return one record as
-// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
-// data.emails, data.phone_numbers, and data.links from the rendered page; the
-// store, Maps, G2, and Instagram parsers read their data directly, independently
-// of DOM filters and other outputs.
+// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
+// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
+// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
+// data.users, emails, phone-numbers, and links return data.emails,
+// data.phone_numbers, and data.links from the rendered page; the store, Maps, G2,
+// Instagram, and TikTok parsers read their data directly, independently of DOM
+// filters and other outputs.
 type BatchGetResultsResponseDataOkResultParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -2587,8 +2593,9 @@ type BatchGetResultsResponseDataOkResultParsed struct {
 	//
 	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
-	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
-	// "phone-numbers", "links".
+	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
+	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
+	// "tiktok-following", "tiktok-user-search", "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -2896,10 +2903,13 @@ type BatchGetResultsResponseDataErrorResult struct {
 	// app record as data, google-play-reviews returns data.reviews, app-store and
 	// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
 	// for a G2 product, instagram-profile and instagram-post return one record as
-	// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
-	// data.emails, data.phone_numbers, and data.links from the rendered page; the
-	// store, Maps, G2, and Instagram parsers read their data directly, independently
-	// of DOM filters and other outputs.
+	// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
+	// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
+	// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
+	// data.users, emails, phone-numbers, and links return data.emails,
+	// data.phone_numbers, and data.links from the rendered page; the store, Maps, G2,
+	// Instagram, and TikTok parsers read their data directly, independently of DOM
+	// filters and other outputs.
 	Parsed BatchGetResultsResponseDataErrorResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataErrorResultProduct `json:"product" api:"required"`
@@ -3434,10 +3444,13 @@ func (r *BatchGetResultsResponseDataErrorResultMetadataTwitterUnion) UnmarshalJS
 // app record as data, google-play-reviews returns data.reviews, app-store and
 // app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
 // for a G2 product, instagram-profile and instagram-post return one record as
-// data, instagram-feed returns data.posts, emails, phone-numbers, and links return
-// data.emails, data.phone_numbers, and data.links from the rendered page; the
-// store, Maps, G2, and Instagram parsers read their data directly, independently
-// of DOM filters and other outputs.
+// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
+// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
+// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
+// data.users, emails, phone-numbers, and links return data.emails,
+// data.phone_numbers, and data.links from the rendered page; the store, Maps, G2,
+// Instagram, and TikTok parsers read their data directly, independently of DOM
+// filters and other outputs.
 type BatchGetResultsResponseDataErrorResultParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -3448,8 +3461,9 @@ type BatchGetResultsResponseDataErrorResultParsed struct {
 	//
 	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
-	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
-	// "phone-numbers", "links".
+	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
+	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
+	// "tiktok-following", "tiktok-user-search", "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -4385,22 +4399,42 @@ type BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser struct {
 	// location (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
 	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
 	// it. All three Instagram parsers read public data without logging in, so private
-	// accounts return no posts and follower lists are unavailable. emails accepts any
-	// page and returns its email addresses as data.emails ([{ email }]), read from
-	// mailto links, Cloudflare-protected addresses, and visible text. phone-numbers
-	// accepts any page and returns its valid phone numbers in E.164 as
-	// data.phone_numbers ([{ phone }]), read from tel links and visible text; numbers
-	// without a country code are read for the country of the site TLD, defaulting to
-	// US. links accepts any page and returns its unique http(s) links as data.links
-	// ([{ url, text }]), with absolute URLs; text falls back to aria-label or image
-	// alt and is null when a link has none. The emails parser reads the rendered page
-	// and respects content filters; the other prebuilt parsers read their data
-	// independently of DOM filters.
+	// accounts return no posts and follower lists are unavailable. tiktok-profile
+	// parses a public profile (tiktok.com/@{username}) into data: nickname, bio, bio
+	// link, follower, following, like, and video counts, verified, private, and
+	// business flags, and business category; it does not list videos. tiktok-video
+	// parses a video or photo post (/@{username}/video/{id} or
+	// /@{username}/photo/{id}) into data: caption, hashtags, mentions, author, view,
+	// like, comment, share, save, and repost counts, duration, thumbnail, a video_url
+	// that downloads without cookies, image_urls for photo posts, music, location, and
+	// ad, paid-partnership, and AI-generated flags. tiktok-feed returns videos in the
+	// tiktok-video shape as data.videos: the latest 15 from a profile URL, the top 30
+	// from a hashtag URL (/tag/{name}), or the top 12 from a search URL
+	// (/search?q={query}). tiktok-comments returns the first 20 comments of a video or
+	// photo post as data.comments: text, posted_at, like and reply counts, whether the
+	// author liked it, and the commenter. tiktok-followers and tiktok-following return
+	// up to 30 accounts of a profile as data.users, in the tiktok-profile shape.
+	// tiktok-user-search returns the top 10 accounts for a user search URL
+	// (/search/user?q={query}) as data.users: id, username, nickname, biography,
+	// avatar_url, sec_uid, follower_count, like_count, and is_verified. The TikTok
+	// parsers accept tiktok.com, www.tiktok.com, and m.tiktok.com URLs but not short
+	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). emails accepts any page
+	// and returns its email addresses as data.emails ([{ email }]), read from mailto
+	// links, Cloudflare-protected addresses, and visible text. phone-numbers accepts
+	// any page and returns its valid phone numbers in E.164 as data.phone_numbers ([{
+	// phone }]), read from tel links and visible text; numbers without a country code
+	// are read for the country of the site TLD, defaulting to US. links accepts any
+	// page and returns its unique http(s) links as data.links ([{ url, text }]), with
+	// absolute URLs; text falls back to aria-label or image alt and is null when a
+	// link has none. The emails parser reads the rendered page and respects content
+	// filters; the other prebuilt parsers read their data independently of DOM
+	// filters.
 	//
 	// Any of "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
-	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
-	// "phone-numbers", "links".
+	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
+	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
+	// "tiktok-following", "tiktok-user-search", "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
 	// maximum 1000.
@@ -4428,7 +4462,7 @@ func (r *BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser) UnmarshalJSO
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",
@@ -5348,22 +5382,42 @@ type BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser struct {
 	// location (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
 	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
 	// it. All three Instagram parsers read public data without logging in, so private
-	// accounts return no posts and follower lists are unavailable. emails accepts any
-	// page and returns its email addresses as data.emails ([{ email }]), read from
-	// mailto links, Cloudflare-protected addresses, and visible text. phone-numbers
-	// accepts any page and returns its valid phone numbers in E.164 as
-	// data.phone_numbers ([{ phone }]), read from tel links and visible text; numbers
-	// without a country code are read for the country of the site TLD, defaulting to
-	// US. links accepts any page and returns its unique http(s) links as data.links
-	// ([{ url, text }]), with absolute URLs; text falls back to aria-label or image
-	// alt and is null when a link has none. The emails parser reads the rendered page
-	// and respects content filters; the other prebuilt parsers read their data
-	// independently of DOM filters.
+	// accounts return no posts and follower lists are unavailable. tiktok-profile
+	// parses a public profile (tiktok.com/@{username}) into data: nickname, bio, bio
+	// link, follower, following, like, and video counts, verified, private, and
+	// business flags, and business category; it does not list videos. tiktok-video
+	// parses a video or photo post (/@{username}/video/{id} or
+	// /@{username}/photo/{id}) into data: caption, hashtags, mentions, author, view,
+	// like, comment, share, save, and repost counts, duration, thumbnail, a video_url
+	// that downloads without cookies, image_urls for photo posts, music, location, and
+	// ad, paid-partnership, and AI-generated flags. tiktok-feed returns videos in the
+	// tiktok-video shape as data.videos: the latest 15 from a profile URL, the top 30
+	// from a hashtag URL (/tag/{name}), or the top 12 from a search URL
+	// (/search?q={query}). tiktok-comments returns the first 20 comments of a video or
+	// photo post as data.comments: text, posted_at, like and reply counts, whether the
+	// author liked it, and the commenter. tiktok-followers and tiktok-following return
+	// up to 30 accounts of a profile as data.users, in the tiktok-profile shape.
+	// tiktok-user-search returns the top 10 accounts for a user search URL
+	// (/search/user?q={query}) as data.users: id, username, nickname, biography,
+	// avatar_url, sec_uid, follower_count, like_count, and is_verified. The TikTok
+	// parsers accept tiktok.com, www.tiktok.com, and m.tiktok.com URLs but not short
+	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). emails accepts any page
+	// and returns its email addresses as data.emails ([{ email }]), read from mailto
+	// links, Cloudflare-protected addresses, and visible text. phone-numbers accepts
+	// any page and returns its valid phone numbers in E.164 as data.phone_numbers ([{
+	// phone }]), read from tel links and visible text; numbers without a country code
+	// are read for the country of the site TLD, defaulting to US. links accepts any
+	// page and returns its unique http(s) links as data.links ([{ url, text }]), with
+	// absolute URLs; text falls back to aria-label or image alt and is null when a
+	// link has none. The emails parser reads the rendered page and respects content
+	// filters; the other prebuilt parsers read their data independently of DOM
+	// filters.
 	//
 	// Any of "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
-	// "instagram-profile", "instagram-post", "instagram-feed", "emails",
-	// "phone-numbers", "links".
+	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
+	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
+	// "tiktok-following", "tiktok-user-search", "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
 	// maximum 1000.
@@ -5391,7 +5445,7 @@ func (r *BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser) UnmarshalJSON
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",

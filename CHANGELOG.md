@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.28.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.27.0...v2.28.0) (2026-10-18)
+
+
+### Features
+
+* **people:** allow enrichment on free plans ([#1961](https://github.com/context-dot-dev/context-go-sdk/issues/1961)) ([209d542](https://github.com/context-dot-dev/context-go-sdk/commit/209d5427f18c666fe63b7ed7e210c548ee731895))
+
 ## [2.27.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.26.0...v2.27.0) (2026-10-17)
 
 

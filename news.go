@@ -37,8 +37,9 @@ func NewNewsService(opts ...option.RequestOption) (r NewsService) {
 	return
 }
 
-// Find company news by name, domain, ticker, or ISIN. Filter articles and continue
-// through results with a cursor.
+// Find news about a company by name, domain, ticker, or ISIN, or search all news
+// with a natural-language query. Filter articles and continue through results with
+// a cursor.
 func (r *NewsService) Search(ctx context.Context, body NewsSearchParams, opts ...option.RequestOption) (res *NewsSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "news/search"
@@ -93,7 +94,8 @@ type NewsSearchResponseData struct {
 	// Language the article is written in, as a lowercase ISO 639-1 code such as en.
 	// Null when unknown.
 	Language string `json:"language" api:"required"`
-	// How the article relates to the company you searched for.
+	// How the article relates to the company you searched for. Null for
+	// natural-language searches.
 	Match NewsSearchResponseDataMatch `json:"match" api:"required"`
 	// When the article was published, as an ISO 8601 timestamp. Null when the
 	// publisher does not state a reliable date.
@@ -137,7 +139,8 @@ func (r *NewsSearchResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How the article relates to the company you searched for.
+// How the article relates to the company you searched for. Null for
+// natural-language searches.
 type NewsSearchResponseDataMatch struct {
 	// How confident the match is, from 0 to 1. Null when a score is unavailable.
 	Confidence float64 `json:"confidence" api:"required"`
@@ -225,8 +228,9 @@ func (r *NewsSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type NewsSearchParams struct {
-	// What to search for.
-	SearchBy NewsSearchParamsSearchBy `json:"searchBy,omitzero" api:"required"`
+	// What to search for: a specific company, or a natural-language query across all
+	// news.
+	SearchBy NewsSearchParamsSearchByUnion `json:"searchBy,omitzero" api:"required"`
 	// Opaque next_cursor from the previous response, or null for the first page.
 	Cursor param.Opt[string] `json:"cursor,omitzero"`
 	// Maximum results to return. Defaults to 10.
@@ -235,7 +239,8 @@ type NewsSearchParams struct {
 	// articleLanguage, or articleType. A date range may accompany that category;
 	// date.from must not exceed date.to.
 	FilterBy NewsSearchParamsFilterBy `json:"filterBy,omitzero"`
-	// Result ordering. Defaults to newest.
+	// Result ordering. Defaults to newest for entity searches. Natural-language
+	// searches are always ordered by relevance.
 	SortBy NewsSearchParamsSortBy `json:"sortBy,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -250,65 +255,106 @@ func (r *NewsSearchParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What to search for.
+// Only one field can be non-zero.
 //
-// The properties Entity, Type are required.
-type NewsSearchParamsSearchBy struct {
-	// The company to search news for, identified by name, domain, ticker, or ISIN.
-	Entity NewsSearchParamsSearchByEntityUnion `json:"entity,omitzero" api:"required"`
-	// How to search. Only entity search is supported.
-	//
-	// Any of "entity".
-	Type string `json:"type,omitzero" api:"required"`
-	paramObj
+// Use [param.IsOmitted] to confirm if a field is set.
+type NewsSearchParamsSearchByUnion struct {
+	OfNaturalLanguage *NewsSearchParamsSearchByNaturalLanguage `json:",omitzero,inline"`
+	OfEntity          *NewsSearchParamsSearchByEntity          `json:",omitzero,inline"`
+	paramUnion
 }
 
-func (r NewsSearchParamsSearchBy) MarshalJSON() (data []byte, err error) {
-	type shadow NewsSearchParamsSearchBy
-	return param.MarshalObject(r, (*shadow)(&r))
+func (u NewsSearchParamsSearchByUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfNaturalLanguage, u.OfEntity)
 }
-func (r *NewsSearchParamsSearchBy) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
+func (u *NewsSearchParamsSearchByUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[NewsSearchParamsSearchBy](
-		"type", "entity",
+	apijson.RegisterUnion[NewsSearchParamsSearchByUnion](
+		"type",
+		apijson.Discriminator[NewsSearchParamsSearchByNaturalLanguage]("natural_language"),
+		apijson.Discriminator[NewsSearchParamsSearchByEntity]("entity"),
 	)
+}
+
+// Search all news with a plain-language query. Returns up to 100 matches, ordered
+// by relevance.
+//
+// The properties Query, Type are required.
+type NewsSearchParamsSearchByNaturalLanguage struct {
+	// What to search for, in plain language, such as "chip export restrictions to
+	// China".
+	Query string `json:"query" api:"required"`
+	// Use `natural_language` to search all news with a plain-language query.
+	//
+	// This field can be elided, and will marshal its zero value as "natural_language".
+	Type constant.NaturalLanguage `json:"type" default:"natural_language"`
+	paramObj
+}
+
+func (r NewsSearchParamsSearchByNaturalLanguage) MarshalJSON() (data []byte, err error) {
+	type shadow NewsSearchParamsSearchByNaturalLanguage
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *NewsSearchParamsSearchByNaturalLanguage) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Find news about a specific company.
+//
+// The properties Entity, Type are required.
+type NewsSearchParamsSearchByEntity struct {
+	// The company to search news for, identified by name, domain, ticker, or ISIN.
+	Entity NewsSearchParamsSearchByEntityEntityUnion `json:"entity,omitzero" api:"required"`
+	// Use `entity` to find news about a specific company.
+	//
+	// This field can be elided, and will marshal its zero value as "entity".
+	Type constant.Entity `json:"type" default:"entity"`
+	paramObj
+}
+
+func (r NewsSearchParamsSearchByEntity) MarshalJSON() (data []byte, err error) {
+	type shadow NewsSearchParamsSearchByEntity
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *NewsSearchParamsSearchByEntity) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 // Only one field can be non-zero.
 //
 // Use [param.IsOmitted] to confirm if a field is set.
-type NewsSearchParamsSearchByEntityUnion struct {
-	OfName   *NewsSearchParamsSearchByEntityName   `json:",omitzero,inline"`
-	OfDomain *NewsSearchParamsSearchByEntityDomain `json:",omitzero,inline"`
-	OfTicker *NewsSearchParamsSearchByEntityTicker `json:",omitzero,inline"`
-	OfIsin   *NewsSearchParamsSearchByEntityIsin   `json:",omitzero,inline"`
+type NewsSearchParamsSearchByEntityEntityUnion struct {
+	OfName   *NewsSearchParamsSearchByEntityEntityName   `json:",omitzero,inline"`
+	OfDomain *NewsSearchParamsSearchByEntityEntityDomain `json:",omitzero,inline"`
+	OfTicker *NewsSearchParamsSearchByEntityEntityTicker `json:",omitzero,inline"`
+	OfIsin   *NewsSearchParamsSearchByEntityEntityIsin   `json:",omitzero,inline"`
 	paramUnion
 }
 
-func (u NewsSearchParamsSearchByEntityUnion) MarshalJSON() ([]byte, error) {
+func (u NewsSearchParamsSearchByEntityEntityUnion) MarshalJSON() ([]byte, error) {
 	return param.MarshalUnion(u, u.OfName, u.OfDomain, u.OfTicker, u.OfIsin)
 }
-func (u *NewsSearchParamsSearchByEntityUnion) UnmarshalJSON(data []byte) error {
+func (u *NewsSearchParamsSearchByEntityEntityUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, u)
 }
 
 func init() {
-	apijson.RegisterUnion[NewsSearchParamsSearchByEntityUnion](
+	apijson.RegisterUnion[NewsSearchParamsSearchByEntityEntityUnion](
 		"type",
-		apijson.Discriminator[NewsSearchParamsSearchByEntityName]("name"),
-		apijson.Discriminator[NewsSearchParamsSearchByEntityDomain]("domain"),
-		apijson.Discriminator[NewsSearchParamsSearchByEntityTicker]("ticker"),
-		apijson.Discriminator[NewsSearchParamsSearchByEntityIsin]("isin"),
+		apijson.Discriminator[NewsSearchParamsSearchByEntityEntityName]("name"),
+		apijson.Discriminator[NewsSearchParamsSearchByEntityEntityDomain]("domain"),
+		apijson.Discriminator[NewsSearchParamsSearchByEntityEntityTicker]("ticker"),
+		apijson.Discriminator[NewsSearchParamsSearchByEntityEntityIsin]("isin"),
 	)
 }
 
 // Identify the company by name.
 //
 // The properties Name, Type are required.
-type NewsSearchParamsSearchByEntityName struct {
+type NewsSearchParamsSearchByEntityEntityName struct {
 	// Company name.
 	Name string `json:"name" api:"required"`
 	// Use `name` to identify the company by name.
@@ -318,18 +364,18 @@ type NewsSearchParamsSearchByEntityName struct {
 	paramObj
 }
 
-func (r NewsSearchParamsSearchByEntityName) MarshalJSON() (data []byte, err error) {
-	type shadow NewsSearchParamsSearchByEntityName
+func (r NewsSearchParamsSearchByEntityEntityName) MarshalJSON() (data []byte, err error) {
+	type shadow NewsSearchParamsSearchByEntityEntityName
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *NewsSearchParamsSearchByEntityName) UnmarshalJSON(data []byte) error {
+func (r *NewsSearchParamsSearchByEntityEntityName) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 // Identify the company by website domain.
 //
 // The properties Domain, Type are required.
-type NewsSearchParamsSearchByEntityDomain struct {
+type NewsSearchParamsSearchByEntityEntityDomain struct {
 	// Company website domain, such as apple.com.
 	Domain string `json:"domain" api:"required"`
 	// Use `domain` to identify the company by website domain.
@@ -339,18 +385,18 @@ type NewsSearchParamsSearchByEntityDomain struct {
 	paramObj
 }
 
-func (r NewsSearchParamsSearchByEntityDomain) MarshalJSON() (data []byte, err error) {
-	type shadow NewsSearchParamsSearchByEntityDomain
+func (r NewsSearchParamsSearchByEntityEntityDomain) MarshalJSON() (data []byte, err error) {
+	type shadow NewsSearchParamsSearchByEntityEntityDomain
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *NewsSearchParamsSearchByEntityDomain) UnmarshalJSON(data []byte) error {
+func (r *NewsSearchParamsSearchByEntityEntityDomain) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 // Identify the company by stock ticker, optionally scoped to an exchange.
 //
 // The properties Ticker, Type are required.
-type NewsSearchParamsSearchByEntityTicker struct {
+type NewsSearchParamsSearchByEntityEntityTicker struct {
 	// Public-company ticker.
 	Ticker string `json:"ticker" api:"required"`
 	// Stock exchange the ticker trades on, used to disambiguate tickers listed on
@@ -371,16 +417,16 @@ type NewsSearchParamsSearchByEntityTicker struct {
 	paramObj
 }
 
-func (r NewsSearchParamsSearchByEntityTicker) MarshalJSON() (data []byte, err error) {
-	type shadow NewsSearchParamsSearchByEntityTicker
+func (r NewsSearchParamsSearchByEntityEntityTicker) MarshalJSON() (data []byte, err error) {
+	type shadow NewsSearchParamsSearchByEntityEntityTicker
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *NewsSearchParamsSearchByEntityTicker) UnmarshalJSON(data []byte) error {
+func (r *NewsSearchParamsSearchByEntityEntityTicker) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[NewsSearchParamsSearchByEntityTicker](
+	apijson.RegisterFieldValidator[NewsSearchParamsSearchByEntityEntityTicker](
 		"exchange", "AMEX", "AMS", "AQS", "ASX", "ATH", "BER", "BME", "BRU", "BSE", "BUD", "BUE", "BVC", "CBOE", "CNQ", "CPH", "DFM", "DOH", "DUB", "DUS", "DXE", "EGX", "FSX", "HAM", "HEL", "HKSE", "HOSE", "ICE", "IOB", "IST", "JKT", "JNB", "JPX", "KLS", "KOE", "KSC", "KUW", "LIS", "LSE", "MCX", "MEX", "MIL", "MUN", "NASDAQ", "NEO", "NSE", "NYSE", "NZE", "OSL", "OTC", "PAR", "PNK", "PRA", "RIS", "SAO", "SAU", "SES", "SET", "SGO", "SHH", "SHZ", "SIX", "STO", "STU", "TAI", "TAL", "TLV", "TSX", "TSXV", "TWO", "VIE", "WSE", "XETRA",
 	)
 }
@@ -388,7 +434,7 @@ func init() {
 // Identify the company by International Securities Identification Number.
 //
 // The properties Isin, Type are required.
-type NewsSearchParamsSearchByEntityIsin struct {
+type NewsSearchParamsSearchByEntityEntityIsin struct {
 	// International Securities Identification Number.
 	Isin string `json:"isin" api:"required"`
 	// Use `isin` to identify the company by its securities identifier.
@@ -398,11 +444,11 @@ type NewsSearchParamsSearchByEntityIsin struct {
 	paramObj
 }
 
-func (r NewsSearchParamsSearchByEntityIsin) MarshalJSON() (data []byte, err error) {
-	type shadow NewsSearchParamsSearchByEntityIsin
+func (r NewsSearchParamsSearchByEntityEntityIsin) MarshalJSON() (data []byte, err error) {
+	type shadow NewsSearchParamsSearchByEntityEntityIsin
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *NewsSearchParamsSearchByEntityIsin) UnmarshalJSON(data []byte) error {
+func (r *NewsSearchParamsSearchByEntityEntityIsin) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -461,7 +507,8 @@ func (r *NewsSearchParamsFilterByDate) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Result ordering. Defaults to newest.
+// Result ordering. Defaults to newest for entity searches. Natural-language
+// searches are always ordered by relevance.
 //
 // The property Type is required.
 type NewsSearchParamsSortBy struct {

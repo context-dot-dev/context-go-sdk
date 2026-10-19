@@ -27,13 +27,14 @@ func TestNewsSearchWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.News.Search(context.TODO(), contextdev.NewsSearchParams{
-		SearchBy: contextdev.NewsSearchParamsSearchBy{
-			Entity: contextdev.NewsSearchParamsSearchByEntityUnion{
-				OfDomain: &contextdev.NewsSearchParamsSearchByEntityDomain{
-					Domain: "stripe.com",
+		SearchBy: contextdev.NewsSearchParamsSearchByUnion{
+			OfEntity: &contextdev.NewsSearchParamsSearchByEntity{
+				Entity: contextdev.NewsSearchParamsSearchByEntityEntityUnion{
+					OfDomain: &contextdev.NewsSearchParamsSearchByEntityEntityDomain{
+						Domain: "stripe.com",
+					},
 				},
 			},
-			Type: "entity",
 		},
 		Cursor: contextdev.String("cursor"),
 		FilterBy: contextdev.NewsSearchParamsFilterBy{

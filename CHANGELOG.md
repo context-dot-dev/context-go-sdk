@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.30.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.29.0...v2.30.0) (2026-10-19)
+
+
+### Features
+
+* **news:** add natural-language search to POST /news/search ([#1975](https://github.com/context-dot-dev/context-go-sdk/issues/1975)) ([f86c732](https://github.com/context-dot-dev/context-go-sdk/commit/f86c732c52e16974036e4b5da56c5f1360f5005e))
+
 ## [2.29.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.28.0...v2.29.0) (2026-10-18)
 
 

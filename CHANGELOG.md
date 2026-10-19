@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.31.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.30.0...v2.31.0) (2026-10-19)
+
+
+### Features
+
+* **crawl:** add exclude URL regex to crawl and sitemap endpoints ([#1982](https://github.com/context-dot-dev/context-go-sdk/issues/1982)) ([1efbe07](https://github.com/context-dot-dev/context-go-sdk/commit/1efbe07316b9be0fc7b1bf398c9fda0dab55d4a7))
+
 ## [2.30.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.29.0...v2.30.0) (2026-10-19)
 
 

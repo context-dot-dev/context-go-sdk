@@ -161,6 +161,8 @@ func (r *Failure) UnmarshalJSON(data []byte) error {
 
 // Crawl settings as submitted.
 type CrawlControls struct {
+	// RE2 pattern URLs must not match to be crawled. Null when the crawl set none.
+	ExcludeURLPattern string `json:"exclude_url_pattern" api:"required"`
 	// Whether links to subdomains were followed. Always false for a sitemap crawl.
 	FollowSubdomains bool `json:"follow_subdomains" api:"required"`
 	// Link depth limit. Always 0 for a sitemap crawl, which never follows links off
@@ -175,13 +177,14 @@ type CrawlControls struct {
 	URLPattern string `json:"url_pattern" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		FollowSubdomains respjson.Field
-		MaxDepth         respjson.Field
-		MaxPages         respjson.Field
-		Source           respjson.Field
-		URLPattern       respjson.Field
-		ExtraFields      map[string]respjson.Field
-		raw              string
+		ExcludeURLPattern respjson.Field
+		FollowSubdomains  respjson.Field
+		MaxDepth          respjson.Field
+		MaxPages          respjson.Field
+		Source            respjson.Field
+		URLPattern        respjson.Field
+		ExtraFields       map[string]respjson.Field
+		raw               string
 	} `json:"-"`
 }
 
@@ -5102,6 +5105,9 @@ func (r *BatchSubmitParamsInputCrawlDataSourceStartURL) UnmarshalJSON(data []byt
 
 // Limits and filters for page discovery.
 type BatchSubmitParamsInputCrawlDataSourceStartURLControls struct {
+	// RE2 pattern for URLs to exclude, even when they match `regex`. The `start_url`
+	// itself is always included.
+	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Follow links to subdomains.
 	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
 	// Maximum link depth. Source pages are depth 0. No limit when omitted.
@@ -5150,6 +5156,9 @@ func (r *BatchSubmitParamsInputCrawlDataSourceSitemap) UnmarshalJSON(data []byte
 // Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
 // URLs and never follows links off them, so there is no crawl depth here.
 type BatchSubmitParamsInputCrawlDataSourceSitemapControls struct {
+	// RE2 pattern; sitemap URLs matching it are not scraped, even when they match
+	// `regex`.
+	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
 	// RE2 pattern; only sitemap URLs matching it are scraped.

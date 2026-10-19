@@ -2207,8 +2207,8 @@ type WebWebCrawlMdResponseMetadata struct {
 	MaxCrawlDepth int64 `json:"maxCrawlDepth" api:"required"`
 	// Number of pages that failed to crawl
 	NumFailed int64 `json:"numFailed" api:"required"`
-	// Number of URLs skipped (PDFs when pdf.shouldParse=false, or URLs not matching
-	// urlRegex)
+	// Number of URLs skipped (PDFs when pdf.shouldParse=false, URLs not matching
+	// urlRegex, or URLs matching excludeUrlRegex)
 	NumSkipped int64 `json:"numSkipped" api:"required"`
 	// Number of pages successfully crawled
 	NumSucceeded int64 `json:"numSucceeded" api:"required"`
@@ -2731,6 +2731,9 @@ const (
 type WebMapURLsParams struct {
 	// Domain to map, e.g. `stripe.com`.
 	Domain string `query:"domain" api:"required" json:"-"`
+	// Optional RE2-compatible regex pattern. URLs matching this pattern are not
+	// returned, even when they match urlRegex.
+	ExcludeURLRegex param.Opt[string] `query:"excludeUrlRegex,omitzero" json:"-"`
 	// Include URLs on subdomains.
 	IncludeSubdomains param.Opt[bool] `query:"includeSubdomains,omitzero" json:"-"`
 	// Maximum number of URLs to return.
@@ -4544,6 +4547,9 @@ type WebWebCrawlMdParams struct {
 	// Browser wait time in milliseconds after initial page load for each crawled page.
 	// Defaults to 3500 (3.5 seconds). Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// RE2 regex pattern. URLs matching this pattern are never followed or scraped,
+	// even when they match urlRegex. The starting URL is always scraped.
+	ExcludeURLRegex param.Opt[string] `json:"excludeUrlRegex,omitzero"`
 	// When true, follow links on subdomains of the starting URL's domain (e.g.
 	// docs.example.com when starting from example.com). www and apex are always
 	// treated as equivalent.

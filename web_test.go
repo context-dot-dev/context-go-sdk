@@ -129,7 +129,8 @@ func TestWebMapURLsWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Web.MapURLs(context.TODO(), contextdev.WebMapURLsParams{
-		Domain: "stripe.com",
+		Domain:          "stripe.com",
+		ExcludeURLRegex: contextdev.String("/tag/|/author/"),
 		Headers: map[string]string{
 			"foo": "J!",
 		},
@@ -412,6 +413,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		URL:              "https://example.com",
 		Country:          contextdev.WebWebCrawlMdParamsCountryDe,
 		ExcludeSelectors: []string{"x"},
+		ExcludeURLRegex:  contextdev.String("/tag/|/author/"),
 		FollowSubdomains: contextdev.Bool(true),
 		IncludeFrames:    contextdev.Bool(true),
 		IncludeImages:    contextdev.Bool(true),

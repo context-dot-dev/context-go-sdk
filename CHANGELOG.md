@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.33.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.33.0...v2.33.1) (2026-10-21)
+
+
+### Documentation
+
+* **openapi:** unify regex wording and shorten sourcePreference descriptions ([#2051](https://github.com/context-dot-dev/context-go-sdk/issues/2051)) ([a5c24d8](https://github.com/context-dot-dev/context-go-sdk/commit/a5c24d871ef3098f221e6346f9fad8747245d08e))
+
 ## [2.33.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.32.0...v2.33.0) (2026-10-21)
 
 

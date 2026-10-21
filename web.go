@@ -2735,8 +2735,8 @@ const (
 type WebMapURLsParams struct {
 	// Domain to map, e.g. `stripe.com`.
 	Domain string `query:"domain" api:"required" json:"-"`
-	// Optional RE2-compatible regex pattern. URLs matching this pattern are not
-	// returned, even when they match urlRegex.
+	// Regex pattern. URLs matching this pattern are not returned, even when they match
+	// urlRegex.
 	ExcludeURLRegex param.Opt[string] `query:"excludeUrlRegex,omitzero" json:"-"`
 	// Include URLs on subdomains.
 	IncludeSubdomains param.Opt[bool] `query:"includeSubdomains,omitzero" json:"-"`
@@ -2747,8 +2747,8 @@ type WebMapURLsParams struct {
 	// Fetch this sitemap instead of discovering sitemaps. Must belong to the domain or
 	// a subdomain.
 	SitemapURL param.Opt[string] `query:"sitemapUrl,omitzero" format:"uri" json:"-"`
-	// Optional RE2-compatible regex pattern. Only URLs matching this pattern are
-	// returned and counted against maxLinks.
+	// Regex pattern. Only URLs matching this pattern are returned and counted against
+	// maxLinks.
 	URLRegex param.Opt[string] `query:"urlRegex,omitzero" json:"-"`
 	// HTTP headers for the target origin. Non-empty headers bypass caching.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
@@ -2947,26 +2947,16 @@ func (r *WebScrapeParamsJsonParams) UnmarshalJSON(data []byte) error {
 
 // Markdown options. Requires `formats.markdown`.
 type WebScrapeParamsMarkdownParams struct {
-	// Include images in the Markdown using image syntax with URLs and alt text. Only
-	// applies to `html-conversion` extractions.
+	// Include images in the Markdown (`html-conversion` only).
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	// Keep link URLs in the Markdown. Set false to return link text without URLs. Only
-	// applies to `html-conversion` extractions.
+	// Keep link URLs in the Markdown (`html-conversion` only).
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// How base64 images appear: `placeholder` (default) or `preserve`. Requires
-	// `includeImages`. Only applies to `html-conversion` extractions.
+	// How base64 images appear when `includeImages` is set (`html-conversion` only).
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
-	// Where the Markdown should come from, in order of preference; the first usable
-	// source wins. `html-conversion` converts the page HTML, and counts as unusable
-	// when the conversion has almost no content (under 200 characters).
-	// `markdown-direct` uses the official Markdown version the page publishes through,
-	// returned as the site serves it. Defaults to
-	// `["html-conversion", "markdown-direct"]`. With only `markdown-direct`, a page
-	// that publishes no Markdown fails with `NO_PUBLISHED_MARKDOWN` and is not billed.
-	// Requests with include or exclude selectors never use `markdown-direct`, so they
-	// must include `html-conversion`.
+	// Markdown sources in order of preference: `html-conversion` converts the page
+	// HTML, `markdown-direct` uses Markdown the site publishes.
 	//
 	// Any of "html-conversion", "markdown-direct".
 	SourcePreference []string `json:"sourcePreference,omitzero"`
@@ -4565,8 +4555,8 @@ type WebWebCrawlMdParams struct {
 	// Browser wait time in milliseconds after initial page load for each crawled page.
 	// Defaults to 3500 (3.5 seconds). Min: 0. Max: 30000 (30 seconds).
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
-	// RE2 regex pattern. URLs matching this pattern are never followed or scraped,
-	// even when they match urlRegex. The starting URL is always scraped.
+	// Regex pattern. URLs matching this pattern are never followed or scraped, even
+	// when they match urlRegex. The starting URL is always scraped.
 	ExcludeURLRegex param.Opt[string] `json:"excludeUrlRegex,omitzero"`
 	// When true, follow links on subdomains of the starting URL's domain (e.g.
 	// docs.example.com when starting from example.com). www and apex are always
@@ -4575,11 +4565,9 @@ type WebWebCrawlMdParams struct {
 	// When true, the contents of iframes are rendered to Markdown for each crawled
 	// page.
 	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
-	// Include image references in the Markdown output Only applies to
-	// `html-conversion` extractions.
+	// Include image references in the Markdown output (`html-conversion` only).
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	// Preserve hyperlinks in the Markdown output Only applies to `html-conversion`
-	// extractions.
+	// Preserve hyperlinks in the Markdown output (`html-conversion` only).
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
 	// Maximum link depth from the starting URL (0 = only the starting page)
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
@@ -4588,8 +4576,8 @@ type WebWebCrawlMdParams struct {
 	// Wait briefly for CSS animations and transitions to settle before reading each
 	// page.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
-	// Truncate base64-encoded image data in the Markdown output Only applies to
-	// `html-conversion` extractions.
+	// Truncate base64-encoded image data in the Markdown output (`html-conversion`
+	// only).
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
 	// Soft crawl deadline in milliseconds. Returns pages collected before the next
 	// deadline check.
@@ -4626,15 +4614,8 @@ type WebWebCrawlMdParams struct {
 	Country WebWebCrawlMdParamsCountry `json:"country,omitzero"`
 	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
-	// Where the Markdown should come from, in order of preference; the first usable
-	// source wins. `html-conversion` converts the page HTML, and counts as unusable
-	// when the conversion has almost no content (under 200 characters).
-	// `markdown-direct` uses the official Markdown version the page publishes through,
-	// returned as the site serves it. Defaults to
-	// `["html-conversion", "markdown-direct"]`. With only `markdown-direct`, a page
-	// that publishes no Markdown fails with `NO_PUBLISHED_MARKDOWN` and is not billed.
-	// Requests with include or exclude selectors never use `markdown-direct`, so they
-	// must include `html-conversion`.
+	// Markdown sources in order of preference: `html-conversion` converts the page
+	// HTML, `markdown-direct` uses Markdown the site publishes.
 	//
 	// Any of "html-conversion", "markdown-direct".
 	SourcePreference []string `json:"sourcePreference,omitzero"`

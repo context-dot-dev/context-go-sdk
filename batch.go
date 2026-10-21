@@ -161,13 +161,11 @@ func (r *Failure) UnmarshalJSON(data []byte) error {
 
 // Crawl settings as submitted.
 type CrawlControls struct {
-	// RE2 pattern URLs must not match to be crawled. Null when the crawl set none.
+	// Regex pattern URLs must not match to be crawled. Null when the crawl set none.
 	ExcludeURLPattern string `json:"exclude_url_pattern" api:"required"`
 	// Whether links to subdomains were followed. Always false for a sitemap crawl.
 	FollowSubdomains bool `json:"follow_subdomains" api:"required"`
-	// Languages whose pages were followed: `same_as_start_url` or a list of language
-	// codes. Null when every language was followed, which is always the case for a
-	// sitemap crawl.
+	// Languages whose pages were followed; null when all languages were.
 	Languages CrawlControlsLanguagesUnion `json:"languages" api:"required"`
 	// Link depth limit. Always 0 for a sitemap crawl, which never follows links off
 	// its URLs; null when a `start_url` crawl set no limit.
@@ -177,7 +175,7 @@ type CrawlControls struct {
 	MaxPages int64 `json:"max_pages" api:"required"`
 	// Where the crawl started.
 	Source CrawlControlsSourceUnion `json:"source" api:"required"`
-	// RE2 pattern URLs had to match to be crawled. Null when the crawl set none.
+	// Regex pattern URLs had to match to be crawled. Null when the crawl set none.
 	URLPattern string `json:"url_pattern" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4301,26 +4299,16 @@ func (r *BatchSubmitParamsInputScrapeDataJsonParams) UnmarshalJSON(data []byte) 
 
 // Markdown options. Requires `formats.markdown`.
 type BatchSubmitParamsInputScrapeDataMarkdownParams struct {
-	// Include images in the Markdown using image syntax with URLs and alt text. Only
-	// applies to `html-conversion` extractions.
+	// Include images in the Markdown (`html-conversion` only).
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	// Keep link URLs in the Markdown. Set false to return link text without URLs. Only
-	// applies to `html-conversion` extractions.
+	// Keep link URLs in the Markdown (`html-conversion` only).
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// How base64 images appear: `placeholder` (default) or `preserve`. Requires
-	// `includeImages`. Only applies to `html-conversion` extractions.
+	// How base64 images appear when `includeImages` is set (`html-conversion` only).
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
-	// Where the Markdown should come from, in order of preference; the first usable
-	// source wins. `html-conversion` converts the page HTML, and counts as unusable
-	// when the conversion has almost no content (under 200 characters).
-	// `markdown-direct` uses the official Markdown version the page publishes through,
-	// returned as the site serves it. Defaults to
-	// `["html-conversion", "markdown-direct"]`. With only `markdown-direct`, a page
-	// that publishes no Markdown fails with `NO_PUBLISHED_MARKDOWN` and is not billed.
-	// Requests with include or exclude selectors never use `markdown-direct`, so they
-	// must include `html-conversion`.
+	// Markdown sources in order of preference: `html-conversion` converts the page
+	// HTML, `markdown-direct` uses Markdown the site publishes.
 	//
 	// Any of "html-conversion", "markdown-direct".
 	SourcePreference []string `json:"sourcePreference,omitzero"`
@@ -5167,7 +5155,7 @@ func (r *BatchSubmitParamsInputCrawlDataSourceStartURL) UnmarshalJSON(data []byt
 
 // Limits and filters for page discovery.
 type BatchSubmitParamsInputCrawlDataSourceStartURLControls struct {
-	// RE2 pattern for URLs to exclude, even when they match `regex`. The `start_url`
+	// Regex pattern for URLs to exclude, even when they match `regex`. The `start_url`
 	// itself is always included.
 	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Follow links to subdomains.
@@ -5176,12 +5164,10 @@ type BatchSubmitParamsInputCrawlDataSourceStartURLControls struct {
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// RE2 pattern for URLs to include. The `start_url` itself is always included.
+	// Regex pattern for URLs to include. The `start_url` itself is always included.
 	Regex param.Opt[string] `json:"regex,omitzero"`
-	// Languages whose pages are followed. `same_as_start_url` follows only the start
-	// page's language; a list of language codes such as `["en"]` follows those
-	// languages. Links whose language cannot be determined are followed. When omitted
-	// all urls are crawled.
+	// Only follow pages in these languages, or `same_as_start_url`; all languages when
+	// omitted.
 	Languages BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
 	paramObj
 }
@@ -5247,12 +5233,12 @@ func (r *BatchSubmitParamsInputCrawlDataSourceSitemap) UnmarshalJSON(data []byte
 // Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
 // URLs and never follows links off them, so there is no crawl depth here.
 type BatchSubmitParamsInputCrawlDataSourceSitemapControls struct {
-	// RE2 pattern; sitemap URLs matching it are not scraped, even when they match
+	// Regex pattern; sitemap URLs matching it are not scraped, even when they match
 	// `regex`.
 	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// RE2 pattern; only sitemap URLs matching it are scraped.
+	// Regex pattern; only sitemap URLs matching it are scraped.
 	Regex param.Opt[string] `json:"regex,omitzero"`
 	paramObj
 }
@@ -5333,26 +5319,16 @@ func (r *BatchSubmitParamsInputCrawlDataJsonParams) UnmarshalJSON(data []byte) e
 
 // Markdown options. Requires `formats.markdown`.
 type BatchSubmitParamsInputCrawlDataMarkdownParams struct {
-	// Include images in the Markdown using image syntax with URLs and alt text. Only
-	// applies to `html-conversion` extractions.
+	// Include images in the Markdown (`html-conversion` only).
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	// Keep link URLs in the Markdown. Set false to return link text without URLs. Only
-	// applies to `html-conversion` extractions.
+	// Keep link URLs in the Markdown (`html-conversion` only).
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// How base64 images appear: `placeholder` (default) or `preserve`. Requires
-	// `includeImages`. Only applies to `html-conversion` extractions.
+	// How base64 images appear when `includeImages` is set (`html-conversion` only).
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
-	// Where the Markdown should come from, in order of preference; the first usable
-	// source wins. `html-conversion` converts the page HTML, and counts as unusable
-	// when the conversion has almost no content (under 200 characters).
-	// `markdown-direct` uses the official Markdown version the page publishes through,
-	// returned as the site serves it. Defaults to
-	// `["html-conversion", "markdown-direct"]`. With only `markdown-direct`, a page
-	// that publishes no Markdown fails with `NO_PUBLISHED_MARKDOWN` and is not billed.
-	// Requests with include or exclude selectors never use `markdown-direct`, so they
-	// must include `html-conversion`.
+	// Markdown sources in order of preference: `html-conversion` converts the page
+	// HTML, `markdown-direct` uses Markdown the site publishes.
 	//
 	// Any of "html-conversion", "markdown-direct".
 	SourcePreference []string `json:"sourcePreference,omitzero"`

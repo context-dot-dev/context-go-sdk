@@ -110,6 +110,9 @@ func (r *WebService) WebCrawlMd(ctx context.Context, body WebWebCrawlMdParams, o
 type WebAnswersResponse struct {
 	// The answer, in the shape requested by json_format.
 	JsonContent map[string]any `json:"json_content" api:"required"`
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// URLs of the pages and company/profile records read for the answer, followed by
 	// URLs cited in json_content.
 	Sources []string `json:"sources" api:"required"`
@@ -121,6 +124,7 @@ type WebAnswersResponse struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		JsonContent respjson.Field
+		RequestID   respjson.Field
 		Sources     respjson.Field
 		KeyMetadata respjson.Field
 		Partial     respjson.Field

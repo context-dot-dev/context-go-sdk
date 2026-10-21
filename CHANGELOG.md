@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.31.2](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.1...v2.31.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **answers:** document request_id in the /web/answers response ([#2040](https://github.com/context-dot-dev/context-go-sdk/issues/2040)) ([c9ebfdb](https://github.com/context-dot-dev/context-go-sdk/commit/c9ebfdb730b70fe82ba11c7d85157d1099ee41a6))
+
 ## [2.31.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.0...v2.31.1) (2026-10-21)
 
 

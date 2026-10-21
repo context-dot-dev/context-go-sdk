@@ -165,6 +165,10 @@ type CrawlControls struct {
 	ExcludeURLPattern string `json:"exclude_url_pattern" api:"required"`
 	// Whether links to subdomains were followed. Always false for a sitemap crawl.
 	FollowSubdomains bool `json:"follow_subdomains" api:"required"`
+	// Languages whose pages were followed: `same_as_start_url` or a list of language
+	// codes. Null when every language was followed, which is always the case for a
+	// sitemap crawl.
+	Languages CrawlControlsLanguagesUnion `json:"languages" api:"required"`
 	// Link depth limit. Always 0 for a sitemap crawl, which never follows links off
 	// its URLs; null when a `start_url` crawl set no limit.
 	MaxDepth int64 `json:"max_depth" api:"required"`
@@ -179,6 +183,7 @@ type CrawlControls struct {
 	JSON struct {
 		ExcludeURLPattern respjson.Field
 		FollowSubdomains  respjson.Field
+		Languages         respjson.Field
 		MaxDepth          respjson.Field
 		MaxPages          respjson.Field
 		Source            respjson.Field
@@ -193,6 +198,49 @@ func (r CrawlControls) RawJSON() string { return r.JSON.raw }
 func (r *CrawlControls) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// CrawlControlsLanguagesUnion contains all possible properties and values from
+// [string], [[]string].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfCrawlControlsLanguagesString
+// OfCrawlControlsLanguagesArrayItemArray]
+type CrawlControlsLanguagesUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfCrawlControlsLanguagesString string `json:",inline"`
+	// This field will be present if the value is a [[]string] instead of an object.
+	OfCrawlControlsLanguagesArrayItemArray []string `json:",inline"`
+	JSON                                   struct {
+		OfCrawlControlsLanguagesString         respjson.Field
+		OfCrawlControlsLanguagesArrayItemArray respjson.Field
+		raw                                    string
+	} `json:"-"`
+}
+
+func (u CrawlControlsLanguagesUnion) AsCrawlControlsLanguagesString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CrawlControlsLanguagesUnion) AsCrawlControlsLanguagesArrayItemArray() (v []string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u CrawlControlsLanguagesUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *CrawlControlsLanguagesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type CrawlControlsLanguagesString string
+
+const (
+	CrawlControlsLanguagesStringSameAsStartURL CrawlControlsLanguagesString = "same_as_start_url"
+)
 
 // CrawlControlsSourceUnion contains all possible properties and values from
 // [CrawlControlsSourceStartURL], [CrawlControlsSourceSitemap].
@@ -5116,6 +5164,11 @@ type BatchSubmitParamsInputCrawlDataSourceStartURLControls struct {
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
 	// RE2 pattern for URLs to include. The `start_url` itself is always included.
 	Regex param.Opt[string] `json:"regex,omitzero"`
+	// Languages whose pages are followed. `same_as_start_url` follows only the start
+	// page's language; a list of language codes such as `["en"]` follows those
+	// languages. Links whose language cannot be determined are followed. When omitted
+	// all urls are crawled.
+	Languages BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
 	paramObj
 }
 
@@ -5126,6 +5179,30 @@ func (r BatchSubmitParamsInputCrawlDataSourceStartURLControls) MarshalJSON() (da
 func (r *BatchSubmitParamsInputCrawlDataSourceStartURLControls) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesUnion struct {
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataSourceStartURLControlsLanguagesString)
+	OfBatchSubmitsInputCrawlDataSourceStartURLControlsLanguagesString         param.Opt[string] `json:",omitzero,inline"`
+	OfBatchSubmitsInputCrawlDataSourceStartURLControlsLanguagesArrayItemArray []string          `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBatchSubmitsInputCrawlDataSourceStartURLControlsLanguagesString, u.OfBatchSubmitsInputCrawlDataSourceStartURLControlsLanguagesArrayItemArray)
+}
+func (u *BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesString string
+
+const (
+	BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataSourceStartURLControlsLanguagesString = "same_as_start_url"
+)
 
 // Scrape the pages listed in a domain's sitemap. Links on those pages are not
 // followed.

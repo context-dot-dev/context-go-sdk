@@ -342,7 +342,7 @@ type BatchGetResponse struct {
 	// Tags stored on the batch at submission.
 	Tags   []string               `json:"tags" api:"required"`
 	Timing BatchGetResponseTiming `json:"timing" api:"required"`
-	// API key usage for this request.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BatchGetResponseKeyMetadata `json:"key_metadata"`
 	// Batch completion delivery ID, when available.
 	WebhookDeliveryID string `json:"webhook_delivery_id"`
@@ -578,7 +578,7 @@ func (r *BatchGetResponseTiming) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// API key usage for this request.
+// Credits this request used and your remaining balance.
 type BatchGetResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
@@ -951,7 +951,7 @@ type BatchCancelResponse struct {
 	Tags []string `json:"tags" api:"required"`
 	// Batch timestamps.
 	Timing BatchCancelResponseTiming `json:"timing" api:"required"`
-	// API key usage for this request.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BatchCancelResponseKeyMetadata `json:"key_metadata"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1100,7 +1100,7 @@ func (r *BatchCancelResponseTiming) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// API key usage for this request.
+// Credits this request used and your remaining balance.
 type BatchCancelResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
@@ -3755,7 +3755,7 @@ type BatchSubmitResponse struct {
 	Status BatchSubmitResponseStatus `json:"status" api:"required"`
 	// Tags stored on the batch.
 	Tags []string `json:"tags" api:"required"`
-	// API key usage for this request.
+	// Credits this request used and your remaining balance.
 	KeyMetadata BatchSubmitResponseKeyMetadata `json:"key_metadata"`
 	// Secret for verifying `X-Context-Signature`. Only submit returns it, so store it.
 	WebhookSecret string `json:"webhook_secret"`
@@ -3905,7 +3905,7 @@ const (
 	BatchSubmitResponseStatusQueued BatchSubmitResponseStatus = "queued"
 )
 
-// API key usage for this request.
+// Credits this request used and your remaining balance.
 type BatchSubmitResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.31.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.0...v2.31.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **news:** return extended descriptions for index search ([#2019](https://github.com/context-dot-dev/context-go-sdk/issues/2019)) ([e925dbb](https://github.com/context-dot-dev/context-go-sdk/commit/e925dbbdc55921594f6f19dd84c0ec9c50757304))
+
 ## [2.31.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.30.0...v2.31.0) (2026-10-19)
 
 

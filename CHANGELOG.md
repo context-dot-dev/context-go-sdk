@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.33.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.32.0...v2.33.0) (2026-10-21)
+
+
+### Features
+
+* **scrape:** add sourcePreference to choose between HTML conversion and published Markdown ([#2010](https://github.com/context-dot-dev/context-go-sdk/issues/2010)) ([66a4d8a](https://github.com/context-dot-dev/context-go-sdk/commit/66a4d8ab33642fec05dae50cdfc43a3b769bedbe))
+
 ## [2.32.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.3...v2.32.0) (2026-10-21)
 
 

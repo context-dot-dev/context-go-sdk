@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.32.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.3...v2.32.0) (2026-10-21)
+
+
+### Features
+
+* **batch:** follow only chosen languages in start_url crawls ([#2003](https://github.com/context-dot-dev/context-go-sdk/issues/2003)) ([6b3d5a2](https://github.com/context-dot-dev/context-go-sdk/commit/6b3d5a2119edcae65377d8bb9f7619ba3f2d78ee))
+
 ## [2.31.3](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.2...v2.31.3) (2026-10-21)
 
 

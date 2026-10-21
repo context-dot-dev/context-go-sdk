@@ -87,7 +87,8 @@ type NewsSearchResponseData struct {
 	ID string `json:"id" api:"required"`
 	// Bylined authors. Empty when no byline is available.
 	Authors []string `json:"authors" api:"required"`
-	// Short summary or excerpt of the article, when the publisher provides one.
+	// Article summary or excerpt. Natural-language search descriptions include
+	// matching passages and are capped at 2,000 characters.
 	Description string `json:"description" api:"required"`
 	// Lead image for the article, when one is available.
 	ImageURL string `json:"image_url" api:"required"`

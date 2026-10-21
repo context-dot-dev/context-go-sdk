@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.31.3](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.2...v2.31.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **openapi:** document request_id and key_metadata on every response in one place ([#2042](https://github.com/context-dot-dev/context-go-sdk/issues/2042)) ([e307e16](https://github.com/context-dot-dev/context-go-sdk/commit/e307e164fcec59668ae549c822a7eb5d44b720a6))
+
 ## [2.31.2](https://github.com/context-dot-dev/context-go-sdk/compare/v2.31.1...v2.31.2) (2026-10-21)
 
 

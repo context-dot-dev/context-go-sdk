@@ -204,9 +204,10 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 						Instructions: contextdev.String("instructions"),
 					},
 					MarkdownParams: contextdev.BatchSubmitParamsInputScrapeDataMarkdownParams{
-						IncludeImages: contextdev.Bool(true),
-						IncludeLinks:  contextdev.Bool(true),
-						InlineImages:  "placeholder",
+						IncludeImages:    contextdev.Bool(true),
+						IncludeLinks:     contextdev.Bool(true),
+						InlineImages:     "placeholder",
+						SourcePreference: []string{"html-conversion"},
 					},
 					MaxAgeMs: contextdev.Int(0),
 					ParseParams: contextdev.BatchSubmitParamsInputScrapeDataParseParamsUnion{

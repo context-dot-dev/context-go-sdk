@@ -4301,15 +4301,29 @@ func (r *BatchSubmitParamsInputScrapeDataJsonParams) UnmarshalJSON(data []byte) 
 
 // Markdown options. Requires `formats.markdown`.
 type BatchSubmitParamsInputScrapeDataMarkdownParams struct {
-	// Include images in the Markdown using image syntax with URLs and alt text.
+	// Include images in the Markdown using image syntax with URLs and alt text. Only
+	// applies to `html-conversion` extractions.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	// Keep link URLs in the Markdown. Set false to return link text without URLs.
+	// Keep link URLs in the Markdown. Set false to return link text without URLs. Only
+	// applies to `html-conversion` extractions.
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
 	// How base64 images appear: `placeholder` (default) or `preserve`. Requires
-	// `includeImages`.
+	// `includeImages`. Only applies to `html-conversion` extractions.
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
+	// Where the Markdown should come from, in order of preference; the first usable
+	// source wins. `html-conversion` converts the page HTML, and counts as unusable
+	// when the conversion has almost no content (under 200 characters).
+	// `markdown-direct` uses the official Markdown version the page publishes through,
+	// returned as the site serves it. Defaults to
+	// `["html-conversion", "markdown-direct"]`. With only `markdown-direct`, a page
+	// that publishes no Markdown fails with `NO_PUBLISHED_MARKDOWN` and is not billed.
+	// Requests with include or exclude selectors never use `markdown-direct`, so they
+	// must include `html-conversion`.
+	//
+	// Any of "html-conversion", "markdown-direct".
+	SourcePreference []string `json:"sourcePreference,omitzero"`
 	paramObj
 }
 
@@ -5319,15 +5333,29 @@ func (r *BatchSubmitParamsInputCrawlDataJsonParams) UnmarshalJSON(data []byte) e
 
 // Markdown options. Requires `formats.markdown`.
 type BatchSubmitParamsInputCrawlDataMarkdownParams struct {
-	// Include images in the Markdown using image syntax with URLs and alt text.
+	// Include images in the Markdown using image syntax with URLs and alt text. Only
+	// applies to `html-conversion` extractions.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	// Keep link URLs in the Markdown. Set false to return link text without URLs.
+	// Keep link URLs in the Markdown. Set false to return link text without URLs. Only
+	// applies to `html-conversion` extractions.
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
 	// How base64 images appear: `placeholder` (default) or `preserve`. Requires
-	// `includeImages`.
+	// `includeImages`. Only applies to `html-conversion` extractions.
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
+	// Where the Markdown should come from, in order of preference; the first usable
+	// source wins. `html-conversion` converts the page HTML, and counts as unusable
+	// when the conversion has almost no content (under 200 characters).
+	// `markdown-direct` uses the official Markdown version the page publishes through,
+	// returned as the site serves it. Defaults to
+	// `["html-conversion", "markdown-direct"]`. With only `markdown-direct`, a page
+	// that publishes no Markdown fails with `NO_PUBLISHED_MARKDOWN` and is not billed.
+	// Requests with include or exclude selectors never use `markdown-direct`, so they
+	// must include `html-conversion`.
+	//
+	// Any of "html-conversion", "markdown-direct".
+	SourcePreference []string `json:"sourcePreference,omitzero"`
 	paramObj
 }
 

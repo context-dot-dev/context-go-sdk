@@ -199,9 +199,10 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			Instructions: contextdev.String("instructions"),
 		},
 		MarkdownParams: contextdev.WebScrapeParamsMarkdownParams{
-			IncludeImages: contextdev.Bool(true),
-			IncludeLinks:  contextdev.Bool(true),
-			InlineImages:  "placeholder",
+			IncludeImages:    contextdev.Bool(true),
+			IncludeLinks:     contextdev.Bool(true),
+			InlineImages:     "placeholder",
+			SourcePreference: []string{"html-conversion"},
 		},
 		MaxAgeMs: contextdev.Int(0),
 		ParseParams: contextdev.WebScrapeParamsParseParamsUnion{
@@ -430,6 +431,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		},
 		SettleAnimations:    contextdev.Bool(true),
 		ShortenBase64Images: contextdev.Bool(true),
+		SourcePreference:    []string{"html-conversion"},
 		StopAfterMs:         contextdev.Int(10000),
 		Tags:                []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebWebCrawlMdParamsTimeoutOpts{

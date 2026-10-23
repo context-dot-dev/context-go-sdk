@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.34.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.33.1...v2.34.0) (2026-10-23)
+
+
+### Features
+
+* **people:** publish people search in the API specification ([#2094](https://github.com/context-dot-dev/context-go-sdk/issues/2094)) ([460f00f](https://github.com/context-dot-dev/context-go-sdk/commit/460f00fb4573409e21ce1e200a88591ef9894d29))
+
 ## [2.33.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.33.0...v2.33.1) (2026-10-21)
 
 

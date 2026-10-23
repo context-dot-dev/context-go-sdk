@@ -44,6 +44,14 @@ func (r *PersonService) Enrich(ctx context.Context, body PersonEnrichParams, opt
 	return res, err
 }
 
+// Find people with a natural-language query.
+func (r *PersonService) Search(ctx context.Context, body PersonSearchParams, opts ...option.RequestOption) (res *PersonSearchResponse, err error) {
+	opts = slices.Concat(r.options, opts)
+	path := "people/search"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	return res, err
+}
+
 type PersonEnrichResponse struct {
 	// The highest-scoring person candidate.
 	Match PersonEnrichResponseMatchUnion `json:"match" api:"required"`
@@ -657,6 +665,171 @@ func (r *PersonEnrichResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+type PersonSearchResponse struct {
+	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
+	// support.
+	RequestID string `json:"request_id" api:"required" format:"uuid"`
+	// Up to 10 matching people, most relevant first.
+	Results []PersonSearchResponseResult `json:"results" api:"required"`
+	// Credits this request used and your remaining balance.
+	KeyMetadata PersonSearchResponseKeyMetadata `json:"key_metadata"`
+	// Pass as cursor to fetch the next page; null when there are no more results.
+	NextCursor string `json:"next_cursor" api:"nullable"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		RequestID   respjson.Field
+		Results     respjson.Field
+		KeyMetadata respjson.Field
+		NextCursor  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PersonSearchResponse) RawJSON() string { return r.JSON.raw }
+func (r *PersonSearchResponse) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// A person matching your search; unavailable details are null or empty lists.
+type PersonSearchResponseResult struct {
+	// What the person does.
+	Description string `json:"description" api:"required"`
+	// Whether the person is currently a founder or co-founder.
+	IsFounder bool `json:"is_founder" api:"required"`
+	// Where the person lives.
+	Location PersonSearchResponseResultLocation `json:"location" api:"required"`
+	// Full name.
+	Name string `json:"name" api:"required"`
+	// Public professional profile URLs.
+	Profiles []string `json:"profiles" api:"required"`
+	// The person’s current role.
+	Role PersonSearchResponseResultRole `json:"role" api:"required"`
+	// Schools attended.
+	Schools []string `json:"schools" api:"required"`
+	// Professional skills.
+	Skills []string `json:"skills" api:"required"`
+	// Years of professional experience.
+	YearsOfExperience int64 `json:"years_of_experience" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Description       respjson.Field
+		IsFounder         respjson.Field
+		Location          respjson.Field
+		Name              respjson.Field
+		Profiles          respjson.Field
+		Role              respjson.Field
+		Schools           respjson.Field
+		Skills            respjson.Field
+		YearsOfExperience respjson.Field
+		ExtraFields       map[string]respjson.Field
+		raw               string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PersonSearchResponseResult) RawJSON() string { return r.JSON.raw }
+func (r *PersonSearchResponseResult) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Where the person lives.
+type PersonSearchResponseResultLocation struct {
+	// City.
+	City string `json:"city" api:"required"`
+	// Country as a two-letter code, such as US or GB.
+	CountryCode string `json:"country_code" api:"required"`
+	// State or region.
+	Region string `json:"region" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		City        respjson.Field
+		CountryCode respjson.Field
+		Region      respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PersonSearchResponseResultLocation) RawJSON() string { return r.JSON.raw }
+func (r *PersonSearchResponseResultLocation) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// The person’s current role.
+type PersonSearchResponseResultRole struct {
+	// Current employer, when known.
+	Company PersonSearchResponseResultRoleCompany `json:"company" api:"required"`
+	// Areas of responsibility.
+	Functions []string `json:"functions" api:"required"`
+	// Seniority level.
+	Seniority string `json:"seniority" api:"required"`
+	// Role start date (YYYY-MM-DD).
+	StartedOn string `json:"started_on" api:"required"`
+	// Job title.
+	Title string `json:"title" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Company     respjson.Field
+		Functions   respjson.Field
+		Seniority   respjson.Field
+		StartedOn   respjson.Field
+		Title       respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PersonSearchResponseResultRole) RawJSON() string { return r.JSON.raw }
+func (r *PersonSearchResponseResultRole) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current employer, when known.
+type PersonSearchResponseResultRoleCompany struct {
+	// The company’s website domain.
+	Domain string `json:"domain" api:"required"`
+	// Company name.
+	Name string `json:"name" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Domain      respjson.Field
+		Name        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PersonSearchResponseResultRoleCompany) RawJSON() string { return r.JSON.raw }
+func (r *PersonSearchResponseResultRoleCompany) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Credits this request used and your remaining balance.
+type PersonSearchResponseKeyMetadata struct {
+	// Credits charged for this request.
+	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
+	// Credits remaining for your organization.
+	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CreditsConsumed  respjson.Field
+		CreditsRemaining respjson.Field
+		ExtraFields      map[string]respjson.Field
+		raw              string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PersonSearchResponseKeyMetadata) RawJSON() string { return r.JSON.raw }
+func (r *PersonSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type PersonEnrichParams struct {
 	// Email address of the person to find.
 	Email param.Opt[string] `json:"email,omitzero" format:"email"`
@@ -821,3 +994,42 @@ const (
 	PersonEnrichParamsZdrEnabled  PersonEnrichParamsZdr = "enabled"
 	PersonEnrichParamsZdrDisabled PersonEnrichParamsZdr = "disabled"
 )
+
+type PersonSearchParams struct {
+	// Describe the people to find.
+	Query string `json:"query" api:"required"`
+	// Use next_cursor with the same query and filters to fetch the next page.
+	Cursor param.Opt[string] `json:"cursor,omitzero"`
+	// Additional constraints every result must match.
+	Filters PersonSearchParamsFilters `json:"filters,omitzero"`
+	// Labels for filtering usage in the dashboard.
+	Tags []string `json:"tags,omitzero"`
+	paramObj
+}
+
+func (r PersonSearchParams) MarshalJSON() (data []byte, err error) {
+	type shadow PersonSearchParams
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *PersonSearchParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Additional constraints every result must match.
+type PersonSearchParamsFilters struct {
+	// Maximum years of professional experience.
+	YearsOfExperienceMax param.Opt[int64] `json:"years_of_experience_max,omitzero"`
+	// Minimum years of professional experience.
+	YearsOfExperienceMin param.Opt[int64] `json:"years_of_experience_min,omitzero"`
+	// Countries people live in as two-letter codes, such as US or GB.
+	Countries []string `json:"countries,omitzero"`
+	paramObj
+}
+
+func (r PersonSearchParamsFilters) MarshalJSON() (data []byte, err error) {
+	type shadow PersonSearchParamsFilters
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *PersonSearchParamsFilters) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}

@@ -163,10 +163,12 @@ Methods:
 Response Types:
 
 - <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonEnrichResponse">PersonEnrichResponse</a>
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonSearchResponse">PersonSearchResponse</a>
 
 Methods:
 
 - <code title="post /people/enrich">client.People.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonService.Enrich">Enrich</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, body <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonEnrichParams">PersonEnrichParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonEnrichResponse">PersonEnrichResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="post /people/search">client.People.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonService.Search">Search</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, body <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonSearchParams">PersonSearchParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#PersonSearchResponse">PersonSearchResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
 # News
 

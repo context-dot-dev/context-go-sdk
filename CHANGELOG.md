@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.37.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.36.1...v2.37.0) (2026-10-27)
+
+
+### Features
+
+* **parse:** mark PDF page numbers inline in Markdown with includeNumberedPages ([#2110](https://github.com/context-dot-dev/context-go-sdk/issues/2110)) ([880d536](https://github.com/context-dot-dev/context-go-sdk/commit/880d5366ad262b818a502bbb8c1ba33ae844f7fa))
+
+
+### Bug Fixes
+
+* **people:** split ultra people ranking on its strongest phrase signals ([#2209](https://github.com/context-dot-dev/context-go-sdk/issues/2209)) ([daf4837](https://github.com/context-dot-dev/context-go-sdk/commit/daf483782e86e408ac25ca51136b8331bc28c3c4))
+
 ## [2.36.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.36.0...v2.36.1) (2026-10-27)
 
 

@@ -712,6 +712,8 @@ type PersonSearchResponseResult struct {
 	Skills []string `json:"skills" api:"required"`
 	// Years of professional experience.
 	YearsOfExperience int64 `json:"years_of_experience" api:"required"`
+	// How well the person matches the query. Only returned in `ultra` mode.
+	Match PersonSearchResponseResultMatch `json:"match"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description       respjson.Field
@@ -723,6 +725,7 @@ type PersonSearchResponseResult struct {
 		Schools           respjson.Field
 		Skills            respjson.Field
 		YearsOfExperience respjson.Field
+		Match             respjson.Field
 		ExtraFields       map[string]respjson.Field
 		raw               string
 	} `json:"-"`
@@ -806,6 +809,24 @@ type PersonSearchResponseResultRoleCompany struct {
 // Returns the unmodified JSON received from the API
 func (r PersonSearchResponseResultRoleCompany) RawJSON() string { return r.JSON.raw }
 func (r *PersonSearchResponseResultRoleCompany) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// How well the person matches the query. Only returned in `ultra` mode.
+type PersonSearchResponseResultMatch struct {
+	// How well the person matches the query, from 0 to 1.
+	Confidence float64 `json:"confidence" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Confidence  respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PersonSearchResponseResultMatch) RawJSON() string { return r.JSON.raw }
+func (r *PersonSearchResponseResultMatch) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -996,12 +1017,19 @@ const (
 )
 
 type PersonSearchParams struct {
-	// Describe the people to find.
+	// Describe the people to find. Up to 500 characters in `fast` mode and 5000 in
+	// `ultra` mode.
 	Query string `json:"query" api:"required"`
-	// Use next_cursor with the same query and filters to fetch the next page.
+	// Use next_cursor with the same query, mode and filters to fetch the next page.
 	Cursor param.Opt[string] `json:"cursor,omitzero"`
 	// Additional constraints every result must match.
 	Filters PersonSearchParamsFilters `json:"filters,omitzero"`
+	// `fast` matches people on basic criteria (e.g. their role, location or
+	// background); `ultra` plans a deeper search, judges each candidate against every
+	// criterion in the query and explains each match.
+	//
+	// Any of "fast", "ultra".
+	Mode PersonSearchParamsMode `json:"mode,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
@@ -1033,3 +1061,13 @@ func (r PersonSearchParamsFilters) MarshalJSON() (data []byte, err error) {
 func (r *PersonSearchParamsFilters) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// `fast` matches people on basic criteria (e.g. their role, location or
+// background); `ultra` plans a deeper search, judges each candidate against every
+// criterion in the query and explains each match.
+type PersonSearchParamsMode string
+
+const (
+	PersonSearchParamsModeFast  PersonSearchParamsMode = "fast"
+	PersonSearchParamsModeUltra PersonSearchParamsMode = "ultra"
+)

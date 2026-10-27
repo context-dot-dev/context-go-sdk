@@ -88,6 +88,7 @@ func TestPersonSearchWithOptionalParams(t *testing.T) {
 			YearsOfExperienceMax: contextdev.Int(0),
 			YearsOfExperienceMin: contextdev.Int(0),
 		},
+		Mode: contextdev.PersonSearchParamsModeFast,
 		Tags: []string{"production", "team-alpha"},
 	})
 	if err != nil {

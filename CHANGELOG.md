@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.36.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.35.0...v2.36.0) (2026-10-27)
+
+
+### Features
+
+* **people:** add ultra mode to people search ([#2149](https://github.com/context-dot-dev/context-go-sdk/issues/2149)) ([adfc1ac](https://github.com/context-dot-dev/context-go-sdk/commit/adfc1acc1959570f3409a18fcf6b66a3ec1a0221))
+
 ## [2.35.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.34.0...v2.35.0) (2026-10-27)
 
 

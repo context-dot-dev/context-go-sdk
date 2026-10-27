@@ -254,9 +254,10 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 						MainContentOnly:  contextdev.Bool(true),
 						Parsers: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsParsers{
 							Pdf: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsParsersPdf{
-								EndPage:   contextdev.Int(1),
-								Ocr:       "off",
-								StartPage: contextdev.Int(1),
+								EndPage:              contextdev.Int(1),
+								IncludeNumberedPages: contextdev.Bool(true),
+								Ocr:                  "off",
+								StartPage:            contextdev.Int(1),
 							},
 						},
 						Profile: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsProfileUnion{

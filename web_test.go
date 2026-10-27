@@ -249,9 +249,10 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			MainContentOnly:  contextdev.Bool(true),
 			Parsers: contextdev.WebScrapeParamsSharedParamsParsers{
 				Pdf: contextdev.WebScrapeParamsSharedParamsParsersPdf{
-					EndPage:   contextdev.Int(1),
-					Ocr:       "off",
-					StartPage: contextdev.Int(1),
+					EndPage:              contextdev.Int(1),
+					IncludeNumberedPages: contextdev.Bool(true),
+					Ocr:                  "off",
+					StartPage:            contextdev.Int(1),
 				},
 			},
 			Profile: contextdev.WebScrapeParamsSharedParamsProfileUnion{

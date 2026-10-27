@@ -32,11 +32,12 @@ func TestParseHandleWithOptionalParams(t *testing.T) {
 		context.TODO(),
 		io.Reader(bytes.NewBuffer([]byte("Example data"))),
 		contextdev.ParseHandleParams{
-			Client:        contextdev.String("x"),
-			Extension:     contextdev.ParseHandleParamsExtensionTxt,
-			IncludeImages: contextdev.Bool(true),
-			IncludeLinks:  contextdev.Bool(true),
-			Ocr:           contextdev.Bool(true),
+			Client:               contextdev.String("x"),
+			Extension:            contextdev.ParseHandleParamsExtensionTxt,
+			IncludeImages:        contextdev.Bool(true),
+			IncludeLinks:         contextdev.Bool(true),
+			IncludeNumberedPages: contextdev.Bool(true),
+			Ocr:                  contextdev.Bool(true),
 			Pdf: contextdev.ParseHandleParamsPdf{
 				End:   contextdev.Int(1),
 				Start: contextdev.Int(1),

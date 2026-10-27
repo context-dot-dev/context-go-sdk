@@ -161,6 +161,9 @@ type ParseHandleParams struct {
 	IncludeImages param.Opt[bool] `query:"includeImages,omitzero" json:"-"`
 	// Preserve hyperlinks in Markdown output
 	IncludeLinks param.Opt[bool] `query:"includeLinks,omitzero" json:"-"`
+	// Start each PDF page in the Markdown with a `<!-- page N -->` line, where N is
+	// the original 1-based page number.
+	IncludeNumberedPages param.Opt[bool] `query:"includeNumberedPages,omitzero" json:"-"`
 	// Read text from images and scanned PDF pages. PDF page ranges still apply.
 	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
 	// Shorten base64-encoded image data in the Markdown output

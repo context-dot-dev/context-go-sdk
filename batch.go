@@ -4846,6 +4846,9 @@ func (r *BatchSubmitParamsInputScrapeDataSharedParamsParsers) UnmarshalJSON(data
 type BatchSubmitParamsInputScrapeDataSharedParamsParsersPdf struct {
 	// Last page to parse. Must be at least `startPage`.
 	EndPage param.Opt[int64] `json:"endPage,omitzero"`
+	// Start each page in the Markdown with a `<!-- page N -->` line using its original
+	// 1-based page number; these responses are never served from cache.
+	IncludeNumberedPages param.Opt[bool] `json:"includeNumberedPages,omitzero"`
 	// First page to parse, starting at 1.
 	StartPage param.Opt[int64] `json:"startPage,omitzero"`
 	// Set `auto` to read scanned pages with OCR.
@@ -5866,6 +5869,9 @@ func (r *BatchSubmitParamsInputCrawlDataSharedParamsParsers) UnmarshalJSON(data 
 type BatchSubmitParamsInputCrawlDataSharedParamsParsersPdf struct {
 	// Last page to parse. Must be at least `startPage`.
 	EndPage param.Opt[int64] `json:"endPage,omitzero"`
+	// Start each page in the Markdown with a `<!-- page N -->` line using its original
+	// 1-based page number; these responses are never served from cache.
+	IncludeNumberedPages param.Opt[bool] `json:"includeNumberedPages,omitzero"`
 	// First page to parse, starting at 1.
 	StartPage param.Opt[int64] `json:"startPage,omitzero"`
 	// Set `auto` to read scanned pages with OCR.

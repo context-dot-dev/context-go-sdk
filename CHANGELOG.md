@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.36.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.36.0...v2.36.1) (2026-10-27)
+
+
+### Documentation
+
+* **people:** note that complex ultra people searches can take up to 60 seconds ([#2206](https://github.com/context-dot-dev/context-go-sdk/issues/2206)) ([07fa9e3](https://github.com/context-dot-dev/context-go-sdk/commit/07fa9e379dab68a6053dd2cbb5157180dcc8ef9f))
+
 ## [2.36.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.35.0...v2.36.0) (2026-10-27)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.35.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.34.0...v2.35.0) (2026-10-27)
+
+
+### Features
+
+* **api:** serve a public OpenAPI spec and generate the SDKs from it ([#2075](https://github.com/context-dot-dev/context-go-sdk/issues/2075)) ([820f564](https://github.com/context-dot-dev/context-go-sdk/commit/820f564b202adabcf0f3663c96593fc542494eba))
+
 ## [2.34.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.33.1...v2.34.0) (2026-10-23)
 
 

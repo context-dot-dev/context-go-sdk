@@ -36,6 +36,8 @@ func NewIndustryService(opts ...option.RequestOption) (r IndustryService) {
 }
 
 // Classify a company into NAICS industry codes.
+//
+// Deprecated: deprecated
 func (r *IndustryService) GetNaics(ctx context.Context, query IndustryGetNaicsParams, opts ...option.RequestOption) (res *IndustryGetNaicsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/naics"
@@ -44,6 +46,8 @@ func (r *IndustryService) GetNaics(ctx context.Context, query IndustryGetNaicsPa
 }
 
 // Classify a company into SIC industry codes.
+//
+// Deprecated: deprecated
 func (r *IndustryService) GetSic(ctx context.Context, query IndustryGetSicParams, opts ...option.RequestOption) (res *IndustryGetSicResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "web/sic"

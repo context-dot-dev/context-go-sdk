@@ -161,126 +161,128 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 	_, err := client.Batch.Submit(context.TODO(), contextdev.BatchSubmitParams{
 		Input: contextdev.BatchSubmitParamsInputUnion{
 			OfScrape: &contextdev.BatchSubmitParamsInputScrape{
-				Data: contextdev.BatchSubmitParamsInputScrapeData{
-					Formats: contextdev.BatchSubmitParamsInputScrapeDataFormats{
-						Bytes:      contextdev.Bool(true),
-						Highlights: contextdev.Bool(true),
-						HTML:       contextdev.Bool(true),
-						Images:     contextdev.Bool(true),
-						Json:       contextdev.Bool(true),
-						Markdown:   contextdev.Bool(true),
-						Parse:      contextdev.Bool(true),
-						Product:    contextdev.Bool(true),
-						Screenshot: contextdev.Bool(true),
-					},
-					URLs: []contextdev.BatchSubmitParamsInputScrapeDataURL{{
-						URL:    "https://example.com/products/anvil",
-						ItemID: contextdev.String("sku-1"),
-						Meta: map[string]any{
-							"category": "bar",
+				Data: contextdev.BatchSubmitParamsInputScrapeDataUnion{
+					OfScrapeAnything: &contextdev.BatchSubmitParamsInputScrapeDataScrapeAnything{
+						Formats: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingFormats{
+							Bytes:      contextdev.Bool(true),
+							Highlights: contextdev.Bool(true),
+							HTML:       contextdev.Bool(true),
+							Images:     contextdev.Bool(true),
+							Json:       contextdev.Bool(true),
+							Markdown:   contextdev.Bool(true),
+							Parse:      contextdev.Bool(true),
+							Product:    contextdev.Bool(true),
+							Screenshot: contextdev.Bool(true),
 						},
-					}, {
-						URL:    "https://example.com/products/hammer",
-						ItemID: contextdev.String("sku-2"),
-						Meta: map[string]any{
-							"foo": "bar",
-						},
-					}},
-					HighlightsParams: contextdev.BatchSubmitParamsInputScrapeDataHighlightsParams{
-						Query:         "x",
-						MaxCharacters: contextdev.Int(100),
-					},
-					ImageParams: contextdev.BatchSubmitParamsInputScrapeDataImageParams{
-						Dedupe: "none",
-						Enrich: []string{"dimensions"},
-					},
-					JsonParams: contextdev.BatchSubmitParamsInputScrapeDataJsonParams{
-						Schema: map[string]any{
-							"type":                 "bar",
-							"properties":           "bar",
-							"required":             "bar",
-							"additionalProperties": "bar",
-						},
-						Instructions: contextdev.String("instructions"),
-					},
-					MarkdownParams: contextdev.BatchSubmitParamsInputScrapeDataMarkdownParams{
-						IncludeImages:    contextdev.Bool(true),
-						IncludeLinks:     contextdev.Bool(true),
-						InlineImages:     "placeholder",
-						SourcePreference: []string{"html-conversion"},
-					},
-					MaxAgeMs: contextdev.Int(0),
-					ParseParams: contextdev.BatchSubmitParamsInputScrapeDataParseParamsUnion{
-						OfCustomParser: &contextdev.BatchSubmitParamsInputScrapeDataParseParamsCustomParser{
-							Rules: map[string]contextdev.BatchSubmitParamsInputScrapeDataParseParamsCustomParserRuleUnion{
-								"title": {
-									OfString: contextdev.String("h1"),
-								},
-								"links": {
-									OfBatchSubmitsInputScrapeDataParseParamsCustomParserRuleObject: &contextdev.BatchSubmitParamsInputScrapeDataParseParamsCustomParserRuleObject{
-										Selector: "a",
-										Output:   "text",
-										Type:     "list",
-									},
-								},
+						URLs: []contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingURL{{
+							URL:    "https://example.com/products/anvil",
+							ItemID: contextdev.String("sku-1"),
+							Meta: map[string]any{
+								"category": "bar",
 							},
-							Type: "custom",
-						},
-					},
-					ProductParams: contextdev.BatchSubmitParamsInputScrapeDataProductParams{
-						DedupeImages: contextdev.Bool(true),
-					},
-					ScreenshotParams: contextdev.BatchSubmitParamsInputScrapeDataScreenshotParams{
-						Area: contextdev.BatchSubmitParamsInputScrapeDataScreenshotParamsAreaUnion{
-							OfPage: contextdev.String("viewport"),
-						},
-						Format: "png",
-					},
-					SharedParams: contextdev.BatchSubmitParamsInputScrapeDataSharedParams{
-						Actions: []contextdev.BatchSubmitParamsInputScrapeDataSharedParamsActionUnion{{
-							OfPerform: &contextdev.BatchSubmitParamsInputScrapeDataSharedParamsActionPerform{
-								Action: "Click the product details tab",
+						}, {
+							URL:    "https://example.com/products/hammer",
+							ItemID: contextdev.String("sku-2"),
+							Meta: map[string]any{
+								"foo": "bar",
 							},
 						}},
-						Country:          contextdev.String("US"),
-						DismissCookies:   contextdev.Bool(true),
-						DismissPopups:    contextdev.Bool(true),
-						ExcludeSelectors: []string{"P"},
-						Headers: map[string]string{
-							"Accept-Language": "en-US",
+						HighlightsParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingHighlightsParams{
+							Query:         "x",
+							MaxCharacters: contextdev.Int(100),
 						},
-						IncludeFrames:    contextdev.Bool(true),
-						IncludeSelectors: []string{"P"},
-						MainContentOnly:  contextdev.Bool(true),
-						Parsers: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsParsers{
-							Pdf: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsParsersPdf{
-								EndPage:              contextdev.Int(1),
-								IncludeNumberedPages: contextdev.Bool(true),
-								Ocr:                  "off",
-								StartPage:            contextdev.Int(1),
+						ImageParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingImageParams{
+							Dedupe: "none",
+							Enrich: []string{"dimensions"},
+						},
+						JsonParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingJsonParams{
+							Schema: map[string]any{
+								"type":                 "bar",
+								"properties":           "bar",
+								"required":             "bar",
+								"additionalProperties": "bar",
+							},
+							Instructions: contextdev.String("instructions"),
+						},
+						MarkdownParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingMarkdownParams{
+							IncludeImages:    contextdev.Bool(true),
+							IncludeLinks:     contextdev.Bool(true),
+							InlineImages:     "placeholder",
+							SourcePreference: []string{"html-conversion"},
+						},
+						MaxAgeMs: contextdev.Int(0),
+						ParseParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsUnion{
+							OfCustomParser: &contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsCustomParser{
+								Rules: map[string]contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsCustomParserRuleUnion{
+									"title": {
+										OfString: contextdev.String("h1"),
+									},
+									"links": {
+										OfBatchSubmitsInputScrapeDataScrapeAnythingParseParamsCustomParserRuleObject: &contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsCustomParserRuleObject{
+											Selector: "a",
+											Output:   "text",
+											Type:     "list",
+										},
+									},
+								},
+								Type: "custom",
 							},
 						},
-						Profile: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsProfileUnion{
-							OfExisting: &contextdev.BatchSubmitParamsInputScrapeDataSharedParamsProfileExisting{
-								ProfileID: "prof_210b9798eb53baa4e69d31c1071cf03d",
+						ProductParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingProductParams{
+							DedupeImages: contextdev.Bool(true),
+						},
+						ScreenshotParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParams{
+							Area: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParamsAreaUnion{
+								OfPage: contextdev.String("viewport"),
+							},
+							Format: "png",
+						},
+						SharedParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParams{
+							Actions: []contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionUnion{{
+								OfPerform: &contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionPerform{
+									Action: "Click the product details tab",
+								},
+							}},
+							Country:          contextdev.String("US"),
+							DismissCookies:   contextdev.Bool(true),
+							DismissPopups:    contextdev.Bool(true),
+							ExcludeSelectors: []string{"P"},
+							Headers: map[string]string{
+								"Accept-Language": "en-US",
+							},
+							IncludeFrames:    contextdev.Bool(true),
+							IncludeSelectors: []string{"P"},
+							MainContentOnly:  contextdev.Bool(true),
+							Parsers: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsers{
+								Pdf: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsersPdf{
+									EndPage:              contextdev.Int(1),
+									IncludeNumberedPages: contextdev.Bool(true),
+									Ocr:                  "off",
+									StartPage:            contextdev.Int(1),
+								},
+							},
+							Profile: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsProfileUnion{
+								OfExisting: &contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsProfileExisting{
+									ProfileID: "prof_210b9798eb53baa4e69d31c1071cf03d",
+								},
+							},
+							SettleAnimations: contextdev.Bool(true),
+							Theme:            "light",
+							Viewport: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsViewport{
+								Height: contextdev.Int(240),
+								Width:  contextdev.Int(240),
+							},
+							WaitFor: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsWaitForUnion{
+								OfInt: contextdev.Int(500),
 							},
 						},
-						SettleAnimations: contextdev.Bool(true),
-						Theme:            "light",
-						Viewport: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsViewport{
-							Height: contextdev.Int(240),
-							Width:  contextdev.Int(240),
+						Tags: []string{"production", "team-alpha"},
+						TimeoutOpts: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingTimeoutOpts{
+							Milliseconds: 1,
+							Behavior:     "fail",
 						},
-						WaitFor: contextdev.BatchSubmitParamsInputScrapeDataSharedParamsWaitForUnion{
-							OfInt: contextdev.Int(500),
-						},
+						Zdr: "disabled",
 					},
-					Tags: []string{"production", "team-alpha"},
-					TimeoutOpts: contextdev.BatchSubmitParamsInputScrapeDataTimeoutOpts{
-						Milliseconds: 1,
-						Behavior:     "fail",
-					},
-					Zdr: "disabled",
 				},
 			},
 		},

@@ -3102,19 +3102,23 @@ type WebScrapeParamsParseParamsPrebuiltParser struct {
 	// (filters[nps_score][]=1 to 5); other filters, sort orders, and pages are
 	// ignored. instagram-profile parses a public profile (instagram.com/{username})
 	// into data: bio, links, follower and post counts, category, business address,
-	// similar_accounts, and latest_posts (the 12 newest). instagram-post parses a post
-	// or reel (/p/…, /reel/…) into data: caption, hashtags, mentions, like, comment,
-	// and view counts, media URLs, tagged users, collaborators, location, and the top
-	// ~14 comments in data.comments. instagram-feed returns the top posts for a
-	// hashtag or keyword (/explore/tags/…, /popular/…) or the recent posts at a
-	// location (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
-	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
-	// it. All three Instagram parsers read public data without logging in, so private
-	// accounts return no posts and follower lists are unavailable. tiktok-profile
-	// parses a public profile (tiktok.com/@{username}) into data: nickname, bio, bio
-	// link, follower, following, like, and video counts, verified, private, and
-	// business flags, and business category; it does not list videos. tiktok-video
-	// parses a video or photo post (/@{username}/video/{id} or
+	// similar_accounts, and latest_posts (up to the 12 posts at the top of the
+	// profile, newest first). Instagram lists pinned posts there ahead of newer ones,
+	// so posts with is_pinned true can be older; when Instagram shows only a rounded
+	// post count (32K), post_count is that rounded number and is_post_count_rounded is
+	// true. instagram-post parses a post or reel (/p/…, /reel/…) into data: caption,
+	// hashtags, mentions, like, comment, and view counts (like_count and view_count
+	// are null when the owner hides them), media URLs, tagged users, collaborators,
+	// location, and the top ~14 comments in data.comments. instagram-feed returns the
+	// top posts for a hashtag or keyword (/explore/tags/…, /popular/…) or the recent
+	// posts at a location (/explore/locations/{id}/…) in data.posts; keyword posts
+	// carry only the shortcode, owner, thumbnail, and views, plus the caption when
+	// Instagram shows it. All three Instagram parsers read public data without logging
+	// in, so private accounts return no posts and follower lists are unavailable.
+	// tiktok-profile parses a public profile (tiktok.com/@{username}) into data:
+	// nickname, bio, bio link, follower, following, like, and video counts, verified,
+	// private, and business flags, and business category; it does not list videos.
+	// tiktok-video parses a video or photo post (/@{username}/video/{id} or
 	// /@{username}/photo/{id}) into data: caption, hashtags, mentions, author, view,
 	// like, comment, share, save, and repost counts, duration, thumbnail, a video_url
 	// that downloads without cookies, image_urls for photo posts, music, location, and

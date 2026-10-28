@@ -886,9 +886,9 @@ type BrandGetParamsBodyByDomain struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDomainTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
-	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
-	// organization has ZDR.
+	// `enabled` disables request logs and traces and omits request and response
+	// content from usage logs. Brand data and hosted assets may still be stored.
+	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
@@ -1006,9 +1006,9 @@ type BrandGetParamsBodyByName struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByNameTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
-	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
-	// organization has ZDR.
+	// `enabled` disables request logs and traces and omits request and response
+	// content from usage logs. Brand data and hosted assets may still be stored.
+	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
@@ -1107,9 +1107,9 @@ type BrandGetParamsBodyByEmail struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByEmailTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
-	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
-	// organization has ZDR.
+	// `enabled` disables request logs and traces and omits request and response
+	// content from usage logs. Brand data and hosted assets may still be stored.
+	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
@@ -1214,9 +1214,9 @@ type BrandGetParamsBodyByTicker struct {
 	TickerExchange string `json:"ticker_exchange,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTickerTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
-	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
-	// organization has ZDR.
+	// `enabled` disables request logs and traces and omits request and response
+	// content from usage logs. Brand data and hosted assets may still be stored.
+	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
@@ -1290,9 +1290,9 @@ type BrandGetParamsBodyByDirectURL struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDirectURLTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
-	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
-	// organization has ZDR.
+	// `enabled` disables request logs and traces and omits request and response
+	// content from usage logs. Brand data and hosted assets may still be stored.
+	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
@@ -1414,9 +1414,9 @@ type BrandGetParamsBodyByTransaction struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTransactionTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
-	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
-	// organization has ZDR.
+	// `enabled` disables request logs and traces and omits request and response
+	// content from usage logs. Brand data and hosted assets may still be stored.
+	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`

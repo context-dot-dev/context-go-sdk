@@ -38,6 +38,7 @@ func TestBrandGetWithOptionalParams(t *testing.T) {
 				Milliseconds: 1000,
 				Behavior:     "fail",
 			},
+			Zdr: "enabled",
 		},
 	})
 	if err != nil {

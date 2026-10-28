@@ -2678,8 +2678,9 @@ type WebExtractStyleguideParams struct {
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts WebExtractStyleguideParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
-	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
-	// your organization has ZDR.
+	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+	// organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr WebExtractStyleguideParamsZdr `query:"zdr,omitzero" json:"-"`
@@ -2727,8 +2728,9 @@ func (r WebExtractStyleguideParamsTimeoutOpts) URLQuery() (v url.Values, err err
 	})
 }
 
-// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
-// your organization has ZDR.
+// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+// organization has ZDR.
 type WebExtractStyleguideParamsZdr string
 
 const (

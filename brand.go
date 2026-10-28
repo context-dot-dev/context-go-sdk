@@ -886,6 +886,12 @@ type BrandGetParamsBodyByDomain struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDomainTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+	// organization has ZDR.
+	//
+	// Any of "enabled", "disabled".
+	Zdr string `json:"zdr,omitzero"`
 	// Discriminator for domain-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_domain".
@@ -904,6 +910,9 @@ func (r *BrandGetParamsBodyByDomain) UnmarshalJSON(data []byte) error {
 func init() {
 	apijson.RegisterFieldValidator[BrandGetParamsBodyByDomain](
 		"force_language", "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese", "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian", "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian", "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi", "fijian", "finnish", "french", "galician", "georgian", "german", "greek", "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi", "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian", "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean", "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian", "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese", "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo", "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian", "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi", "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili", "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan", "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu", "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba", "zulu",
+	)
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByDomain](
+		"zdr", "enabled", "disabled",
 	)
 }
 
@@ -997,6 +1006,12 @@ type BrandGetParamsBodyByName struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByNameTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+	// organization has ZDR.
+	//
+	// Any of "enabled", "disabled".
+	Zdr string `json:"zdr,omitzero"`
 	// Discriminator for name-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_name".
@@ -1018,6 +1033,9 @@ func init() {
 	)
 	apijson.RegisterFieldValidator[BrandGetParamsBodyByName](
 		"force_language", "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese", "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian", "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian", "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi", "fijian", "finnish", "french", "galician", "georgian", "german", "greek", "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi", "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian", "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean", "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian", "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese", "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo", "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian", "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi", "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili", "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan", "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu", "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba", "zulu",
+	)
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByName](
+		"zdr", "enabled", "disabled",
 	)
 }
 
@@ -1089,6 +1107,12 @@ type BrandGetParamsBodyByEmail struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByEmailTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+	// organization has ZDR.
+	//
+	// Any of "enabled", "disabled".
+	Zdr string `json:"zdr,omitzero"`
 	// Discriminator for email-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_email".
@@ -1107,6 +1131,9 @@ func (r *BrandGetParamsBodyByEmail) UnmarshalJSON(data []byte) error {
 func init() {
 	apijson.RegisterFieldValidator[BrandGetParamsBodyByEmail](
 		"force_language", "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese", "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian", "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian", "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi", "fijian", "finnish", "french", "galician", "georgian", "german", "greek", "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi", "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian", "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean", "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian", "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese", "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo", "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian", "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi", "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili", "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan", "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu", "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba", "zulu",
+	)
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByEmail](
+		"zdr", "enabled", "disabled",
 	)
 }
 
@@ -1187,6 +1214,12 @@ type BrandGetParamsBodyByTicker struct {
 	TickerExchange string `json:"ticker_exchange,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTickerTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+	// organization has ZDR.
+	//
+	// Any of "enabled", "disabled".
+	Zdr string `json:"zdr,omitzero"`
 	// Discriminator for ticker-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_ticker".
@@ -1208,6 +1241,9 @@ func init() {
 	)
 	apijson.RegisterFieldValidator[BrandGetParamsBodyByTicker](
 		"ticker_exchange", "AMEX", "AMS", "AQS", "ASX", "ATH", "BER", "BME", "BRU", "BSE", "BUD", "BUE", "BVC", "CBOE", "CNQ", "CPH", "DFM", "DOH", "DUB", "DUS", "DXE", "EGX", "FSX", "HAM", "HEL", "HKSE", "HOSE", "ICE", "IOB", "IST", "JKT", "JNB", "JPX", "KLS", "KOE", "KSC", "KUW", "LIS", "LSE", "MCX", "MEX", "MIL", "MUN", "NASDAQ", "NEO", "NSE", "NYSE", "NZE", "OSL", "OTC", "PAR", "PNK", "PRA", "RIS", "SAO", "SAU", "SES", "SET", "SGO", "SHH", "SHZ", "SIX", "STO", "STU", "TAI", "TAL", "TLV", "TSX", "TSXV", "TWO", "VIE", "WSE", "XETRA",
+	)
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByTicker](
+		"zdr", "enabled", "disabled",
 	)
 }
 
@@ -1254,6 +1290,12 @@ type BrandGetParamsBodyByDirectURL struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDirectURLTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+	// organization has ZDR.
+	//
+	// Any of "enabled", "disabled".
+	Zdr string `json:"zdr,omitzero"`
 	// Discriminator for direct-URL-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_direct_url".
@@ -1267,6 +1309,12 @@ func (r BrandGetParamsBodyByDirectURL) MarshalJSON() (data []byte, err error) {
 }
 func (r *BrandGetParamsBodyByDirectURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByDirectURL](
+		"zdr", "enabled", "disabled",
+	)
 }
 
 // Request deadline and what to return when it passes.
@@ -1366,6 +1414,12 @@ type BrandGetParamsBodyByTransaction struct {
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTransactionTimeoutOpts `json:"timeoutOpts,omitzero"`
+	// `enabled` disables request logs, usage logs, and traces. Brand data and hosted
+	// assets may still be stored. Returns 403 `ZDR_NOT_ENABLED` unless your
+	// organization has ZDR.
+	//
+	// Any of "enabled", "disabled".
+	Zdr string `json:"zdr,omitzero"`
 	// Discriminator for transaction-based brand retrieval.
 	//
 	// This field can be elided, and will marshal its zero value as "by_transaction".
@@ -1387,6 +1441,9 @@ func init() {
 	)
 	apijson.RegisterFieldValidator[BrandGetParamsBodyByTransaction](
 		"force_language", "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese", "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian", "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian", "czech", "danish", "dutch", "english", "esperanto", "estonian", "farsi", "fijian", "finnish", "french", "galician", "georgian", "german", "greek", "guarani", "gujarati", "haitian-creole", "hausa", "hawaiian", "hebrew", "hindi", "hmong", "hungarian", "icelandic", "igbo", "indonesian", "irish", "italian", "japanese", "javanese", "kannada", "kazakh", "khmer", "kinyarwanda", "korean", "kurdish", "kyrgyz", "lao", "latin", "latvian", "lingala", "lithuanian", "luxembourgish", "macedonian", "malagasy", "malay", "malayalam", "maltese", "maori", "marathi", "mongolian", "nepali", "norwegian", "odia", "oromo", "pashto", "pidgin", "polish", "portuguese", "punjabi", "quechua", "romanian", "russian", "samoan", "scottish-gaelic", "serbian", "sesotho", "shona", "sindhi", "sinhala", "slovak", "slovene", "somali", "spanish", "sundanese", "swahili", "swedish", "tagalog", "tajik", "tamil", "tatar", "telugu", "thai", "tibetan", "tigrinya", "tongan", "tswana", "turkish", "turkmen", "ukrainian", "urdu", "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba", "zulu",
+	)
+	apijson.RegisterFieldValidator[BrandGetParamsBodyByTransaction](
+		"zdr", "enabled", "disabled",
 	)
 }
 

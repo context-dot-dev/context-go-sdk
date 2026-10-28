@@ -45,6 +45,7 @@ type Perform string         // Always "perform"
 type Prebuilt string        // Always "prebuilt"
 type Scrape string          // Always "scrape"
 type Scroll string          // Always "scroll"
+type Search string          // Always "search"
 type Semantic string        // Always "semantic"
 type Sitemap string         // Always "sitemap"
 type StartURL string        // Always "start_url"
@@ -79,6 +80,7 @@ func (c Perform) Default() Perform                 { return "perform" }
 func (c Prebuilt) Default() Prebuilt               { return "prebuilt" }
 func (c Scrape) Default() Scrape                   { return "scrape" }
 func (c Scroll) Default() Scroll                   { return "scroll" }
+func (c Search) Default() Search                   { return "search" }
 func (c Semantic) Default() Semantic               { return "semantic" }
 func (c Sitemap) Default() Sitemap                 { return "sitemap" }
 func (c StartURL) Default() StartURL               { return "start_url" }
@@ -113,6 +115,7 @@ func (c Perform) MarshalJSON() ([]byte, error)         { return marshalString(c)
 func (c Prebuilt) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c Scrape) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Scroll) MarshalJSON() ([]byte, error)          { return marshalString(c) }
+func (c Search) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Semantic) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c Sitemap) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c StartURL) MarshalJSON() ([]byte, error)        { return marshalString(c) }

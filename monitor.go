@@ -284,8 +284,8 @@ const (
 
 type MonitorNewResponse struct {
 	ID string `json:"id" api:"required"`
-	// How changes are judged. Defaults to `semantic` for extract targets and page
-	// targets with `instructions`, otherwise `exact`.
+	// How changes are judged. Defaults to `semantic` for extract and search targets
+	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorNewResponseChangeDetectionUnion `json:"change_detection" api:"required"`
 	CreatedAt       time.Time                              `json:"created_at" api:"required" format:"date-time"`
 	// ID of the baseline run queued at creation; null if it will start on the next
@@ -304,7 +304,8 @@ type MonitorNewResponse struct {
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorNewResponseStatus `json:"status" api:"required"`
-	// What to watch: a page, a sitemap, or data extracted from a site.
+	// What to watch: a page, a sitemap, data extracted from a site, or web search
+	// results.
 	Target    MonitorNewResponseTargetUnion `json:"target" api:"required"`
 	UpdatedAt time.Time                     `json:"updated_at" api:"required" format:"date-time"`
 	// Comparison baseline, included on Retrieve. Null until capture completes or after
@@ -432,9 +433,10 @@ func (r *MonitorNewResponseChangeDetectionUnion) UnmarshalJSON(data []byte) erro
 }
 
 // Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
+// sitemap targets, this means URL additions and removals. For search targets, this
+// means every new result.
 type MonitorNewResponseChangeDetectionExact struct {
-	// Use `exact` to compare visible text or sitemap URLs.
+	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -491,13 +493,13 @@ const (
 
 // MonitorNewResponseTargetUnion contains all possible properties and values from
 // [MonitorNewResponseTargetPage], [MonitorNewResponseTargetSitemap],
-// [MonitorNewResponseTargetExtract].
+// [MonitorNewResponseTargetExtract], [MonitorNewResponseTargetSearch].
 //
 // Use the [MonitorNewResponseTargetUnion.AsAny] method to switch on the variant.
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorNewResponseTargetUnion struct {
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorNewResponseTargetPage].
@@ -523,7 +525,9 @@ type MonitorNewResponseTargetUnion struct {
 	MaxPages int64 `json:"max_pages"`
 	// This field is from variant [MonitorNewResponseTargetExtract].
 	Schema map[string]any `json:"schema"`
-	JSON   struct {
+	// This field is from variant [MonitorNewResponseTargetSearch].
+	Query string `json:"query"`
+	JSON  struct {
 		Type                respjson.Field
 		URL                 respjson.Field
 		Actions             respjson.Field
@@ -538,6 +542,7 @@ type MonitorNewResponseTargetUnion struct {
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
+		Query               respjson.Field
 		raw                 string
 	} `json:"-"`
 }
@@ -552,6 +557,7 @@ type anyMonitorNewResponseTarget interface {
 func (MonitorNewResponseTargetPage) implMonitorNewResponseTargetUnion()    {}
 func (MonitorNewResponseTargetSitemap) implMonitorNewResponseTargetUnion() {}
 func (MonitorNewResponseTargetExtract) implMonitorNewResponseTargetUnion() {}
+func (MonitorNewResponseTargetSearch) implMonitorNewResponseTargetUnion()  {}
 
 // Use the following switch statement to find the correct variant
 //
@@ -559,6 +565,7 @@ func (MonitorNewResponseTargetExtract) implMonitorNewResponseTargetUnion() {}
 //	case contextdev.MonitorNewResponseTargetPage:
 //	case contextdev.MonitorNewResponseTargetSitemap:
 //	case contextdev.MonitorNewResponseTargetExtract:
+//	case contextdev.MonitorNewResponseTargetSearch:
 //	default:
 //	  fmt.Errorf("no variant present")
 //	}
@@ -570,6 +577,8 @@ func (u MonitorNewResponseTargetUnion) AsAny() anyMonitorNewResponseTarget {
 		return u.AsSitemap()
 	case "extract":
 		return u.AsExtract()
+	case "search":
+		return u.AsSearch()
 	}
 	return nil
 }
@@ -585,6 +594,11 @@ func (u MonitorNewResponseTargetUnion) AsSitemap() (v MonitorNewResponseTargetSi
 }
 
 func (u MonitorNewResponseTargetUnion) AsExtract() (v MonitorNewResponseTargetExtract) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorNewResponseTargetUnion) AsSearch() (v MonitorNewResponseTargetSearch) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -916,10 +930,39 @@ func (r *MonitorNewResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Search the web on every run and report results not seen before, listed in the
+// change’s `matched_urls` and `evidence`. Semantic detection reports only results
+// describing a new development that matches `instructions`; exact detection
+// reports every new result.
+type MonitorNewResponseTargetSearch struct {
+	// Web search query to run on every check. Supports operators such as `site:`,
+	// `-site:`, and quoted phrases.
+	Query string `json:"query" api:"required"`
+	// Use `search` to watch the whole web for new results about a topic.
+	Type constant.Search `json:"type" default:"search"`
+	// Plain-language description of which new results matter. Defaults to the query.
+	Instructions string `json:"instructions"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Query        respjson.Field
+		Type         respjson.Field
+		Instructions respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseTargetSearch) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseTargetSearch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // MonitorNewResponseBaselineUnion contains all possible properties and values from
 // [MonitorNewResponseBaselinePageBaseline],
 // [MonitorNewResponseBaselineSitemapBaseline],
-// [MonitorNewResponseBaselineExtractBaseline].
+// [MonitorNewResponseBaselineExtractBaseline],
+// [MonitorNewResponseBaselineSearchBaseline].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorNewResponseBaselineUnion struct {
@@ -934,13 +977,16 @@ type MonitorNewResponseBaselineUnion struct {
 	Data any `json:"data"`
 	// This field is from variant [MonitorNewResponseBaselineExtractBaseline].
 	URLsAnalyzed []string `json:"urls_analyzed"`
-	JSON         struct {
+	// This field is from variant [MonitorNewResponseBaselineSearchBaseline].
+	Results []MonitorNewResponseBaselineSearchBaselineResult `json:"results"`
+	JSON    struct {
 		CapturedAt   respjson.Field
 		Text         respjson.Field
 		URLCount     respjson.Field
 		URLs         respjson.Field
 		Data         respjson.Field
 		URLsAnalyzed respjson.Field
+		Results      respjson.Field
 		raw          string
 	} `json:"-"`
 }
@@ -956,6 +1002,11 @@ func (u MonitorNewResponseBaselineUnion) AsSitemapBaseline() (v MonitorNewRespon
 }
 
 func (u MonitorNewResponseBaselineUnion) AsExtractBaseline() (v MonitorNewResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorNewResponseBaselineUnion) AsSearchBaseline() (v MonitorNewResponseBaselineSearchBaseline) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -1036,6 +1087,51 @@ type MonitorNewResponseBaselineExtractBaseline struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorNewResponseBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
 func (r *MonitorNewResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `search` monitor: the search results as last observed.
+type MonitorNewResponseBaselineSearchBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Search results as last observed.
+	Results []MonitorNewResponseBaselineSearchBaselineResult `json:"results" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Results     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseBaselineSearchBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseBaselineSearchBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorNewResponseBaselineSearchBaselineResult struct {
+	// Result snippet.
+	Description string `json:"description" api:"required"`
+	// When the result was published, when known.
+	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
+	Title       string    `json:"title" api:"required"`
+	URL         string    `json:"url" api:"required" format:"uri"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Description respjson.Field
+		PublishedAt respjson.Field
+		Title       respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorNewResponseBaselineSearchBaselineResult) RawJSON() string { return r.JSON.raw }
+func (r *MonitorNewResponseBaselineSearchBaselineResult) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -1177,8 +1273,8 @@ func (r *MonitorNewResponseWebhookFailure) UnmarshalJSON(data []byte) error {
 
 type MonitorGetResponse struct {
 	ID string `json:"id" api:"required"`
-	// How changes are judged. Defaults to `semantic` for extract targets and page
-	// targets with `instructions`, otherwise `exact`.
+	// How changes are judged. Defaults to `semantic` for extract and search targets
+	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorGetResponseChangeDetectionUnion `json:"change_detection" api:"required"`
 	CreatedAt       time.Time                              `json:"created_at" api:"required" format:"date-time"`
 	// Always `web`. Optional.
@@ -1194,7 +1290,8 @@ type MonitorGetResponse struct {
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorGetResponseStatus `json:"status" api:"required"`
-	// What to watch: a page, a sitemap, or data extracted from a site.
+	// What to watch: a page, a sitemap, data extracted from a site, or web search
+	// results.
 	Target    MonitorGetResponseTargetUnion `json:"target" api:"required"`
 	UpdatedAt time.Time                     `json:"updated_at" api:"required" format:"date-time"`
 	// Comparison baseline, included on Retrieve. Null until capture completes or after
@@ -1321,9 +1418,10 @@ func (r *MonitorGetResponseChangeDetectionUnion) UnmarshalJSON(data []byte) erro
 }
 
 // Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
+// sitemap targets, this means URL additions and removals. For search targets, this
+// means every new result.
 type MonitorGetResponseChangeDetectionExact struct {
-	// Use `exact` to compare visible text or sitemap URLs.
+	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1380,13 +1478,13 @@ const (
 
 // MonitorGetResponseTargetUnion contains all possible properties and values from
 // [MonitorGetResponseTargetPage], [MonitorGetResponseTargetSitemap],
-// [MonitorGetResponseTargetExtract].
+// [MonitorGetResponseTargetExtract], [MonitorGetResponseTargetSearch].
 //
 // Use the [MonitorGetResponseTargetUnion.AsAny] method to switch on the variant.
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorGetResponseTargetUnion struct {
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorGetResponseTargetPage].
@@ -1412,7 +1510,9 @@ type MonitorGetResponseTargetUnion struct {
 	MaxPages int64 `json:"max_pages"`
 	// This field is from variant [MonitorGetResponseTargetExtract].
 	Schema map[string]any `json:"schema"`
-	JSON   struct {
+	// This field is from variant [MonitorGetResponseTargetSearch].
+	Query string `json:"query"`
+	JSON  struct {
 		Type                respjson.Field
 		URL                 respjson.Field
 		Actions             respjson.Field
@@ -1427,6 +1527,7 @@ type MonitorGetResponseTargetUnion struct {
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
+		Query               respjson.Field
 		raw                 string
 	} `json:"-"`
 }
@@ -1441,6 +1542,7 @@ type anyMonitorGetResponseTarget interface {
 func (MonitorGetResponseTargetPage) implMonitorGetResponseTargetUnion()    {}
 func (MonitorGetResponseTargetSitemap) implMonitorGetResponseTargetUnion() {}
 func (MonitorGetResponseTargetExtract) implMonitorGetResponseTargetUnion() {}
+func (MonitorGetResponseTargetSearch) implMonitorGetResponseTargetUnion()  {}
 
 // Use the following switch statement to find the correct variant
 //
@@ -1448,6 +1550,7 @@ func (MonitorGetResponseTargetExtract) implMonitorGetResponseTargetUnion() {}
 //	case contextdev.MonitorGetResponseTargetPage:
 //	case contextdev.MonitorGetResponseTargetSitemap:
 //	case contextdev.MonitorGetResponseTargetExtract:
+//	case contextdev.MonitorGetResponseTargetSearch:
 //	default:
 //	  fmt.Errorf("no variant present")
 //	}
@@ -1459,6 +1562,8 @@ func (u MonitorGetResponseTargetUnion) AsAny() anyMonitorGetResponseTarget {
 		return u.AsSitemap()
 	case "extract":
 		return u.AsExtract()
+	case "search":
+		return u.AsSearch()
 	}
 	return nil
 }
@@ -1474,6 +1579,11 @@ func (u MonitorGetResponseTargetUnion) AsSitemap() (v MonitorGetResponseTargetSi
 }
 
 func (u MonitorGetResponseTargetUnion) AsExtract() (v MonitorGetResponseTargetExtract) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorGetResponseTargetUnion) AsSearch() (v MonitorGetResponseTargetSearch) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -1805,10 +1915,39 @@ func (r *MonitorGetResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Search the web on every run and report results not seen before, listed in the
+// change’s `matched_urls` and `evidence`. Semantic detection reports only results
+// describing a new development that matches `instructions`; exact detection
+// reports every new result.
+type MonitorGetResponseTargetSearch struct {
+	// Web search query to run on every check. Supports operators such as `site:`,
+	// `-site:`, and quoted phrases.
+	Query string `json:"query" api:"required"`
+	// Use `search` to watch the whole web for new results about a topic.
+	Type constant.Search `json:"type" default:"search"`
+	// Plain-language description of which new results matter. Defaults to the query.
+	Instructions string `json:"instructions"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Query        respjson.Field
+		Type         respjson.Field
+		Instructions respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseTargetSearch) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseTargetSearch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // MonitorGetResponseBaselineUnion contains all possible properties and values from
 // [MonitorGetResponseBaselinePageBaseline],
 // [MonitorGetResponseBaselineSitemapBaseline],
-// [MonitorGetResponseBaselineExtractBaseline].
+// [MonitorGetResponseBaselineExtractBaseline],
+// [MonitorGetResponseBaselineSearchBaseline].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorGetResponseBaselineUnion struct {
@@ -1823,13 +1962,16 @@ type MonitorGetResponseBaselineUnion struct {
 	Data any `json:"data"`
 	// This field is from variant [MonitorGetResponseBaselineExtractBaseline].
 	URLsAnalyzed []string `json:"urls_analyzed"`
-	JSON         struct {
+	// This field is from variant [MonitorGetResponseBaselineSearchBaseline].
+	Results []MonitorGetResponseBaselineSearchBaselineResult `json:"results"`
+	JSON    struct {
 		CapturedAt   respjson.Field
 		Text         respjson.Field
 		URLCount     respjson.Field
 		URLs         respjson.Field
 		Data         respjson.Field
 		URLsAnalyzed respjson.Field
+		Results      respjson.Field
 		raw          string
 	} `json:"-"`
 }
@@ -1845,6 +1987,11 @@ func (u MonitorGetResponseBaselineUnion) AsSitemapBaseline() (v MonitorGetRespon
 }
 
 func (u MonitorGetResponseBaselineUnion) AsExtractBaseline() (v MonitorGetResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorGetResponseBaselineUnion) AsSearchBaseline() (v MonitorGetResponseBaselineSearchBaseline) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -1925,6 +2072,51 @@ type MonitorGetResponseBaselineExtractBaseline struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorGetResponseBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
 func (r *MonitorGetResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `search` monitor: the search results as last observed.
+type MonitorGetResponseBaselineSearchBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Search results as last observed.
+	Results []MonitorGetResponseBaselineSearchBaselineResult `json:"results" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Results     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseBaselineSearchBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseBaselineSearchBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorGetResponseBaselineSearchBaselineResult struct {
+	// Result snippet.
+	Description string `json:"description" api:"required"`
+	// When the result was published, when known.
+	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
+	Title       string    `json:"title" api:"required"`
+	URL         string    `json:"url" api:"required" format:"uri"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Description respjson.Field
+		PublishedAt respjson.Field
+		Title       respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorGetResponseBaselineSearchBaselineResult) RawJSON() string { return r.JSON.raw }
+func (r *MonitorGetResponseBaselineSearchBaselineResult) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2066,8 +2258,8 @@ func (r *MonitorGetResponseWebhookFailure) UnmarshalJSON(data []byte) error {
 
 type MonitorUpdateResponse struct {
 	ID string `json:"id" api:"required"`
-	// How changes are judged. Defaults to `semantic` for extract targets and page
-	// targets with `instructions`, otherwise `exact`.
+	// How changes are judged. Defaults to `semantic` for extract and search targets
+	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorUpdateResponseChangeDetectionUnion `json:"change_detection" api:"required"`
 	CreatedAt       time.Time                                 `json:"created_at" api:"required" format:"date-time"`
 	// Always `web`. Optional.
@@ -2083,7 +2275,8 @@ type MonitorUpdateResponse struct {
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorUpdateResponseStatus `json:"status" api:"required"`
-	// What to watch: a page, a sitemap, or data extracted from a site.
+	// What to watch: a page, a sitemap, data extracted from a site, or web search
+	// results.
 	Target    MonitorUpdateResponseTargetUnion `json:"target" api:"required"`
 	UpdatedAt time.Time                        `json:"updated_at" api:"required" format:"date-time"`
 	// Comparison baseline, included on Retrieve. Null until capture completes or after
@@ -2210,9 +2403,10 @@ func (r *MonitorUpdateResponseChangeDetectionUnion) UnmarshalJSON(data []byte) e
 }
 
 // Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
+// sitemap targets, this means URL additions and removals. For search targets, this
+// means every new result.
 type MonitorUpdateResponseChangeDetectionExact struct {
-	// Use `exact` to compare visible text or sitemap URLs.
+	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2269,14 +2463,14 @@ const (
 
 // MonitorUpdateResponseTargetUnion contains all possible properties and values
 // from [MonitorUpdateResponseTargetPage], [MonitorUpdateResponseTargetSitemap],
-// [MonitorUpdateResponseTargetExtract].
+// [MonitorUpdateResponseTargetExtract], [MonitorUpdateResponseTargetSearch].
 //
 // Use the [MonitorUpdateResponseTargetUnion.AsAny] method to switch on the
 // variant.
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorUpdateResponseTargetUnion struct {
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorUpdateResponseTargetPage].
@@ -2302,7 +2496,9 @@ type MonitorUpdateResponseTargetUnion struct {
 	MaxPages int64 `json:"max_pages"`
 	// This field is from variant [MonitorUpdateResponseTargetExtract].
 	Schema map[string]any `json:"schema"`
-	JSON   struct {
+	// This field is from variant [MonitorUpdateResponseTargetSearch].
+	Query string `json:"query"`
+	JSON  struct {
 		Type                respjson.Field
 		URL                 respjson.Field
 		Actions             respjson.Field
@@ -2317,6 +2513,7 @@ type MonitorUpdateResponseTargetUnion struct {
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
+		Query               respjson.Field
 		raw                 string
 	} `json:"-"`
 }
@@ -2331,6 +2528,7 @@ type anyMonitorUpdateResponseTarget interface {
 func (MonitorUpdateResponseTargetPage) implMonitorUpdateResponseTargetUnion()    {}
 func (MonitorUpdateResponseTargetSitemap) implMonitorUpdateResponseTargetUnion() {}
 func (MonitorUpdateResponseTargetExtract) implMonitorUpdateResponseTargetUnion() {}
+func (MonitorUpdateResponseTargetSearch) implMonitorUpdateResponseTargetUnion()  {}
 
 // Use the following switch statement to find the correct variant
 //
@@ -2338,6 +2536,7 @@ func (MonitorUpdateResponseTargetExtract) implMonitorUpdateResponseTargetUnion()
 //	case contextdev.MonitorUpdateResponseTargetPage:
 //	case contextdev.MonitorUpdateResponseTargetSitemap:
 //	case contextdev.MonitorUpdateResponseTargetExtract:
+//	case contextdev.MonitorUpdateResponseTargetSearch:
 //	default:
 //	  fmt.Errorf("no variant present")
 //	}
@@ -2349,6 +2548,8 @@ func (u MonitorUpdateResponseTargetUnion) AsAny() anyMonitorUpdateResponseTarget
 		return u.AsSitemap()
 	case "extract":
 		return u.AsExtract()
+	case "search":
+		return u.AsSearch()
 	}
 	return nil
 }
@@ -2364,6 +2565,11 @@ func (u MonitorUpdateResponseTargetUnion) AsSitemap() (v MonitorUpdateResponseTa
 }
 
 func (u MonitorUpdateResponseTargetUnion) AsExtract() (v MonitorUpdateResponseTargetExtract) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorUpdateResponseTargetUnion) AsSearch() (v MonitorUpdateResponseTargetSearch) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -2696,10 +2902,39 @@ func (r *MonitorUpdateResponseTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Search the web on every run and report results not seen before, listed in the
+// change’s `matched_urls` and `evidence`. Semantic detection reports only results
+// describing a new development that matches `instructions`; exact detection
+// reports every new result.
+type MonitorUpdateResponseTargetSearch struct {
+	// Web search query to run on every check. Supports operators such as `site:`,
+	// `-site:`, and quoted phrases.
+	Query string `json:"query" api:"required"`
+	// Use `search` to watch the whole web for new results about a topic.
+	Type constant.Search `json:"type" default:"search"`
+	// Plain-language description of which new results matter. Defaults to the query.
+	Instructions string `json:"instructions"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Query        respjson.Field
+		Type         respjson.Field
+		Instructions respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseTargetSearch) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseTargetSearch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // MonitorUpdateResponseBaselineUnion contains all possible properties and values
 // from [MonitorUpdateResponseBaselinePageBaseline],
 // [MonitorUpdateResponseBaselineSitemapBaseline],
-// [MonitorUpdateResponseBaselineExtractBaseline].
+// [MonitorUpdateResponseBaselineExtractBaseline],
+// [MonitorUpdateResponseBaselineSearchBaseline].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorUpdateResponseBaselineUnion struct {
@@ -2714,13 +2949,16 @@ type MonitorUpdateResponseBaselineUnion struct {
 	Data any `json:"data"`
 	// This field is from variant [MonitorUpdateResponseBaselineExtractBaseline].
 	URLsAnalyzed []string `json:"urls_analyzed"`
-	JSON         struct {
+	// This field is from variant [MonitorUpdateResponseBaselineSearchBaseline].
+	Results []MonitorUpdateResponseBaselineSearchBaselineResult `json:"results"`
+	JSON    struct {
 		CapturedAt   respjson.Field
 		Text         respjson.Field
 		URLCount     respjson.Field
 		URLs         respjson.Field
 		Data         respjson.Field
 		URLsAnalyzed respjson.Field
+		Results      respjson.Field
 		raw          string
 	} `json:"-"`
 }
@@ -2736,6 +2974,11 @@ func (u MonitorUpdateResponseBaselineUnion) AsSitemapBaseline() (v MonitorUpdate
 }
 
 func (u MonitorUpdateResponseBaselineUnion) AsExtractBaseline() (v MonitorUpdateResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorUpdateResponseBaselineUnion) AsSearchBaseline() (v MonitorUpdateResponseBaselineSearchBaseline) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -2816,6 +3059,51 @@ type MonitorUpdateResponseBaselineExtractBaseline struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorUpdateResponseBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
 func (r *MonitorUpdateResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `search` monitor: the search results as last observed.
+type MonitorUpdateResponseBaselineSearchBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Search results as last observed.
+	Results []MonitorUpdateResponseBaselineSearchBaselineResult `json:"results" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Results     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseBaselineSearchBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseBaselineSearchBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorUpdateResponseBaselineSearchBaselineResult struct {
+	// Result snippet.
+	Description string `json:"description" api:"required"`
+	// When the result was published, when known.
+	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
+	Title       string    `json:"title" api:"required"`
+	URL         string    `json:"url" api:"required" format:"uri"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Description respjson.Field
+		PublishedAt respjson.Field
+		Title       respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorUpdateResponseBaselineSearchBaselineResult) RawJSON() string { return r.JSON.raw }
+func (r *MonitorUpdateResponseBaselineSearchBaselineResult) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -2983,11 +3271,11 @@ func (r *MonitorListResponse) UnmarshalJSON(data []byte) error {
 }
 
 // A web monitor. `mode` is the constant `web`; behavior is described by `target`
-// (page/sitemap/extract) and `change_detection` (exact/semantic).
+// (page/sitemap/extract/search) and `change_detection` (exact/semantic).
 type MonitorListResponseData struct {
 	ID string `json:"id" api:"required"`
-	// How changes are judged. Defaults to `semantic` for extract targets and page
-	// targets with `instructions`, otherwise `exact`.
+	// How changes are judged. Defaults to `semantic` for extract and search targets
+	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorListResponseDataChangeDetectionUnion `json:"change_detection" api:"required"`
 	CreatedAt       time.Time                                   `json:"created_at" api:"required" format:"date-time"`
 	// Always `web`. Optional.
@@ -3004,7 +3292,8 @@ type MonitorListResponseData struct {
 	//
 	// Any of "active", "paused", "failed".
 	Status string `json:"status" api:"required"`
-	// What to watch: a page, a sitemap, or data extracted from a site.
+	// What to watch: a page, a sitemap, data extracted from a site, or web search
+	// results.
 	Target    MonitorListResponseDataTargetUnion `json:"target" api:"required"`
 	UpdatedAt time.Time                          `json:"updated_at" api:"required" format:"date-time"`
 	// Comparison baseline, included on Retrieve. Null until capture completes or after
@@ -3125,9 +3414,10 @@ func (r *MonitorListResponseDataChangeDetectionUnion) UnmarshalJSON(data []byte)
 }
 
 // Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
+// sitemap targets, this means URL additions and removals. For search targets, this
+// means every new result.
 type MonitorListResponseDataChangeDetectionExact struct {
-	// Use `exact` to compare visible text or sitemap URLs.
+	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3199,14 +3489,15 @@ func (r *MonitorListResponseDataSchedule) UnmarshalJSON(data []byte) error {
 
 // MonitorListResponseDataTargetUnion contains all possible properties and values
 // from [MonitorListResponseDataTargetPage],
-// [MonitorListResponseDataTargetSitemap], [MonitorListResponseDataTargetExtract].
+// [MonitorListResponseDataTargetSitemap], [MonitorListResponseDataTargetExtract],
+// [MonitorListResponseDataTargetSearch].
 //
 // Use the [MonitorListResponseDataTargetUnion.AsAny] method to switch on the
 // variant.
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorListResponseDataTargetUnion struct {
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorListResponseDataTargetPage].
@@ -3232,7 +3523,9 @@ type MonitorListResponseDataTargetUnion struct {
 	MaxPages int64 `json:"max_pages"`
 	// This field is from variant [MonitorListResponseDataTargetExtract].
 	Schema map[string]any `json:"schema"`
-	JSON   struct {
+	// This field is from variant [MonitorListResponseDataTargetSearch].
+	Query string `json:"query"`
+	JSON  struct {
 		Type                respjson.Field
 		URL                 respjson.Field
 		Actions             respjson.Field
@@ -3247,6 +3540,7 @@ type MonitorListResponseDataTargetUnion struct {
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
+		Query               respjson.Field
 		raw                 string
 	} `json:"-"`
 }
@@ -3261,6 +3555,7 @@ type anyMonitorListResponseDataTarget interface {
 func (MonitorListResponseDataTargetPage) implMonitorListResponseDataTargetUnion()    {}
 func (MonitorListResponseDataTargetSitemap) implMonitorListResponseDataTargetUnion() {}
 func (MonitorListResponseDataTargetExtract) implMonitorListResponseDataTargetUnion() {}
+func (MonitorListResponseDataTargetSearch) implMonitorListResponseDataTargetUnion()  {}
 
 // Use the following switch statement to find the correct variant
 //
@@ -3268,6 +3563,7 @@ func (MonitorListResponseDataTargetExtract) implMonitorListResponseDataTargetUni
 //	case contextdev.MonitorListResponseDataTargetPage:
 //	case contextdev.MonitorListResponseDataTargetSitemap:
 //	case contextdev.MonitorListResponseDataTargetExtract:
+//	case contextdev.MonitorListResponseDataTargetSearch:
 //	default:
 //	  fmt.Errorf("no variant present")
 //	}
@@ -3279,6 +3575,8 @@ func (u MonitorListResponseDataTargetUnion) AsAny() anyMonitorListResponseDataTa
 		return u.AsSitemap()
 	case "extract":
 		return u.AsExtract()
+	case "search":
+		return u.AsSearch()
 	}
 	return nil
 }
@@ -3294,6 +3592,11 @@ func (u MonitorListResponseDataTargetUnion) AsSitemap() (v MonitorListResponseDa
 }
 
 func (u MonitorListResponseDataTargetUnion) AsExtract() (v MonitorListResponseDataTargetExtract) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorListResponseDataTargetUnion) AsSearch() (v MonitorListResponseDataTargetSearch) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -3629,10 +3932,39 @@ func (r *MonitorListResponseDataTargetExtract) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Search the web on every run and report results not seen before, listed in the
+// change’s `matched_urls` and `evidence`. Semantic detection reports only results
+// describing a new development that matches `instructions`; exact detection
+// reports every new result.
+type MonitorListResponseDataTargetSearch struct {
+	// Web search query to run on every check. Supports operators such as `site:`,
+	// `-site:`, and quoted phrases.
+	Query string `json:"query" api:"required"`
+	// Use `search` to watch the whole web for new results about a topic.
+	Type constant.Search `json:"type" default:"search"`
+	// Plain-language description of which new results matter. Defaults to the query.
+	Instructions string `json:"instructions"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Query        respjson.Field
+		Type         respjson.Field
+		Instructions respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataTargetSearch) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataTargetSearch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // MonitorListResponseDataBaselineUnion contains all possible properties and values
 // from [MonitorListResponseDataBaselinePageBaseline],
 // [MonitorListResponseDataBaselineSitemapBaseline],
-// [MonitorListResponseDataBaselineExtractBaseline].
+// [MonitorListResponseDataBaselineExtractBaseline],
+// [MonitorListResponseDataBaselineSearchBaseline].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorListResponseDataBaselineUnion struct {
@@ -3647,13 +3979,16 @@ type MonitorListResponseDataBaselineUnion struct {
 	Data any `json:"data"`
 	// This field is from variant [MonitorListResponseDataBaselineExtractBaseline].
 	URLsAnalyzed []string `json:"urls_analyzed"`
-	JSON         struct {
+	// This field is from variant [MonitorListResponseDataBaselineSearchBaseline].
+	Results []MonitorListResponseDataBaselineSearchBaselineResult `json:"results"`
+	JSON    struct {
 		CapturedAt   respjson.Field
 		Text         respjson.Field
 		URLCount     respjson.Field
 		URLs         respjson.Field
 		Data         respjson.Field
 		URLsAnalyzed respjson.Field
+		Results      respjson.Field
 		raw          string
 	} `json:"-"`
 }
@@ -3669,6 +4004,11 @@ func (u MonitorListResponseDataBaselineUnion) AsSitemapBaseline() (v MonitorList
 }
 
 func (u MonitorListResponseDataBaselineUnion) AsExtractBaseline() (v MonitorListResponseDataBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorListResponseDataBaselineUnion) AsSearchBaseline() (v MonitorListResponseDataBaselineSearchBaseline) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -3749,6 +4089,51 @@ type MonitorListResponseDataBaselineExtractBaseline struct {
 // Returns the unmodified JSON received from the API
 func (r MonitorListResponseDataBaselineExtractBaseline) RawJSON() string { return r.JSON.raw }
 func (r *MonitorListResponseDataBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `search` monitor: the search results as last observed.
+type MonitorListResponseDataBaselineSearchBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Search results as last observed.
+	Results []MonitorListResponseDataBaselineSearchBaselineResult `json:"results" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Results     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataBaselineSearchBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataBaselineSearchBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorListResponseDataBaselineSearchBaselineResult struct {
+	// Result snippet.
+	Description string `json:"description" api:"required"`
+	// When the result was published, when known.
+	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
+	Title       string    `json:"title" api:"required"`
+	URL         string    `json:"url" api:"required" format:"uri"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Description respjson.Field
+		PublishedAt respjson.Field
+		Title       respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorListResponseDataBaselineSearchBaselineResult) RawJSON() string { return r.JSON.raw }
+func (r *MonitorListResponseDataBaselineSearchBaselineResult) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -4082,9 +4467,10 @@ type MonitorListAccountChangesResponseData struct {
 	Summary string `json:"summary" api:"required"`
 	// Labels for filtering monitors, their changes, and their usage.
 	Tags []string `json:"tags" api:"required"`
-	// Any of "page", "sitemap", "extract".
-	TargetType    string `json:"target_type" api:"required"`
-	Title         string `json:"title" api:"required"`
+	// Any of "page", "sitemap", "extract", "search".
+	TargetType string `json:"target_type" api:"required"`
+	Title      string `json:"title" api:"required"`
+	// The monitored URL. For search targets, the first newly reported result.
 	URL           string `json:"url" api:"required" format:"uri"`
 	AddedURLCount int64  `json:"added_url_count"`
 	// At most 500 URLs are included; the corresponding count field is always exact.
@@ -4230,7 +4616,7 @@ type MonitorListAccountRunsResponseData struct {
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status string `json:"status" api:"required"`
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	TargetType  string                                  `json:"target_type" api:"required"`
 	ChangeID    string                                  `json:"change_id" api:"nullable"`
 	CompletedAt time.Time                               `json:"completed_at" api:"nullable" format:"date-time"`
@@ -4362,9 +4748,10 @@ type MonitorListChangesResponseData struct {
 	Summary string `json:"summary" api:"required"`
 	// Labels for filtering monitors, their changes, and their usage.
 	Tags []string `json:"tags" api:"required"`
-	// Any of "page", "sitemap", "extract".
-	TargetType    string `json:"target_type" api:"required"`
-	Title         string `json:"title" api:"required"`
+	// Any of "page", "sitemap", "extract", "search".
+	TargetType string `json:"target_type" api:"required"`
+	Title      string `json:"title" api:"required"`
+	// The monitored URL. For search targets, the first newly reported result.
 	URL           string `json:"url" api:"required" format:"uri"`
 	AddedURLCount int64  `json:"added_url_count"`
 	// At most 500 URLs are included; the corresponding count field is always exact.
@@ -4510,7 +4897,7 @@ type MonitorListRunsResponseData struct {
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status string `json:"status" api:"required"`
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	TargetType  string                           `json:"target_type" api:"required"`
 	ChangeID    string                           `json:"change_id" api:"nullable"`
 	CompletedAt time.Time                        `json:"completed_at" api:"nullable" format:"date-time"`
@@ -4617,11 +5004,12 @@ type MonitorGetChangeResponse struct {
 	Summary string `json:"summary" api:"required"`
 	// Labels for filtering monitors, their changes, and their usage.
 	Tags []string `json:"tags" api:"required"`
-	// Any of "page", "sitemap", "extract".
-	TargetType    MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
-	Title         string                             `json:"title" api:"required"`
-	URL           string                             `json:"url" api:"required" format:"uri"`
-	AddedURLCount int64                              `json:"added_url_count"`
+	// Any of "page", "sitemap", "extract", "search".
+	TargetType MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
+	Title      string                             `json:"title" api:"required"`
+	// The monitored URL. For search targets, the first newly reported result.
+	URL           string `json:"url" api:"required" format:"uri"`
+	AddedURLCount int64  `json:"added_url_count"`
 	// At most 500 URLs are included; the corresponding count field is always exact.
 	AddedURLs         []string `json:"added_urls" format:"uri"`
 	AfterTextExcerpt  string   `json:"after_text_excerpt"`
@@ -4698,6 +5086,7 @@ const (
 	MonitorGetChangeResponseTargetTypePage    MonitorGetChangeResponseTargetType = "page"
 	MonitorGetChangeResponseTargetTypeSitemap MonitorGetChangeResponseTargetType = "sitemap"
 	MonitorGetChangeResponseTargetTypeExtract MonitorGetChangeResponseTargetType = "extract"
+	MonitorGetChangeResponseTargetTypeSearch  MonitorGetChangeResponseTargetType = "search"
 )
 
 type MonitorGetChangeResponseEvidence struct {
@@ -4775,7 +5164,7 @@ type MonitorGetRunResponse struct {
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorGetRunResponseStatus `json:"status" api:"required"`
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	TargetType  MonitorGetRunResponseTargetType `json:"target_type" api:"required"`
 	ChangeID    string                          `json:"change_id" api:"nullable"`
 	CompletedAt time.Time                       `json:"completed_at" api:"nullable" format:"date-time"`
@@ -4862,6 +5251,7 @@ const (
 	MonitorGetRunResponseTargetTypePage    MonitorGetRunResponseTargetType = "page"
 	MonitorGetRunResponseTargetTypeSitemap MonitorGetRunResponseTargetType = "sitemap"
 	MonitorGetRunResponseTargetTypeExtract MonitorGetRunResponseTargetType = "extract"
+	MonitorGetRunResponseTargetTypeSearch  MonitorGetRunResponseTargetType = "search"
 )
 
 type MonitorGetRunResponseError struct {
@@ -4914,8 +5304,8 @@ const (
 
 type MonitorRotateWebhookSecretResponse struct {
 	ID string `json:"id" api:"required"`
-	// How changes are judged. Defaults to `semantic` for extract targets and page
-	// targets with `instructions`, otherwise `exact`.
+	// How changes are judged. Defaults to `semantic` for extract and search targets
+	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorRotateWebhookSecretResponseChangeDetectionUnion `json:"change_detection" api:"required"`
 	CreatedAt       time.Time                                              `json:"created_at" api:"required" format:"date-time"`
 	// Always `web`. Optional.
@@ -4931,7 +5321,8 @@ type MonitorRotateWebhookSecretResponse struct {
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorRotateWebhookSecretResponseStatus `json:"status" api:"required"`
-	// What to watch: a page, a sitemap, or data extracted from a site.
+	// What to watch: a page, a sitemap, data extracted from a site, or web search
+	// results.
 	Target    MonitorRotateWebhookSecretResponseTargetUnion `json:"target" api:"required"`
 	UpdatedAt time.Time                                     `json:"updated_at" api:"required" format:"date-time"`
 	// Comparison baseline, included on Retrieve. Null until capture completes or after
@@ -5063,9 +5454,10 @@ func (r *MonitorRotateWebhookSecretResponseChangeDetectionUnion) UnmarshalJSON(d
 }
 
 // Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
+// sitemap targets, this means URL additions and removals. For search targets, this
+// means every new result.
 type MonitorRotateWebhookSecretResponseChangeDetectionExact struct {
-	// Use `exact` to compare visible text or sitemap URLs.
+	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5125,14 +5517,15 @@ const (
 // MonitorRotateWebhookSecretResponseTargetUnion contains all possible properties
 // and values from [MonitorRotateWebhookSecretResponseTargetPage],
 // [MonitorRotateWebhookSecretResponseTargetSitemap],
-// [MonitorRotateWebhookSecretResponseTargetExtract].
+// [MonitorRotateWebhookSecretResponseTargetExtract],
+// [MonitorRotateWebhookSecretResponseTargetSearch].
 //
 // Use the [MonitorRotateWebhookSecretResponseTargetUnion.AsAny] method to switch
 // on the variant.
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorRotateWebhookSecretResponseTargetUnion struct {
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	Type string `json:"type"`
 	URL  string `json:"url"`
 	// This field is from variant [MonitorRotateWebhookSecretResponseTargetPage].
@@ -5158,7 +5551,9 @@ type MonitorRotateWebhookSecretResponseTargetUnion struct {
 	MaxPages int64 `json:"max_pages"`
 	// This field is from variant [MonitorRotateWebhookSecretResponseTargetExtract].
 	Schema map[string]any `json:"schema"`
-	JSON   struct {
+	// This field is from variant [MonitorRotateWebhookSecretResponseTargetSearch].
+	Query string `json:"query"`
+	JSON  struct {
 		Type                respjson.Field
 		URL                 respjson.Field
 		Actions             respjson.Field
@@ -5173,6 +5568,7 @@ type MonitorRotateWebhookSecretResponseTargetUnion struct {
 		MaxDepth            respjson.Field
 		MaxPages            respjson.Field
 		Schema              respjson.Field
+		Query               respjson.Field
 		raw                 string
 	} `json:"-"`
 }
@@ -5190,6 +5586,8 @@ func (MonitorRotateWebhookSecretResponseTargetSitemap) implMonitorRotateWebhookS
 }
 func (MonitorRotateWebhookSecretResponseTargetExtract) implMonitorRotateWebhookSecretResponseTargetUnion() {
 }
+func (MonitorRotateWebhookSecretResponseTargetSearch) implMonitorRotateWebhookSecretResponseTargetUnion() {
+}
 
 // Use the following switch statement to find the correct variant
 //
@@ -5197,6 +5595,7 @@ func (MonitorRotateWebhookSecretResponseTargetExtract) implMonitorRotateWebhookS
 //	case contextdev.MonitorRotateWebhookSecretResponseTargetPage:
 //	case contextdev.MonitorRotateWebhookSecretResponseTargetSitemap:
 //	case contextdev.MonitorRotateWebhookSecretResponseTargetExtract:
+//	case contextdev.MonitorRotateWebhookSecretResponseTargetSearch:
 //	default:
 //	  fmt.Errorf("no variant present")
 //	}
@@ -5208,6 +5607,8 @@ func (u MonitorRotateWebhookSecretResponseTargetUnion) AsAny() anyMonitorRotateW
 		return u.AsSitemap()
 	case "extract":
 		return u.AsExtract()
+	case "search":
+		return u.AsSearch()
 	}
 	return nil
 }
@@ -5223,6 +5624,11 @@ func (u MonitorRotateWebhookSecretResponseTargetUnion) AsSitemap() (v MonitorRot
 }
 
 func (u MonitorRotateWebhookSecretResponseTargetUnion) AsExtract() (v MonitorRotateWebhookSecretResponseTargetExtract) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseTargetUnion) AsSearch() (v MonitorRotateWebhookSecretResponseTargetSearch) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -5570,10 +5976,39 @@ func (r *MonitorRotateWebhookSecretResponseTargetExtract) UnmarshalJSON(data []b
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Search the web on every run and report results not seen before, listed in the
+// change’s `matched_urls` and `evidence`. Semantic detection reports only results
+// describing a new development that matches `instructions`; exact detection
+// reports every new result.
+type MonitorRotateWebhookSecretResponseTargetSearch struct {
+	// Web search query to run on every check. Supports operators such as `site:`,
+	// `-site:`, and quoted phrases.
+	Query string `json:"query" api:"required"`
+	// Use `search` to watch the whole web for new results about a topic.
+	Type constant.Search `json:"type" default:"search"`
+	// Plain-language description of which new results matter. Defaults to the query.
+	Instructions string `json:"instructions"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Query        respjson.Field
+		Type         respjson.Field
+		Instructions respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseTargetSearch) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseTargetSearch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // MonitorRotateWebhookSecretResponseBaselineUnion contains all possible properties
 // and values from [MonitorRotateWebhookSecretResponseBaselinePageBaseline],
 // [MonitorRotateWebhookSecretResponseBaselineSitemapBaseline],
-// [MonitorRotateWebhookSecretResponseBaselineExtractBaseline].
+// [MonitorRotateWebhookSecretResponseBaselineExtractBaseline],
+// [MonitorRotateWebhookSecretResponseBaselineSearchBaseline].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type MonitorRotateWebhookSecretResponseBaselineUnion struct {
@@ -5593,13 +6028,17 @@ type MonitorRotateWebhookSecretResponseBaselineUnion struct {
 	// This field is from variant
 	// [MonitorRotateWebhookSecretResponseBaselineExtractBaseline].
 	URLsAnalyzed []string `json:"urls_analyzed"`
-	JSON         struct {
+	// This field is from variant
+	// [MonitorRotateWebhookSecretResponseBaselineSearchBaseline].
+	Results []MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult `json:"results"`
+	JSON    struct {
 		CapturedAt   respjson.Field
 		Text         respjson.Field
 		URLCount     respjson.Field
 		URLs         respjson.Field
 		Data         respjson.Field
 		URLsAnalyzed respjson.Field
+		Results      respjson.Field
 		raw          string
 	} `json:"-"`
 }
@@ -5615,6 +6054,11 @@ func (u MonitorRotateWebhookSecretResponseBaselineUnion) AsSitemapBaseline() (v 
 }
 
 func (u MonitorRotateWebhookSecretResponseBaselineUnion) AsExtractBaseline() (v MonitorRotateWebhookSecretResponseBaselineExtractBaseline) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u MonitorRotateWebhookSecretResponseBaselineUnion) AsSearchBaseline() (v MonitorRotateWebhookSecretResponseBaselineSearchBaseline) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -5699,6 +6143,53 @@ func (r MonitorRotateWebhookSecretResponseBaselineExtractBaseline) RawJSON() str
 	return r.JSON.raw
 }
 func (r *MonitorRotateWebhookSecretResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Current baseline of a `search` monitor: the search results as last observed.
+type MonitorRotateWebhookSecretResponseBaselineSearchBaseline struct {
+	// When this baseline was last captured or replaced.
+	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
+	// Search results as last observed.
+	Results []MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult `json:"results" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CapturedAt  respjson.Field
+		Results     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseBaselineSearchBaseline) RawJSON() string { return r.JSON.raw }
+func (r *MonitorRotateWebhookSecretResponseBaselineSearchBaseline) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult struct {
+	// Result snippet.
+	Description string `json:"description" api:"required"`
+	// When the result was published, when known.
+	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
+	Title       string    `json:"title" api:"required"`
+	URL         string    `json:"url" api:"required" format:"uri"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Description respjson.Field
+		PublishedAt respjson.Field
+		Title       respjson.Field
+		URL         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult) RawJSON() string {
+	return r.JSON.raw
+}
+func (r *MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -5890,12 +6381,13 @@ func (r *MonitorRunResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 type MonitorNewParams struct {
 	// Display name for the monitor.
 	Name string `json:"name" api:"required"`
-	// What to watch: a page, a sitemap, or data extracted from a site.
+	// What to watch: a page, a sitemap, data extracted from a site, or web search
+	// results.
 	Target MonitorNewParamsTargetUnion `json:"target,omitzero" api:"required"`
 	// Webhook destination and delivery settings. Null means no webhook is configured.
 	Webhook MonitorNewParamsWebhook `json:"webhook,omitzero"`
-	// How changes are judged. Defaults to `semantic` for extract targets and page
-	// targets with `instructions`, otherwise `exact`.
+	// How changes are judged. Defaults to `semantic` for extract and search targets
+	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorNewParamsChangeDetectionUnion `json:"change_detection,omitzero"`
 	// Always `web`. Optional.
 	//
@@ -5927,11 +6419,12 @@ type MonitorNewParamsTargetUnion struct {
 	OfPage    *MonitorNewParamsTargetPage    `json:",omitzero,inline"`
 	OfSitemap *MonitorNewParamsTargetSitemap `json:",omitzero,inline"`
 	OfExtract *MonitorNewParamsTargetExtract `json:",omitzero,inline"`
+	OfSearch  *MonitorNewParamsTargetSearch  `json:",omitzero,inline"`
 	paramUnion
 }
 
 func (u MonitorNewParamsTargetUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfPage, u.OfSitemap, u.OfExtract)
+	return param.MarshalUnion(u, u.OfPage, u.OfSitemap, u.OfExtract, u.OfSearch)
 }
 func (u *MonitorNewParamsTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, u)
@@ -5943,6 +6436,7 @@ func init() {
 		apijson.Discriminator[MonitorNewParamsTargetPage]("page"),
 		apijson.Discriminator[MonitorNewParamsTargetSitemap]("sitemap"),
 		apijson.Discriminator[MonitorNewParamsTargetExtract]("extract"),
+		apijson.Discriminator[MonitorNewParamsTargetSearch]("search"),
 	)
 }
 
@@ -6174,6 +6668,33 @@ func (r *MonitorNewParamsTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Search the web on every run and report results not seen before, listed in the
+// change’s `matched_urls` and `evidence`. Semantic detection reports only results
+// describing a new development that matches `instructions`; exact detection
+// reports every new result.
+//
+// The properties Query, Type are required.
+type MonitorNewParamsTargetSearch struct {
+	// Web search query to run on every check. Supports operators such as `site:`,
+	// `-site:`, and quoted phrases.
+	Query string `json:"query" api:"required"`
+	// Plain-language description of which new results matter. Defaults to the query.
+	Instructions param.Opt[string] `json:"instructions,omitzero"`
+	// Use `search` to watch the whole web for new results about a topic.
+	//
+	// This field can be elided, and will marshal its zero value as "search".
+	Type constant.Search `json:"type" default:"search"`
+	paramObj
+}
+
+func (r MonitorNewParamsTargetSearch) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorNewParamsTargetSearch
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorNewParamsTargetSearch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Only one field can be non-zero.
 //
 // Use [param.IsOmitted] to confirm if a field is set.
@@ -6205,12 +6726,13 @@ func NewMonitorNewParamsChangeDetectionExact() MonitorNewParamsChangeDetectionEx
 }
 
 // Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
+// sitemap targets, this means URL additions and removals. For search targets, this
+// means every new result.
 //
 // This struct has a constant value, construct it with
 // [NewMonitorNewParamsChangeDetectionExact].
 type MonitorNewParamsChangeDetectionExact struct {
-	// Use `exact` to compare visible text or sitemap URLs.
+	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
 	paramObj
 }
@@ -6320,8 +6842,8 @@ type MonitorUpdateParams struct {
 	Name param.Opt[string] `json:"name,omitzero"`
 	// Set to null to remove the webhook. Changing `url` issues a new secret.
 	Webhook MonitorUpdateParamsWebhook `json:"webhook,omitzero"`
-	// How changes are judged. Defaults to `semantic` for extract targets and page
-	// targets with `instructions`, otherwise `exact`.
+	// How changes are judged. Defaults to `semantic` for extract and search targets
+	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorUpdateParamsChangeDetectionUnion `json:"change_detection,omitzero"`
 	// Access policy IDs to apply to every run. Send an empty list to remove them.
 	Policies []string `json:"policies,omitzero"`
@@ -6335,7 +6857,8 @@ type MonitorUpdateParams struct {
 	Status MonitorUpdateParamsStatus `json:"status,omitzero"`
 	// Labels for filtering monitors, their changes, and their usage.
 	Tags []string `json:"tags,omitzero"`
-	// What to watch: a page, a sitemap, or data extracted from a site.
+	// What to watch: a page, a sitemap, data extracted from a site, or web search
+	// results.
 	Target MonitorUpdateParamsTargetUnion `json:"target,omitzero"`
 	paramObj
 }
@@ -6379,12 +6902,13 @@ func NewMonitorUpdateParamsChangeDetectionExact() MonitorUpdateParamsChangeDetec
 }
 
 // Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals.
+// sitemap targets, this means URL additions and removals. For search targets, this
+// means every new result.
 //
 // This struct has a constant value, construct it with
 // [NewMonitorUpdateParamsChangeDetectionExact].
 type MonitorUpdateParamsChangeDetectionExact struct {
-	// Use `exact` to compare visible text or sitemap URLs.
+	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
 	paramObj
 }
@@ -6472,11 +6996,12 @@ type MonitorUpdateParamsTargetUnion struct {
 	OfPage    *MonitorUpdateParamsTargetPage    `json:",omitzero,inline"`
 	OfSitemap *MonitorUpdateParamsTargetSitemap `json:",omitzero,inline"`
 	OfExtract *MonitorUpdateParamsTargetExtract `json:",omitzero,inline"`
+	OfSearch  *MonitorUpdateParamsTargetSearch  `json:",omitzero,inline"`
 	paramUnion
 }
 
 func (u MonitorUpdateParamsTargetUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfPage, u.OfSitemap, u.OfExtract)
+	return param.MarshalUnion(u, u.OfPage, u.OfSitemap, u.OfExtract, u.OfSearch)
 }
 func (u *MonitorUpdateParamsTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, u)
@@ -6488,6 +7013,7 @@ func init() {
 		apijson.Discriminator[MonitorUpdateParamsTargetPage]("page"),
 		apijson.Discriminator[MonitorUpdateParamsTargetSitemap]("sitemap"),
 		apijson.Discriminator[MonitorUpdateParamsTargetExtract]("extract"),
+		apijson.Discriminator[MonitorUpdateParamsTargetSearch]("search"),
 	)
 }
 
@@ -6719,6 +7245,33 @@ func (r *MonitorUpdateParamsTargetExtract) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Search the web on every run and report results not seen before, listed in the
+// change’s `matched_urls` and `evidence`. Semantic detection reports only results
+// describing a new development that matches `instructions`; exact detection
+// reports every new result.
+//
+// The properties Query, Type are required.
+type MonitorUpdateParamsTargetSearch struct {
+	// Web search query to run on every check. Supports operators such as `site:`,
+	// `-site:`, and quoted phrases.
+	Query string `json:"query" api:"required"`
+	// Plain-language description of which new results matter. Defaults to the query.
+	Instructions param.Opt[string] `json:"instructions,omitzero"`
+	// Use `search` to watch the whole web for new results about a topic.
+	//
+	// This field can be elided, and will marshal its zero value as "search".
+	Type constant.Search `json:"type" default:"search"`
+	paramObj
+}
+
+func (r MonitorUpdateParamsTargetSearch) MarshalJSON() (data []byte, err error) {
+	type shadow MonitorUpdateParamsTargetSearch
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *MonitorUpdateParamsTargetSearch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 // Set to null to remove the webhook. Changing `url` issues a new secret.
 //
 // The property URL is required.
@@ -6753,8 +7306,8 @@ type MonitorListParams struct {
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
 	// Filter to items that have this tag.
 	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
-	// Fields to search with `q`. Defaults to all fields; page and extract targets can
-	// have instructions.
+	// Fields to search with `q`. Defaults to all fields; page, extract, and search
+	// targets can have instructions, and `url` matches a search target’s query.
 	//
 	// Any of "name", "url", "instructions", "tags".
 	SearchBy []string `query:"search_by,omitzero" json:"-"`
@@ -6775,7 +7328,7 @@ type MonitorListParams struct {
 	Status MonitorListParamsStatus `query:"status,omitzero" json:"-"`
 	// Filter by target type.
 	//
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	TargetType MonitorListParamsTargetType `query:"target_type,omitzero" json:"-"`
 	paramObj
 }
@@ -6821,6 +7374,7 @@ const (
 	MonitorListParamsTargetTypePage    MonitorListParamsTargetType = "page"
 	MonitorListParamsTargetTypeSitemap MonitorListParamsTargetType = "sitemap"
 	MonitorListParamsTargetTypeExtract MonitorListParamsTargetType = "extract"
+	MonitorListParamsTargetTypeSearch  MonitorListParamsTargetType = "search"
 )
 
 type MonitorGetCreditUsageParams struct {
@@ -6859,7 +7413,7 @@ type MonitorListAccountChangesParams struct {
 	ChangeDetectionType MonitorListAccountChangesParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
 	// Filter by target type.
 	//
-	// Any of "page", "sitemap", "extract".
+	// Any of "page", "sitemap", "extract", "search".
 	TargetType MonitorListAccountChangesParamsTargetType `query:"target_type,omitzero" json:"-"`
 	paramObj
 }
@@ -6888,6 +7442,7 @@ const (
 	MonitorListAccountChangesParamsTargetTypePage    MonitorListAccountChangesParamsTargetType = "page"
 	MonitorListAccountChangesParamsTargetTypeSitemap MonitorListAccountChangesParamsTargetType = "sitemap"
 	MonitorListAccountChangesParamsTargetTypeExtract MonitorListAccountChangesParamsTargetType = "extract"
+	MonitorListAccountChangesParamsTargetTypeSearch  MonitorListAccountChangesParamsTargetType = "search"
 )
 
 type MonitorListAccountRunsParams struct {

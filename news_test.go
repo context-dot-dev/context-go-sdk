@@ -47,7 +47,8 @@ func TestNewsSearchWithOptionalParams(t *testing.T) {
 			SourceCountry: []string{"ae"},
 			SourceDomain:  []string{"x"},
 		},
-		Limit: contextdev.Int(1),
+		Limit:    contextdev.Int(1),
+		Policies: []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 		SortBy: contextdev.NewsSearchParamsSortBy{
 			Type: "relevance",
 		},

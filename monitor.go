@@ -318,6 +318,8 @@ type MonitorNewResponse struct {
 	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
 	// When the next scheduled run is due; null while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
+	// Access policy IDs applied to every run.
+	Policies []string `json:"policies"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
@@ -348,6 +350,7 @@ type MonitorNewResponse struct {
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
 		NextRunAt       respjson.Field
+		Policies        respjson.Field
 		Schedule        respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
@@ -1205,6 +1208,8 @@ type MonitorGetResponse struct {
 	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
 	// When the next scheduled run is due; null while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
+	// Access policy IDs applied to every run.
+	Policies []string `json:"policies"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
@@ -1234,6 +1239,7 @@ type MonitorGetResponse struct {
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
 		NextRunAt       respjson.Field
+		Policies        respjson.Field
 		Schedule        respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
@@ -2091,6 +2097,8 @@ type MonitorUpdateResponse struct {
 	LastRunAt time.Time                      `json:"last_run_at" api:"nullable" format:"date-time"`
 	// When the next scheduled run is due; null while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
+	// Access policy IDs applied to every run.
+	Policies []string `json:"policies"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
@@ -2120,6 +2128,7 @@ type MonitorUpdateResponse struct {
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
 		NextRunAt       respjson.Field
+		Policies        respjson.Field
 		Schedule        respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
@@ -3007,6 +3016,8 @@ type MonitorListResponseData struct {
 	LastRunAt time.Time                        `json:"last_run_at" api:"nullable" format:"date-time"`
 	// When the next scheduled run is due; null while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
+	// Access policy IDs applied to every run.
+	Policies []string `json:"policies"`
 	// Labels for filtering monitors, their changes, and their usage.
 	Tags []string `json:"tags"`
 	// Webhook destination and delivery settings. Null means no webhook is configured.
@@ -3031,6 +3042,7 @@ type MonitorListResponseData struct {
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
 		NextRunAt       respjson.Field
+		Policies        respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
 		WebhookFailure  respjson.Field
@@ -4933,6 +4945,8 @@ type MonitorRotateWebhookSecretResponse struct {
 	LastRunAt time.Time                                   `json:"last_run_at" api:"nullable" format:"date-time"`
 	// When the next scheduled run is due; null while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
+	// Access policy IDs applied to every run.
+	Policies []string `json:"policies"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
@@ -4962,6 +4976,7 @@ type MonitorRotateWebhookSecretResponse struct {
 		LastError       respjson.Field
 		LastRunAt       respjson.Field
 		NextRunAt       respjson.Field
+		Policies        respjson.Field
 		Schedule        respjson.Field
 		Tags            respjson.Field
 		Webhook         respjson.Field
@@ -5886,6 +5901,8 @@ type MonitorNewParams struct {
 	//
 	// Any of "web".
 	Mode MonitorNewParamsMode `json:"mode,omitzero"`
+	// Access policy IDs to apply to every run.
+	Policies []string `json:"policies,omitzero"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.
@@ -6306,6 +6323,8 @@ type MonitorUpdateParams struct {
 	// How changes are judged. Defaults to `semantic` for extract targets and page
 	// targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorUpdateParamsChangeDetectionUnion `json:"change_detection,omitzero"`
+	// Access policy IDs to apply to every run. Send an empty list to remove them.
+	Policies []string `json:"policies,omitzero"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
 	// between 10 minutes and 1 year.

@@ -112,6 +112,8 @@ type UtilityPrefetchParams struct {
 	//
 	// Any of "brand", "styleguide".
 	Type UtilityPrefetchParamsType `json:"type,omitzero" api:"required"`
+	// Access policy IDs to apply. A URL must pass every policy.
+	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.

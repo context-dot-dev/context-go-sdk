@@ -240,6 +240,8 @@ type NewsSearchParams struct {
 	// articleLanguage, or articleType. A date range may accompany that category;
 	// date.from must not exceed date.to.
 	FilterBy NewsSearchParamsFilterBy `json:"filterBy,omitzero"`
+	// Access policy IDs to apply. A URL must pass every policy.
+	Policies []string `json:"policies,omitzero"`
 	// Result ordering. Defaults to newest for entity searches. Natural-language
 	// searches are always ordered by relevance.
 	SortBy NewsSearchParamsSortBy `json:"sortBy,omitzero"`

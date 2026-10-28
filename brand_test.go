@@ -32,6 +32,7 @@ func TestBrandGetWithOptionalParams(t *testing.T) {
 			ForceLanguage: "afrikaans",
 			MaxAgeMs:      contextdev.Int(0),
 			MaxSpeed:      contextdev.Bool(true),
+			Policies:      []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 			Tags:          []string{"production", "team-alpha"},
 			TimeoutOpts: contextdev.BrandGetParamsBodyByDomainTimeoutOpts{
 				Milliseconds: 1000,

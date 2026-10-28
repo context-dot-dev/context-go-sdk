@@ -46,7 +46,8 @@ func TestMonitorNewWithOptionalParams(t *testing.T) {
 		ChangeDetection: contextdev.MonitorNewParamsChangeDetectionUnion{
 			OfExact: &contextdev.MonitorNewParamsChangeDetectionExact{},
 		},
-		Mode: contextdev.MonitorNewParamsModeWeb,
+		Mode:     contextdev.MonitorNewParamsModeWeb,
+		Policies: []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 		Schedule: contextdev.MonitorNewParamsSchedule{
 			Frequency: 6,
 			Type:      "interval",
@@ -113,7 +114,8 @@ func TestMonitorUpdateWithOptionalParams(t *testing.T) {
 			ChangeDetection: contextdev.MonitorUpdateParamsChangeDetectionUnion{
 				OfExact: &contextdev.MonitorUpdateParamsChangeDetectionExact{},
 			},
-			Name: contextdev.String("Acme pricing monitor"),
+			Name:     contextdev.String("Acme pricing monitor"),
+			Policies: []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 			Schedule: contextdev.MonitorUpdateParamsSchedule{
 				Frequency: 1,
 				Type:      "interval",

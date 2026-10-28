@@ -32,8 +32,9 @@ func TestWebAnswersWithOptionalParams(t *testing.T) {
 			"pricing_page_url": "bar",
 			"plans":            "bar",
 		},
-		Mode: contextdev.WebAnswersParamsModeFast,
-		Tags: []string{"production", "team-alpha"},
+		Mode:     contextdev.WebAnswersParamsModeFast,
+		Policies: []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
+		Tags:     []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebAnswersParamsTimeoutOpts{
 			Milliseconds: 1000,
 			Behavior:     "fail",
@@ -99,6 +100,7 @@ func TestWebExtractStyleguideWithOptionalParams(t *testing.T) {
 		DirectURL:   contextdev.String("https://example.com"),
 		Domain:      contextdev.String("xxx"),
 		MaxAgeMs:    contextdev.Int(0),
+		Policies:    []string{"string"},
 		Tags:        []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebExtractStyleguideParamsTimeoutOpts{
 			Milliseconds: 1,
@@ -136,6 +138,7 @@ func TestWebMapURLsWithOptionalParams(t *testing.T) {
 		},
 		IncludeSubdomains: contextdev.Bool(true),
 		MaxLinks:          contextdev.Int(1),
+		Policies:          []string{"string"},
 		Search:            contextdev.String("help center and troubleshooting articles"),
 		SitemapURL:        contextdev.String("https://example.com"),
 		Tags:              []string{"production", "team-alpha"},
@@ -222,6 +225,7 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 				Type: "custom",
 			},
 		},
+		Policies: []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 		ProductParams: contextdev.WebScrapeParamsProductParams{
 			DedupeImages: contextdev.Bool(true),
 		},
@@ -381,6 +385,7 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 			WaitForMs:          contextdev.Int(0),
 		},
 		NumResults:  contextdev.Int(10),
+		Policies:    []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 		QueryFanout: contextdev.Bool(true),
 		Tags:        []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebSearchParamsTimeoutOpts{
@@ -430,6 +435,7 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 			ShouldParse: contextdev.Bool(true),
 			Start:       contextdev.Int(1),
 		},
+		Policies:            []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 		SettleAnimations:    contextdev.Bool(true),
 		ShortenBase64Images: contextdev.Bool(true),
 		SourcePreference:    []string{"html-conversion"},

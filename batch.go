@@ -390,6 +390,8 @@ type BatchGetResponse struct {
 	Timing BatchGetResponseTiming `json:"timing" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BatchGetResponseKeyMetadata `json:"key_metadata"`
+	// Access policy IDs applied to every page.
+	Policies []string `json:"policies"`
 	// Batch completion delivery ID, when available.
 	WebhookDeliveryID string `json:"webhook_delivery_id"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -410,6 +412,7 @@ type BatchGetResponse struct {
 		Tags              respjson.Field
 		Timing            respjson.Field
 		KeyMetadata       respjson.Field
+		Policies          respjson.Field
 		WebhookDeliveryID respjson.Field
 		ExtraFields       map[string]respjson.Field
 		raw               string
@@ -709,6 +712,8 @@ type BatchListResponseData struct {
 	// Tags stored on the batch at submission.
 	Tags   []string                    `json:"tags" api:"required"`
 	Timing BatchListResponseDataTiming `json:"timing" api:"required"`
+	// Access policy IDs applied to every page.
+	Policies []string `json:"policies"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		ID          respjson.Field
@@ -724,6 +729,7 @@ type BatchListResponseData struct {
 		Status      respjson.Field
 		Tags        respjson.Field
 		Timing      respjson.Field
+		Policies    respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -4061,6 +4067,8 @@ type BatchSubmitParams struct {
 	// Unique key per submission. Retrying with the same key and body returns the
 	// original batch; a different body returns `409`.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
+	// Access policy IDs to apply to every page. A URL must pass every policy.
+	Policies []string `json:"policies,omitzero"`
 	// Tags stored on the batch. Filter the batch list by them later.
 	Tags []string `json:"tags,omitzero"`
 	// Where to send the batch's final-status event. Omit `retry` for one attempt; `{}`

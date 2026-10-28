@@ -286,7 +286,8 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 				},
 			},
 		},
-		Tags: []string{"docs", "competitor"},
+		Policies: []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
+		Tags:     []string{"docs", "competitor"},
 		Webhook: contextdev.BatchSubmitParamsWebhook{
 			URL: "https://example.com",
 			Retry: contextdev.RetryConfigParam{

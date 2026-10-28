@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.38.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.37.0...v2.38.0) (2026-10-28)
+
+
+### Features
+
+* **access-policies:** limit which websites API requests can reach ([#2213](https://github.com/context-dot-dev/context-go-sdk/issues/2213)) ([506944c](https://github.com/context-dot-dev/context-go-sdk/commit/506944cbed18c9d610884fb3b70353806124b44a))
+* **access-policies:** limit which websites API requests can reach ([#2213](https://github.com/context-dot-dev/context-go-sdk/issues/2213)) ([55b0939](https://github.com/context-dot-dev/context-go-sdk/commit/55b0939015fbfd998c27c527ed184cb67084c298))
+* **access-policies:** limit which websites API requests can reach ([#2213](https://github.com/context-dot-dev/context-go-sdk/issues/2213)) ([881081b](https://github.com/context-dot-dev/context-go-sdk/commit/881081b259090340907146eac61b24a822c3548c))
+* **access-policies:** limit which websites API requests can reach ([#2213](https://github.com/context-dot-dev/context-go-sdk/issues/2213)) ([9eb173b](https://github.com/context-dot-dev/context-go-sdk/commit/9eb173be8fd5943a57f75cdee52704a33b36ad55))
+* **access-policies:** limit which websites API requests can reach ([#2213](https://github.com/context-dot-dev/context-go-sdk/issues/2213)) ([89343f5](https://github.com/context-dot-dev/context-go-sdk/commit/89343f5794bcb6d294aac5cf481f78077a8507d8))
+* **brand:** support log-free brand and styleguide requests ([#2231](https://github.com/context-dot-dev/context-go-sdk/issues/2231)) ([506944c](https://github.com/context-dot-dev/context-go-sdk/commit/506944cbed18c9d610884fb3b70353806124b44a))
+* **brand:** support log-free brand and styleguide requests ([#2231](https://github.com/context-dot-dev/context-go-sdk/issues/2231)) ([55b0939](https://github.com/context-dot-dev/context-go-sdk/commit/55b0939015fbfd998c27c527ed184cb67084c298))
+* **brand:** support log-free brand and styleguide requests ([#2231](https://github.com/context-dot-dev/context-go-sdk/issues/2231)) ([881081b](https://github.com/context-dot-dev/context-go-sdk/commit/881081b259090340907146eac61b24a822c3548c))
+* **brand:** support log-free brand and styleguide requests ([#2231](https://github.com/context-dot-dev/context-go-sdk/issues/2231)) ([9eb173b](https://github.com/context-dot-dev/context-go-sdk/commit/9eb173be8fd5943a57f75cdee52704a33b36ad55))
+* **monitors:** add search target to watch the web for new developments ([#2215](https://github.com/context-dot-dev/context-go-sdk/issues/2215)) ([506944c](https://github.com/context-dot-dev/context-go-sdk/commit/506944cbed18c9d610884fb3b70353806124b44a))
+* **monitors:** add search target to watch the web for new developments ([#2215](https://github.com/context-dot-dev/context-go-sdk/issues/2215)) ([55b0939](https://github.com/context-dot-dev/context-go-sdk/commit/55b0939015fbfd998c27c527ed184cb67084c298))
+
+
+### Bug Fixes
+
+* **brand:** keep metadata-only usage logs for ZDR brand requests ([#2234](https://github.com/context-dot-dev/context-go-sdk/issues/2234)) ([506944c](https://github.com/context-dot-dev/context-go-sdk/commit/506944cbed18c9d610884fb3b70353806124b44a))
+* **brand:** keep metadata-only usage logs for ZDR brand requests ([#2234](https://github.com/context-dot-dev/context-go-sdk/issues/2234)) ([55b0939](https://github.com/context-dot-dev/context-go-sdk/commit/55b0939015fbfd998c27c527ed184cb67084c298))
+* **brand:** keep metadata-only usage logs for ZDR brand requests ([#2234](https://github.com/context-dot-dev/context-go-sdk/issues/2234)) ([881081b](https://github.com/context-dot-dev/context-go-sdk/commit/881081b259090340907146eac61b24a822c3548c))
+* **openapi:** keep legacy batch inputs in the spec as deprecated ([#2225](https://github.com/context-dot-dev/context-go-sdk/issues/2225)) ([506944c](https://github.com/context-dot-dev/context-go-sdk/commit/506944cbed18c9d610884fb3b70353806124b44a))
+* **openapi:** keep legacy batch inputs in the spec as deprecated ([#2225](https://github.com/context-dot-dev/context-go-sdk/issues/2225)) ([55b0939](https://github.com/context-dot-dev/context-go-sdk/commit/55b0939015fbfd998c27c527ed184cb67084c298))
+* **openapi:** keep legacy batch inputs in the spec as deprecated ([#2225](https://github.com/context-dot-dev/context-go-sdk/issues/2225)) ([881081b](https://github.com/context-dot-dev/context-go-sdk/commit/881081b259090340907146eac61b24a822c3548c))
+* **openapi:** keep legacy batch inputs in the spec as deprecated ([#2225](https://github.com/context-dot-dev/context-go-sdk/issues/2225)) ([9eb173b](https://github.com/context-dot-dev/context-go-sdk/commit/9eb173be8fd5943a57f75cdee52704a33b36ad55))
+* **openapi:** keep legacy batch inputs in the spec as deprecated ([#2225](https://github.com/context-dot-dev/context-go-sdk/issues/2225)) ([89343f5](https://github.com/context-dot-dev/context-go-sdk/commit/89343f5794bcb6d294aac5cf481f78077a8507d8))
+* **openapi:** keep legacy batch inputs in the spec as deprecated ([#2225](https://github.com/context-dot-dev/context-go-sdk/issues/2225)) ([b17a5d7](https://github.com/context-dot-dev/context-go-sdk/commit/b17a5d7a001192dde4cdfde75cb67d3a98f9924f))
+* **scrape:** restore Instagram profile posts from public pages ([#2233](https://github.com/context-dot-dev/context-go-sdk/issues/2233)) ([506944c](https://github.com/context-dot-dev/context-go-sdk/commit/506944cbed18c9d610884fb3b70353806124b44a))
+
 ## [2.37.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.36.1...v2.37.0) (2026-10-27)
 
 

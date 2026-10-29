@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.38.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.38.0...v2.38.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **scrape:** derive the /web/scrape request spec from its zod schema ([#2044](https://github.com/context-dot-dev/context-go-sdk/issues/2044)) ([3d2e38c](https://github.com/context-dot-dev/context-go-sdk/commit/3d2e38cc80f6ee1f3d2650cb510d7954d36f2bc3))
+
 ## [2.38.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.37.0...v2.38.0) (2026-10-28)
 
 

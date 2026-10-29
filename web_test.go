@@ -227,7 +227,8 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 		},
 		Policies: []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
 		ProductParams: contextdev.WebScrapeParamsProductParams{
-			DedupeImages: contextdev.Bool(true),
+			DedupeImages:  contextdev.Bool(true),
+			UseAIFallback: contextdev.Bool(true),
 		},
 		ScreenshotParams: contextdev.WebScrapeParamsScreenshotParams{
 			Area: contextdev.WebScrapeParamsScreenshotParamsAreaUnion{

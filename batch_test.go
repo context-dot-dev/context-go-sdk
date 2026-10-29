@@ -229,7 +229,8 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 							},
 						},
 						ProductParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingProductParams{
-							DedupeImages: contextdev.Bool(true),
+							DedupeImages:  contextdev.Bool(true),
+							UseAIFallback: contextdev.Bool(true),
 						},
 						ScreenshotParams: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParams{
 							Area: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParamsAreaUnion{

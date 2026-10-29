@@ -2838,10 +2838,9 @@ type WebScrapeParams struct {
 	ScreenshotParams WebScrapeParamsScreenshotParams `json:"screenshotParams,omitzero"`
 	// Browser and content settings shared by all outputs.
 	SharedParams WebScrapeParamsSharedParams `json:"sharedParams,omitzero"`
-	// Labels for tracking request usage. Not retained when zdr is enabled.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
-	// Deadline for the whole request. Defaults to 90000 ms with `fail`. Fixed waits
-	// must end before it.
+	// Request deadline and what to return when it passes.
 	TimeoutOpts WebScrapeParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	// `enabled` turns on zero data retention. Your organization must have ZDR enabled.
 	//
@@ -3188,6 +3187,10 @@ func init() {
 type WebScrapeParamsProductParams struct {
 	// Drop visually duplicate product images, keeping the largest copy.
 	DedupeImages param.Opt[bool] `json:"dedupeImages,omitzero"`
+	// Ignored. The AI fallback runs automatically.
+	//
+	// Deprecated: deprecated
+	UseAIFallback param.Opt[bool] `json:"useAIFallback,omitzero"`
 	paramObj
 }
 
@@ -3634,8 +3637,7 @@ func (u *WebScrapeParamsSharedParamsWaitForUnion) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Deadline for the whole request. Defaults to 90000 ms with `fail`. Fixed waits
-// must end before it.
+// Request deadline and what to return when it passes.
 //
 // The property Milliseconds is required.
 type WebScrapeParamsTimeoutOpts struct {

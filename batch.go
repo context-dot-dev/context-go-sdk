@@ -4448,7 +4448,7 @@ type BatchSubmitParamsInputScrapeDataScrapeAnything struct {
 	ScreenshotParams BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParams `json:"screenshotParams,omitzero"`
 	// Browser and content settings shared by all outputs.
 	SharedParams BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParams `json:"sharedParams,omitzero"`
-	// Labels for tracking request usage. Not retained when zdr is enabled.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	// Deadline for each page, using the same behavior and defaults as POST
 	// /web/scrape.
@@ -4827,6 +4827,10 @@ func init() {
 type BatchSubmitParamsInputScrapeDataScrapeAnythingProductParams struct {
 	// Drop visually duplicate product images, keeping the largest copy.
 	DedupeImages param.Opt[bool] `json:"dedupeImages,omitzero"`
+	// Ignored. The AI fallback runs automatically.
+	//
+	// Deprecated: deprecated
+	UseAIFallback param.Opt[bool] `json:"useAIFallback,omitzero"`
 	paramObj
 }
 
@@ -5887,7 +5891,7 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnything struct {
 	ScreenshotParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingScreenshotParams `json:"screenshotParams,omitzero"`
 	// Browser and content settings shared by all outputs.
 	SharedParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParams `json:"sharedParams,omitzero"`
-	// Labels for tracking request usage. Not retained when zdr is enabled.
+	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
 	// Deadline for each page, using the same behavior and defaults as POST
 	// /web/scrape.
@@ -6389,6 +6393,10 @@ func init() {
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingProductParams struct {
 	// Drop visually duplicate product images, keeping the largest copy.
 	DedupeImages param.Opt[bool] `json:"dedupeImages,omitzero"`
+	// Ignored. The AI fallback runs automatically.
+	//
+	// Deprecated: deprecated
+	UseAIFallback param.Opt[bool] `json:"useAIFallback,omitzero"`
 	paramObj
 }
 

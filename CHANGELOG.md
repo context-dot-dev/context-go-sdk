@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.39.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.38.1...v2.39.0) (2026-10-30)
+
+
+### Features
+
+* **scrape:** add Yelp reviews parser ([7c59199](https://github.com/context-dot-dev/context-go-sdk/commit/7c59199189e62393db15ba66ea0fd0fc004a5cee))
+* **scrape:** add Yelp search parser ([144a9f6](https://github.com/context-dot-dev/context-go-sdk/commit/144a9f6928974b5c782704e17daeb9df63c055ec))
+
 ## [2.38.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.38.0...v2.38.1) (2026-10-29)
 
 

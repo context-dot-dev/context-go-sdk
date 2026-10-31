@@ -2656,8 +2656,9 @@ type BatchGetResultsResponseDataOkResultParsed struct {
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
 	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
-	// "tiktok-following", "tiktok-user-search", "yelp-search", "yelp-reviews",
-	// "emails", "phone-numbers", "links".
+	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
+	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "emails",
+	// "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -3531,8 +3532,9 @@ type BatchGetResultsResponseDataErrorResultParsed struct {
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
 	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
-	// "tiktok-following", "tiktok-user-search", "yelp-search", "yelp-reviews",
-	// "emails", "phone-numbers", "links".
+	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
+	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "emails",
+	// "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -4786,13 +4788,62 @@ type BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser str
 	// (/search/user?q={query}) as data.users: id, username, nickname, biography,
 	// avatar_url, sec_uid, follower_count, like_count, and is_verified. The TikTok
 	// parsers accept tiktok.com, www.tiktok.com, and m.tiktok.com URLs but not short
-	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). yelp-search accepts Yelp
-	// search URLs with find_desc and find_loc, reads start as the result offset, and
-	// returns up to 20 ranked organic businesses in data.businesses with total and
-	// pagination. yelp-reviews accepts a Yelp business URL (yelp.com/biz/{alias}),
-	// uses optional start for the offset, and always sorts newest first; unsupported
-	// sort and review filters are rejected, while tracking params are ignored. It
-	// returns up to 20 latest public reviews in data.reviews with business details and
+	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). reddit-post parses a post
+	// (reddit.com/r/{subreddit}/comments/{id}, reddit.com/comments/{id}, or
+	// redd.it/{id}) into data.post: title, body as Markdown, type (text, link, image,
+	// gallery, or video), link_url, subreddit, author, flairs, score, upvote_ratio,
+	// comment and crosspost counts, NSFW, spoiler, locked, stickied, and archived
+	// flags, images (every gallery image in order), and video (an MP4 url plus an
+	// hls_url that carries the audio). data.comments holds the comment tree, each
+	// comment with id, author, body as Markdown, score, posted_at, depth, parent_id,
+	// url, is_submitter, is_deleted, and its replies; limit caps the total number of
+	// comments (default 100), filled shallowest first so whole conversations are kept,
+	// and data.has_more_comments says whether the thread has more. The sort query of
+	// the URL (best, top, new, controversial, old, qa) orders the comments.
+	// reddit-search returns search results for a search URL
+	// (reddit.com/search?q={query}, or reddit.com/r/{subreddit}/search?q={query} to
+	// search one subreddit). With type=link or no type it returns posts in the
+	// reddit-post shape as data.posts, ordered by the sort (relevance, hot, top, new,
+	// comments) and limited to the t time range (hour, day, week, month, year, all) of
+	// the URL; type=sr returns communities as data.communities (name, title,
+	// description, sidebar, subscriber_count, created_at, type, NSFW and quarantine
+	// flags, language, category, icon and banner URLs, and allowed post types);
+	// type=user returns accounts as data.users (username, display_name, bio,
+	// created_at, post and comment karma, avatar and banner URLs, and verified,
+	// employee, moderator, premium, and NSFW flags). limit caps the number of results
+	// (default 100), in the order Reddit returns them, and data.has_more says whether
+	// Reddit has more. reddit-subreddit reads a subreddit URL
+	// (reddit.com/r/{subreddit}, optionally followed by /hot, /new, /top, /rising, or
+	// /controversial, with t setting the time range of top and controversial, default
+	// day) into data.subreddit in the community shape of reddit-search, data.rules
+	// (name, description, applies_to, violation_reason, created_at), and data.posts in
+	// the reddit-post shape, ordered like the tab (default hot) and with stickied
+	// posts flagged; r/all and r/popular return posts with a null subreddit and rules.
+	// limit caps the posts (default 100) and data.has_more says whether Reddit has
+	// more. Private and quarantined subreddits return WEBSITE_ACCESS_ERROR.
+	// reddit-user reads a profile URL (reddit.com/user/{username} or
+	// reddit.com/u/{username}, optionally followed by /overview, /submitted, or
+	// /comments, with sort set to new, hot, top, or controversial and t setting the
+	// time range of top and controversial, default all) into data.user (id, username,
+	// display_name, bio, created_at, total, post, comment, awardee, and awarder karma,
+	// avatar and banner URLs, and verified, suspended, employee, moderator, premium,
+	// and NSFW flags), data.trophies (name, description, icon_url, granted_at, url),
+	// data.moderated_communities (name, title, url, subscriber_count, icon_url,
+	// is_nsfw), data.posts in the reddit-post shape, and data.comments, each with id,
+	// author, body as Markdown, score, posted_at, edited_at, url, subreddit, parent_id
+	// (null for a top-level comment), is_submitter, is_stickied, distinguished,
+	// award_count, and the post it was left on (id, title, url, author, is_nsfw). The
+	// overview tab returns both posts and comments; submitted returns null comments
+	// and comments returns null posts. limit caps the posts and comments together
+	// (default 100) and data.has_more says whether Reddit has more. Users who hide
+	// their activity return empty lists, and suspended accounts return their profile
+	// with null posts and comments. yelp-search accepts Yelp search URLs with
+	// find_desc and find_loc, reads start as the result offset, and returns up to 20
+	// ranked organic businesses in data.businesses with total and pagination.
+	// yelp-reviews accepts a Yelp business URL (yelp.com/biz/{alias}), uses optional
+	// start for the offset, and always sorts newest first; unsupported sort and review
+	// filters are rejected, while tracking params are ignored. It returns up to 20
+	// latest public reviews in data.reviews with business details and
 	// pagination.next_offset. Each review has rating, full text, updated_at, and
 	// author; owner replies and photos are not included. emails accepts any page and
 	// returns its email addresses as data.emails ([{ email }]), read from mailto
@@ -4810,11 +4861,14 @@ type BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser str
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
 	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
-	// "tiktok-following", "tiktok-user-search", "yelp-search", "yelp-reviews",
-	// "emails", "phone-numbers", "links".
+	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
+	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "emails",
+	// "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
-	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
-	// maximum 1000.
+	// google-maps-reviews and reddit parsers only. Maximum number of reviews
+	// (google-maps-reviews, default 100), comments (reddit-post, default 100), or
+	// results (reddit-search, reddit-subreddit, and reddit-user, default 100) to
+	// return; maximum 1000.
 	Limit param.Opt[int64] `json:"limit,omitzero"`
 	// google-maps-reviews only. Order of data.reviews. newest, relevant, highest, and
 	// lowest follow Google; oldest returns the earliest reviews first, which Google
@@ -4839,7 +4893,7 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "yelp-search", "yelp-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",
@@ -6361,13 +6415,62 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltPa
 	// (/search/user?q={query}) as data.users: id, username, nickname, biography,
 	// avatar_url, sec_uid, follower_count, like_count, and is_verified. The TikTok
 	// parsers accept tiktok.com, www.tiktok.com, and m.tiktok.com URLs but not short
-	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). yelp-search accepts Yelp
-	// search URLs with find_desc and find_loc, reads start as the result offset, and
-	// returns up to 20 ranked organic businesses in data.businesses with total and
-	// pagination. yelp-reviews accepts a Yelp business URL (yelp.com/biz/{alias}),
-	// uses optional start for the offset, and always sorts newest first; unsupported
-	// sort and review filters are rejected, while tracking params are ignored. It
-	// returns up to 20 latest public reviews in data.reviews with business details and
+	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). reddit-post parses a post
+	// (reddit.com/r/{subreddit}/comments/{id}, reddit.com/comments/{id}, or
+	// redd.it/{id}) into data.post: title, body as Markdown, type (text, link, image,
+	// gallery, or video), link_url, subreddit, author, flairs, score, upvote_ratio,
+	// comment and crosspost counts, NSFW, spoiler, locked, stickied, and archived
+	// flags, images (every gallery image in order), and video (an MP4 url plus an
+	// hls_url that carries the audio). data.comments holds the comment tree, each
+	// comment with id, author, body as Markdown, score, posted_at, depth, parent_id,
+	// url, is_submitter, is_deleted, and its replies; limit caps the total number of
+	// comments (default 100), filled shallowest first so whole conversations are kept,
+	// and data.has_more_comments says whether the thread has more. The sort query of
+	// the URL (best, top, new, controversial, old, qa) orders the comments.
+	// reddit-search returns search results for a search URL
+	// (reddit.com/search?q={query}, or reddit.com/r/{subreddit}/search?q={query} to
+	// search one subreddit). With type=link or no type it returns posts in the
+	// reddit-post shape as data.posts, ordered by the sort (relevance, hot, top, new,
+	// comments) and limited to the t time range (hour, day, week, month, year, all) of
+	// the URL; type=sr returns communities as data.communities (name, title,
+	// description, sidebar, subscriber_count, created_at, type, NSFW and quarantine
+	// flags, language, category, icon and banner URLs, and allowed post types);
+	// type=user returns accounts as data.users (username, display_name, bio,
+	// created_at, post and comment karma, avatar and banner URLs, and verified,
+	// employee, moderator, premium, and NSFW flags). limit caps the number of results
+	// (default 100), in the order Reddit returns them, and data.has_more says whether
+	// Reddit has more. reddit-subreddit reads a subreddit URL
+	// (reddit.com/r/{subreddit}, optionally followed by /hot, /new, /top, /rising, or
+	// /controversial, with t setting the time range of top and controversial, default
+	// day) into data.subreddit in the community shape of reddit-search, data.rules
+	// (name, description, applies_to, violation_reason, created_at), and data.posts in
+	// the reddit-post shape, ordered like the tab (default hot) and with stickied
+	// posts flagged; r/all and r/popular return posts with a null subreddit and rules.
+	// limit caps the posts (default 100) and data.has_more says whether Reddit has
+	// more. Private and quarantined subreddits return WEBSITE_ACCESS_ERROR.
+	// reddit-user reads a profile URL (reddit.com/user/{username} or
+	// reddit.com/u/{username}, optionally followed by /overview, /submitted, or
+	// /comments, with sort set to new, hot, top, or controversial and t setting the
+	// time range of top and controversial, default all) into data.user (id, username,
+	// display_name, bio, created_at, total, post, comment, awardee, and awarder karma,
+	// avatar and banner URLs, and verified, suspended, employee, moderator, premium,
+	// and NSFW flags), data.trophies (name, description, icon_url, granted_at, url),
+	// data.moderated_communities (name, title, url, subscriber_count, icon_url,
+	// is_nsfw), data.posts in the reddit-post shape, and data.comments, each with id,
+	// author, body as Markdown, score, posted_at, edited_at, url, subreddit, parent_id
+	// (null for a top-level comment), is_submitter, is_stickied, distinguished,
+	// award_count, and the post it was left on (id, title, url, author, is_nsfw). The
+	// overview tab returns both posts and comments; submitted returns null comments
+	// and comments returns null posts. limit caps the posts and comments together
+	// (default 100) and data.has_more says whether Reddit has more. Users who hide
+	// their activity return empty lists, and suspended accounts return their profile
+	// with null posts and comments. yelp-search accepts Yelp search URLs with
+	// find_desc and find_loc, reads start as the result offset, and returns up to 20
+	// ranked organic businesses in data.businesses with total and pagination.
+	// yelp-reviews accepts a Yelp business URL (yelp.com/biz/{alias}), uses optional
+	// start for the offset, and always sorts newest first; unsupported sort and review
+	// filters are rejected, while tracking params are ignored. It returns up to 20
+	// latest public reviews in data.reviews with business details and
 	// pagination.next_offset. Each review has rating, full text, updated_at, and
 	// author; owner replies and photos are not included. emails accepts any page and
 	// returns its email addresses as data.emails ([{ email }]), read from mailto
@@ -6385,11 +6488,14 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltPa
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
 	// "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile",
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
-	// "tiktok-following", "tiktok-user-search", "yelp-search", "yelp-reviews",
-	// "emails", "phone-numbers", "links".
+	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
+	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "emails",
+	// "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
-	// google-maps-reviews only. Maximum number of reviews to return. Defaults to 100;
-	// maximum 1000.
+	// google-maps-reviews and reddit parsers only. Maximum number of reviews
+	// (google-maps-reviews, default 100), comments (reddit-post, default 100), or
+	// results (reddit-search, reddit-subreddit, and reddit-user, default 100) to
+	// return; maximum 1000.
 	Limit param.Opt[int64] `json:"limit,omitzero"`
 	// google-maps-reviews only. Order of data.reviews. newest, relevant, highest, and
 	// lowest follow Google; oldest returns the earliest reviews first, which Google
@@ -6414,7 +6520,7 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebui
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "yelp-search", "yelp-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",

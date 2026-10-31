@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.40.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.39.0...v2.40.0) (2026-10-31)
+
+
+### Features
+
+* **scrape:** add reddit-post prebuilt parser with full comment trees ([#2217](https://github.com/context-dot-dev/context-go-sdk/issues/2217)) ([cc4ef94](https://github.com/context-dot-dev/context-go-sdk/commit/cc4ef94c8723287ae90343e3bcdc463aec2845c8))
+
 ## [2.39.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.38.1...v2.39.0) (2026-10-30)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.41.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.40.0...v2.41.0) (2026-11-01)
+
+
+### Features
+
+* **scrape:** return Yelp reviewer id and profile url in yelp-reviews ([#2402](https://github.com/context-dot-dev/context-go-sdk/issues/2402)) ([5926151](https://github.com/context-dot-dev/context-go-sdk/commit/59261518661c82111f4ab226b620307a950060ec))
+
 ## [2.40.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.39.0...v2.40.0) (2026-10-31)
 
 

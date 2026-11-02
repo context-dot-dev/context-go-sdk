@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.42.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.41.0...v2.42.0) (2026-11-02)
+
+
+### Features
+
+* **scrape:** read framework-embedded page data in the json format ([#2405](https://github.com/context-dot-dev/context-go-sdk/issues/2405)) ([5895e70](https://github.com/context-dot-dev/context-go-sdk/commit/5895e708da53d3d5103678923dacaaf3179119d3))
+
 ## [2.41.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.40.0...v2.41.0) (2026-11-01)
 
 

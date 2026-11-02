@@ -2875,7 +2875,8 @@ type WebScrapeParamsFormats struct {
 	HTML param.Opt[bool] `json:"html,omitzero"`
 	// Images found on the page.
 	Images param.Opt[bool] `json:"images,omitzero"`
-	// An object matching `jsonParams.schema`, extracted from the page.
+	// An object matching `jsonParams.schema`, extracted from the page text and its
+	// embedded data (JSON-LD, meta tags, framework state).
 	Json param.Opt[bool] `json:"json,omitzero"`
 	// Page content as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`

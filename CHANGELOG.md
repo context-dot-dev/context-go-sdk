@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.42.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.42.0...v2.42.1) (2026-11-04)
+
+
+### Refactors
+
+* **fonts:** share font link schemas and inferred types ([ab693a1](https://github.com/context-dot-dev/context-go-sdk/commit/ab693a1d6d90b13ce205e864d12a4914b03f1a4b))
+
 ## [2.42.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.41.0...v2.42.0) (2026-11-02)
 
 

@@ -393,8 +393,8 @@ type WebExtractStyleguideResponseStyleguide struct {
 	// Spacing system used on the website
 	ElementSpacing WebExtractStyleguideResponseStyleguideElementSpacing `json:"elementSpacing" api:"required"`
 	// Font assets keyed by family name as it appears in fontFamily/fontFallbacks
-	// (non-generic names only). Clients match typography.fontFamily / fontWeight or
-	// button styles to pick a file URL from files.
+	// (non-generic names only). Match font style and weight against faces to select a
+	// file URL.
 	FontLinks map[string]WebExtractStyleguideResponseStyleguideFontLink `json:"fontLinks" api:"required"`
 	// The primary color mode of the website design
 	//
@@ -729,24 +729,29 @@ func (r *WebExtractStyleguideResponseStyleguideElementSpacing) UnmarshalJSON(dat
 }
 
 type WebExtractStyleguideResponseStyleguideFontLink struct {
-	// Upright font files keyed by weight string (e.g. "400" for regular, "500",
-	// "700"). Values are absolute URLs.
-	Files map[string]string `json:"files" api:"required"`
 	// Any of "google", "custom".
 	Type string `json:"type" api:"required"`
 	// Google Fonts category when type is google (e.g. sans-serif, serif, monospace,
 	// display, handwriting). Omitted for custom fonts when unknown.
 	Category string `json:"category"`
-	// Present when type is custom: human-readable name derived from the fontLinks key
-	// (strip build/hash suffixes, split camelCase / PascalCase, normalize separators).
-	// Google entries omit this.
+	// Human-readable family name. For custom fonts, derived from the fontLinks key;
+	// for Google fonts, the canonical Google Fonts family name.
 	DisplayName string `json:"displayName"`
+	// Discovered font faces, including style, weight, and distinct Unicode subsets.
+	Faces []WebExtractStyleguideResponseStyleguideFontLinkFace `json:"faces"`
+	// Deprecated upright font lookup keyed by weight string. A variable font can map
+	// several standard weight keys to the same URL; faces retains its actual weight
+	// range.
+	//
+	// Deprecated: deprecated
+	Files map[string]string `json:"files"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Files       respjson.Field
 		Type        respjson.Field
 		Category    respjson.Field
 		DisplayName respjson.Field
+		Faces       respjson.Field
+		Files       respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -755,6 +760,37 @@ type WebExtractStyleguideResponseStyleguideFontLink struct {
 // Returns the unmodified JSON received from the API
 func (r WebExtractStyleguideResponseStyleguideFontLink) RawJSON() string { return r.JSON.raw }
 func (r *WebExtractStyleguideResponseStyleguideFontLink) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type WebExtractStyleguideResponseStyleguideFontLinkFace struct {
+	// CSS font-style descriptor: normal, italic, or oblique, including an optional
+	// oblique angle or angle range (e.g. oblique 10deg 20deg).
+	Style string `json:"style" api:"required"`
+	// Preferred font file URL or inline font data URL.
+	URL string `json:"url" api:"required"`
+	// CSS font-weight descriptor. A variable font file can have a range such as "300
+	// 500", covering intermediate weights without separate files.
+	Weight string `json:"weight" api:"required"`
+	// CSS unicode-range descriptor.
+	UnicodeRange string `json:"unicodeRange"`
+	// CSS font-width or font-stretch descriptor.
+	Width string `json:"width"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Style        respjson.Field
+		URL          respjson.Field
+		Weight       respjson.Field
+		UnicodeRange respjson.Field
+		Width        respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r WebExtractStyleguideResponseStyleguideFontLinkFace) RawJSON() string { return r.JSON.raw }
+func (r *WebExtractStyleguideResponseStyleguideFontLinkFace) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

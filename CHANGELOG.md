@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.43.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.43.0...v2.43.1) (2026-11-05)
+
+
+### Documentation
+
+* **logs:** say that a request log appears a few seconds after the request ([#2564](https://github.com/context-dot-dev/context-go-sdk/issues/2564)) ([1027dc4](https://github.com/context-dot-dev/context-go-sdk/commit/1027dc4ec545df2d4adab867575515a55159c33a))
+
 ## [2.43.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.42.1...v2.43.0) (2026-11-05)
 
 

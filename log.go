@@ -40,7 +40,10 @@ func NewLogService(opts ...option.RequestOption) (r LogService) {
 	return
 }
 
-// Retrieve a request’s metadata, retained input, and response.
+// Retrieve a request’s metadata, retained input, and response. An entry becomes
+// retrievable a few seconds after its request completes, so a 404 NOT_FOUND for a
+// request that just finished means ingestion has not caught up yet; retry after a
+// few seconds.
 func (r *LogService) Get(ctx context.Context, requestID string, opts ...option.RequestOption) (res *LogGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if requestID == "" {

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.44.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.43.1...v2.44.0) (2026-11-07)
+
+
+### Features
+
+* **batch:** accept lightweight submissions and queue pending work ([#2683](https://github.com/context-dot-dev/context-go-sdk/issues/2683)) ([da43b61](https://github.com/context-dot-dev/context-go-sdk/commit/da43b613229253f5381a58a021db1faa9e0ad69b))
+
 ## [2.43.1](https://github.com/context-dot-dev/context-go-sdk/compare/v2.43.0...v2.43.1) (2026-11-05)
 
 

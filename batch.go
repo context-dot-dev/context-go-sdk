@@ -104,8 +104,15 @@ func (r *BatchService) GetResults(ctx context.Context, batchID string, query Bat
 
 // Scrape up to 100,000 URLs, or crawl a site, asynchronously using the same
 // formats and scrape parameters as POST /web/scrape. Choose Markdown, HTML,
-// screenshots, images, bytes, parsed fields, products, highlights, and JSON. Poll
-// the batch ID or receive a webhook when it finishes.
+// screenshots, images, bytes, parsed fields, products, highlights, and JSON.
+// Submission persists the input and returns immediately with status pending.
+// Organizations with fewer than 10 available credits and no overage are rejected
+// with 402 up front. Each organization can submit up to 1,000 batches per minute,
+// independently of its polling budget. Batches wait pending when execution
+// capacity is full. Validation, sitemap discovery, the full credit quote, and
+// shard scheduling happen afterward. Poll the batch ID or receive a webhook when
+// it finishes. Deferred rejections appear as status failed with a failure code and
+// message.
 func (r *BatchService) Submit(ctx context.Context, params BatchSubmitParams, opts ...option.RequestOption) (res *BatchSubmitResponse, err error) {
 	if !param.IsOmitted(params.IdempotencyKey) {
 		opts = append(opts, option.WithHeader("Idempotency-Key", fmt.Sprintf("%v", params.IdempotencyKey.Value)))
@@ -381,9 +388,12 @@ type BatchGetResponse struct {
 	// Result download links; null until the batch finishes. Files are deleted 180 days
 	// after the batch finishes.
 	Results BatchGetResponseResults `json:"results" api:"required"`
-	// Current state. `completed`, `cancelled`, and `failed` are final.
+	// Current state. `pending` means waiting for execution capacity or background
+	// validation. Capacity-limited batches remain pending until a slot opens.
+	// `completed`, `cancelled`, and `failed` are final.
 	//
-	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
+	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
+	// "failed".
 	Status BatchGetResponseStatus `json:"status" api:"required"`
 	// Tags stored on the batch at submission.
 	Tags   []string               `json:"tags" api:"required"`
@@ -433,7 +443,8 @@ type BatchGetResponseCredits struct {
 	OcrCharged int64 `json:"ocr_charged" api:"required"`
 	// Credits returned for unsuccessful pages when the batch settles.
 	Refunded int64 `json:"refunded" api:"required"`
-	// Credits held when the batch was accepted.
+	// Credits held by background preparation before scraping starts. Zero while
+	// pending.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -593,10 +604,13 @@ func (r *BatchGetResponseResultsFile) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current state. `completed`, `cancelled`, and `failed` are final.
+// Current state. `pending` means waiting for execution capacity or background
+// validation. Capacity-limited batches remain pending until a slot opens.
+// `completed`, `cancelled`, and `failed` are final.
 type BatchGetResponseStatus string
 
 const (
+	BatchGetResponseStatusPending    BatchGetResponseStatus = "pending"
 	BatchGetResponseStatusQueued     BatchGetResponseStatus = "queued"
 	BatchGetResponseStatusRunning    BatchGetResponseStatus = "running"
 	BatchGetResponseStatusCancelling BatchGetResponseStatus = "cancelling"
@@ -706,9 +720,12 @@ type BatchListResponseData struct {
 	// Result download links; null until the batch finishes. Files are deleted 180 days
 	// after the batch finishes.
 	Results BatchListResponseDataResults `json:"results" api:"required"`
-	// Current state. `completed`, `cancelled`, and `failed` are final.
+	// Current state. `pending` means waiting for execution capacity or background
+	// validation. Capacity-limited batches remain pending until a slot opens.
+	// `completed`, `cancelled`, and `failed` are final.
 	//
-	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
+	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
+	// "failed".
 	Status string `json:"status" api:"required"`
 	// Tags stored on the batch at submission.
 	Tags   []string                    `json:"tags" api:"required"`
@@ -750,7 +767,8 @@ type BatchListResponseDataCredits struct {
 	OcrCharged int64 `json:"ocr_charged" api:"required"`
 	// Credits returned for unsuccessful pages when the batch settles.
 	Refunded int64 `json:"refunded" api:"required"`
-	// Credits held when the batch was accepted.
+	// Credits held by background preparation before scraping starts. Zero while
+	// pending.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3813,7 +3831,7 @@ type BatchSubmitResponse struct {
 	Crawl CrawlControls `json:"crawl" api:"required"`
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
-	// What accepting this batch cost.
+	// Credits are reserved after background validation, before scraping starts.
 	Credits BatchSubmitResponseCredits `json:"credits" api:"required"`
 	// Outputs requested for each page. Matches input.data.formats on submission.
 	Formats BatchSubmitResponseFormats `json:"formats" api:"required"`
@@ -3828,9 +3846,12 @@ type BatchSubmitResponse struct {
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Always `queued`. An accepted batch has not started yet.
+	// Current state. `pending` means waiting for execution capacity or background
+	// validation. Capacity-limited batches remain pending until a slot opens.
+	// `completed`, `cancelled`, and `failed` are final.
 	//
-	// Any of "queued".
+	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
+	// "failed".
 	Status BatchSubmitResponseStatus `json:"status" api:"required"`
 	// Tags stored on the batch.
 	Tags []string `json:"tags" api:"required"`
@@ -3889,9 +3910,9 @@ func (r *BatchSubmitResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What accepting this batch cost.
+// Credits are reserved after background validation, before scraping starts.
 type BatchSubmitResponseCredits struct {
-	// Credits held at submission.
+	// Credits reserved by background preparation. Zero while pending.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3978,11 +3999,19 @@ const (
 	BatchSubmitResponseModeCrawl  BatchSubmitResponseMode = "crawl"
 )
 
-// Always `queued`. An accepted batch has not started yet.
+// Current state. `pending` means waiting for execution capacity or background
+// validation. Capacity-limited batches remain pending until a slot opens.
+// `completed`, `cancelled`, and `failed` are final.
 type BatchSubmitResponseStatus string
 
 const (
-	BatchSubmitResponseStatusQueued BatchSubmitResponseStatus = "queued"
+	BatchSubmitResponseStatusPending    BatchSubmitResponseStatus = "pending"
+	BatchSubmitResponseStatusQueued     BatchSubmitResponseStatus = "queued"
+	BatchSubmitResponseStatusRunning    BatchSubmitResponseStatus = "running"
+	BatchSubmitResponseStatusCancelling BatchSubmitResponseStatus = "cancelling"
+	BatchSubmitResponseStatusCompleted  BatchSubmitResponseStatus = "completed"
+	BatchSubmitResponseStatusCancelled  BatchSubmitResponseStatus = "cancelled"
+	BatchSubmitResponseStatusFailed     BatchSubmitResponseStatus = "failed"
 )
 
 // Credits this request used and your remaining balance.
@@ -4023,7 +4052,8 @@ type BatchListParams struct {
 	SearchType BatchListParamsSearchType `query:"search_type,omitzero" json:"-"`
 	// Filter by status.
 	//
-	// Any of "queued", "running", "cancelling", "completed", "cancelled", "failed".
+	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
+	// "failed".
 	Status BatchListParamsStatus `query:"status,omitzero" json:"-"`
 	// Tags to filter by (matches batches having any of them). Pass repeated `tags`
 	// params or one comma-separated list, e.g. `tags=docs,competitor`.
@@ -4052,6 +4082,7 @@ const (
 type BatchListParamsStatus string
 
 const (
+	BatchListParamsStatusPending    BatchListParamsStatus = "pending"
 	BatchListParamsStatusQueued     BatchListParamsStatus = "queued"
 	BatchListParamsStatusRunning    BatchListParamsStatus = "running"
 	BatchListParamsStatusCancelling BatchListParamsStatus = "cancelling"

@@ -55,7 +55,7 @@ func TestBatchListWithOptionalParams(t *testing.T) {
 		Q:                    contextdev.String("batch_1a2b"),
 		SearchType:           contextdev.BatchListParamsSearchTypeExact,
 		ShouldIncludeUnified: contextdev.Bool(true),
-		Status:               contextdev.BatchListParamsStatusQueued,
+		Status:               contextdev.BatchListParamsStatusPending,
 		Tags: contextdev.BatchListParamsTagsUnion{
 			OfString: contextdev.String("docs,competitor"),
 		},

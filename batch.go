@@ -107,7 +107,7 @@ func (r *BatchService) GetResults(ctx context.Context, batchID string, query Bat
 // screenshots, images, bytes, parsed fields, products, highlights, and JSON.
 // Submission persists the input and returns immediately with status pending.
 // Organizations with fewer than 10 available credits and no overage are rejected
-// with 402 up front. Each organization can submit up to 1,000 batches per minute,
+// with 402 up front. Each organization can submit up to 2,500 batches per minute,
 // independently of its polling budget. Batches wait pending when execution
 // capacity is full. Validation, sitemap discovery, the full credit quote, and
 // shard scheduling happen afterward. Poll the batch ID or receive a webhook when

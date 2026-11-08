@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.45.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.44.0...v2.45.0) (2026-11-08)
+
+
+### Features
+
+* **batch:** raise batch submissions to 2,500 per minute per organization ([#2734](https://github.com/context-dot-dev/context-go-sdk/issues/2734)) ([114d601](https://github.com/context-dot-dev/context-go-sdk/commit/114d60168c4e0f6d347ed03cf1a9e9dc8a6cbfbb))
+
 ## [2.44.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.43.1...v2.44.0) (2026-11-07)
 
 

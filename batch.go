@@ -5640,6 +5640,11 @@ type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls struct {
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
 	// Regex pattern; only sitemap URLs matching it are scraped.
 	Regex param.Opt[string] `json:"regex,omitzero"`
+	// Path fragments that skip a sitemap URL in a crawl. Works separately from any
+	// regex inclusion or exclusion you define. Defaults to
+	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
+	// every listed URL.
+	ExcludePaths []string `json:"excludePaths,omitzero"`
 	paramObj
 }
 
@@ -5906,6 +5911,11 @@ type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls struct {
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
 	// Regex pattern; only sitemap URLs matching it are scraped.
 	Regex param.Opt[string] `json:"regex,omitzero"`
+	// Path fragments that skip a sitemap URL in a crawl. Works separately from any
+	// regex inclusion or exclusion you define. Defaults to
+	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
+	// every listed URL.
+	ExcludePaths []string `json:"excludePaths,omitzero"`
 	paramObj
 }
 
@@ -6215,6 +6225,11 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControls
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
 	// Regex pattern; only sitemap URLs matching it are scraped.
 	Regex param.Opt[string] `json:"regex,omitzero"`
+	// Path fragments that skip a sitemap URL in a crawl. Works separately from any
+	// regex inclusion or exclusion you define. Defaults to
+	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
+	// every listed URL.
+	ExcludePaths []string `json:"excludePaths,omitzero"`
 	paramObj
 }
 

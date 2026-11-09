@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.46.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.45.0...v2.46.0) (2026-11-09)
+
+
+### Features
+
+* **batches:** let sitemap crawls choose which paths count as non-pages ([#2796](https://github.com/context-dot-dev/context-go-sdk/issues/2796)) ([263367e](https://github.com/context-dot-dev/context-go-sdk/commit/263367e934cf0efd6397b221564e8dc03ccd1c5f))
+
 ## [2.45.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.44.0...v2.45.0) (2026-11-08)
 
 

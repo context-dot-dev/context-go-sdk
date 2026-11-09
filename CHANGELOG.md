@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.47.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.46.0...v2.47.0) (2026-11-09)
+
+
+### Features
+
+* **parse:** support WARC archives in parsing and scraping ([#2761](https://github.com/context-dot-dev/context-go-sdk/issues/2761)) ([6538548](https://github.com/context-dot-dev/context-go-sdk/commit/65385482af8d59c2650daf94be2d5da210116006))
+
 ## [2.46.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.45.0...v2.46.0) (2026-11-09)
 
 

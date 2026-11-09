@@ -39,7 +39,10 @@ func NewParseService(opts ...option.RequestOption) (r ParseService) {
 	return
 }
 
-// Convert uploaded file bytes into Markdown and optional HTML.
+// Convert uploaded file bytes into Markdown and optional HTML. WARC and WARC.GZ
+// archives combine HTTP response, resource, and conversion records in archive
+// order. Revisit and segmented records are skipped. Decoded WARC content is
+// limited to 50 MiB.
 func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseHandleParams, opts ...option.RequestOption) (res *ParseHandleResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	opts = append([]option.RequestOption{option.WithRequestBody("application/octet-stream", body)}, opts...)
@@ -60,11 +63,11 @@ type ParseHandleResponse struct {
 	Success bool `json:"success" api:"required"`
 	// Detected content type used for parsing
 	//
-	// Any of "html", "xml", "json", "jsonl", "text", "csv", "tsv", "markdown", "yaml",
-	// "python", "java", "javascript", "php", "shell", "ruby", "typescript", "rtf",
-	// "srt", "css", "scss", "less", "stylus", "sass", "svg", "pdf", "docx", "doc",
-	// "xlsx", "xls", "pptx", "ppt", "jpg", "png", "gif", "bmp", "tiff", "webp", "ppm",
-	// "pbm", "pgm", "pnm".
+	// Any of "warc", "html", "xml", "json", "jsonl", "text", "csv", "tsv", "markdown",
+	// "yaml", "python", "java", "javascript", "php", "shell", "ruby", "typescript",
+	// "rtf", "srt", "css", "scss", "less", "stylus", "sass", "svg", "pdf", "docx",
+	// "doc", "xlsx", "xls", "pptx", "ppt", "jpg", "png", "gif", "bmp", "tiff", "webp",
+	// "ppm", "pbm", "pgm", "pnm".
 	Type ParseHandleResponseType `json:"type" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata ParseHandleResponseKeyMetadata `json:"key_metadata"`
@@ -90,6 +93,7 @@ func (r *ParseHandleResponse) UnmarshalJSON(data []byte) error {
 type ParseHandleResponseType string
 
 const (
+	ParseHandleResponseTypeWarc       ParseHandleResponseType = "warc"
 	ParseHandleResponseTypeHTML       ParseHandleResponseType = "html"
 	ParseHandleResponseTypeXml        ParseHandleResponseType = "xml"
 	ParseHandleResponseTypeJson       ParseHandleResponseType = "json"
@@ -171,15 +175,16 @@ type ParseHandleParams struct {
 	// Extract only the main content from HTML-like inputs
 	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
 	// Optional file extension hint, such as pdf, docx, xlsx, pptx, html, json, csv,
-	// md, py, rtf, jpg, png, or txt.
+	// md, py, rtf, jpg, png, txt, warc, or warc.gz.
 	//
-	// Any of "txt", "text", "md", "markdown", "html", "htm", "xhtml", "xml", "rss",
-	// "atom", "csv", "tsv", "yaml", "yml", "py", "java", "js", "jsx", "mjs", "cjs",
-	// "json", "jsonl", "ndjson", "php", "sh", "bash", "zsh", "fish", "rb", "ts",
-	// "tsx", "rtf", "srt", "css", "scss", "less", "styl", "sass", "svg", "pdf",
-	// "docx", "doc", "xlsx", "xlsm", "xlsb", "xltx", "xltm", "xls", "pptx", "pptm",
-	// "ppsx", "ppsm", "potx", "potm", "ppt", "pps", "pot", "jpg", "jpeg", "jpe",
-	// "png", "gif", "bmp", "tiff", "tif", "webp", "ppm", "pbm", "pgm", "pnm".
+	// Any of "warc", "warc.gz", "txt", "text", "md", "markdown", "html", "htm",
+	// "xhtml", "xml", "rss", "atom", "csv", "tsv", "yaml", "yml", "py", "java", "js",
+	// "jsx", "mjs", "cjs", "json", "jsonl", "ndjson", "php", "sh", "bash", "zsh",
+	// "fish", "rb", "ts", "tsx", "rtf", "srt", "css", "scss", "less", "styl", "sass",
+	// "svg", "pdf", "docx", "doc", "xlsx", "xlsm", "xlsb", "xltx", "xltm", "xls",
+	// "pptx", "pptm", "ppsx", "ppsm", "potx", "potm", "ppt", "pps", "pot", "jpg",
+	// "jpeg", "jpe", "png", "gif", "bmp", "tiff", "tif", "webp", "ppm", "pbm", "pgm",
+	// "pnm".
 	Extension ParseHandleParamsExtension `query:"extension,omitzero" json:"-"`
 	// PDF page-range options as a JSON object, e.g. {"start": 2, "end": 5}.
 	Pdf ParseHandleParamsPdf `query:"pdf,omitzero" json:"-"`
@@ -220,10 +225,12 @@ func (r ParseHandleParams) URLQuery() (v url.Values, err error) {
 }
 
 // Optional file extension hint, such as pdf, docx, xlsx, pptx, html, json, csv,
-// md, py, rtf, jpg, png, or txt.
+// md, py, rtf, jpg, png, txt, warc, or warc.gz.
 type ParseHandleParamsExtension string
 
 const (
+	ParseHandleParamsExtensionWarc     ParseHandleParamsExtension = "warc"
+	ParseHandleParamsExtensionWarcGz   ParseHandleParamsExtension = "warc.gz"
 	ParseHandleParamsExtensionTxt      ParseHandleParamsExtension = "txt"
 	ParseHandleParamsExtensionText     ParseHandleParamsExtension = "text"
 	ParseHandleParamsExtensionMd       ParseHandleParamsExtension = "md"

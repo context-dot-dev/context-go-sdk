@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.48.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.47.0...v2.48.0) (2026-11-12)
+
+
+### Features
+
+* **zdr:** accept zero data retention on people search and company search ([#2852](https://github.com/context-dot-dev/context-go-sdk/issues/2852)) ([c871bc5](https://github.com/context-dot-dev/context-go-sdk/commit/c871bc58a30d3d189a722b8c77e4af0bdd268671))
+
 ## [2.47.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.46.0...v2.47.0) (2026-11-09)
 
 

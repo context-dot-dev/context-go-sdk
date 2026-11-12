@@ -1033,6 +1033,11 @@ type PersonSearchParams struct {
 	Mode PersonSearchParamsMode `json:"mode,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
+	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+	// your organization has ZDR.
+	//
+	// Any of "enabled", "disabled".
+	Zdr PersonSearchParamsZdr `json:"zdr,omitzero"`
 	paramObj
 }
 
@@ -1072,4 +1077,13 @@ type PersonSearchParamsMode string
 const (
 	PersonSearchParamsModeFast  PersonSearchParamsMode = "fast"
 	PersonSearchParamsModeUltra PersonSearchParamsMode = "ultra"
+)
+
+// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
+// your organization has ZDR.
+type PersonSearchParamsZdr string
+
+const (
+	PersonSearchParamsZdrEnabled  PersonSearchParamsZdr = "enabled"
+	PersonSearchParamsZdrDisabled PersonSearchParamsZdr = "disabled"
 )

@@ -90,6 +90,7 @@ func TestPersonSearchWithOptionalParams(t *testing.T) {
 		},
 		Mode: contextdev.PersonSearchParamsModeFast,
 		Tags: []string{"production", "team-alpha"},
+		Zdr:  contextdev.PersonSearchParamsZdrEnabled,
 	})
 	if err != nil {
 		var apierr *contextdev.Error

@@ -476,7 +476,7 @@ type BatchGetResponseFormats struct {
 	// An object matching `jsonParams.schema`, extracted from the page text and its
 	// embedded data (JSON-LD, meta tags, framework state).
 	Json bool `json:"json"`
-	// Page content as Markdown.
+	// Page content or video transcript as Markdown.
 	Markdown bool `json:"markdown"`
 	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
 	Parse bool `json:"parse"`
@@ -800,7 +800,7 @@ type BatchListResponseDataFormats struct {
 	// An object matching `jsonParams.schema`, extracted from the page text and its
 	// embedded data (JSON-LD, meta tags, framework state).
 	Json bool `json:"json"`
-	// Page content as Markdown.
+	// Page content or video transcript as Markdown.
 	Markdown bool `json:"markdown"`
 	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
 	Parse bool `json:"parse"`
@@ -1082,7 +1082,7 @@ type BatchCancelResponseFormats struct {
 	// An object matching `jsonParams.schema`, extracted from the page text and its
 	// embedded data (JSON-LD, meta tags, framework state).
 	Json bool `json:"json"`
-	// Page content as Markdown.
+	// Page content or video transcript as Markdown.
 	Markdown bool `json:"markdown"`
 	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
 	Parse bool `json:"parse"`
@@ -3941,7 +3941,7 @@ type BatchSubmitResponseFormats struct {
 	// An object matching `jsonParams.schema`, extracted from the page text and its
 	// embedded data (JSON-LD, meta tags, framework state).
 	Json bool `json:"json"`
-	// Page content as Markdown.
+	// Page content or video transcript as Markdown.
 	Markdown bool `json:"markdown"`
 	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
 	Parse bool `json:"parse"`
@@ -4547,7 +4547,7 @@ type BatchSubmitParamsInputScrapeDataScrapeAnythingFormats struct {
 	// An object matching `jsonParams.schema`, extracted from the page text and its
 	// embedded data (JSON-LD, meta tags, framework state).
 	Json param.Opt[bool] `json:"json,omitzero"`
-	// Page content as Markdown.
+	// Page content or video transcript as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
 	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
@@ -6072,7 +6072,7 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingFormats struct {
 	// An object matching `jsonParams.schema`, extracted from the page text and its
 	// embedded data (JSON-LD, meta tags, framework state).
 	Json param.Opt[bool] `json:"json,omitzero"`
-	// Page content as Markdown.
+	// Page content or video transcript as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
 	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
 	Parse param.Opt[bool] `json:"parse,omitzero"`

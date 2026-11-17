@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.49.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.48.0...v2.49.0) (2026-11-17)
+
+
+### Features
+
+* **billing:** report plan facts in usage and limit errors ([#2897](https://github.com/context-dot-dev/context-go-sdk/issues/2897)) ([855f99c](https://github.com/context-dot-dev/context-go-sdk/commit/855f99c4d3e363e670883e542da039978af53e8f))
+
+
+### Chores
+
+* run release-please centrally from brand-dev-server ([9d8a01d](https://github.com/context-dot-dev/context-go-sdk/commit/9d8a01de27a6b34f260e670d7001aa54337c0279))
+
+
+### Documentation
+
+* **scrape:** mention transcripts on the Markdown format ([#2903](https://github.com/context-dot-dev/context-go-sdk/issues/2903)) ([855f99c](https://github.com/context-dot-dev/context-go-sdk/commit/855f99c4d3e363e670883e542da039978af53e8f))
+
 ## [2.48.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.47.0...v2.48.0) (2026-11-12)
 
 

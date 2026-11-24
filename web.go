@@ -2767,6 +2767,9 @@ type WebExtractStyleguideParamsTimeoutOpts struct {
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
 	// "fail" returns 408 at the deadline. "return-partial" returns available results;
 	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
+	// On POST /web/scrape, an output that is not ready in time fails with error_code
+	// REQUEST_TIMEOUT inside a 200 response under either behavior; 408 is returned
+	// only when the whole request cannot respond by the deadline.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -3777,6 +3780,9 @@ type WebScrapeParamsTimeoutOpts struct {
 	Milliseconds int64 `json:"milliseconds" api:"required"`
 	// "fail" returns 408 at the deadline. "return-partial" returns available results;
 	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
+	// On POST /web/scrape, an output that is not ready in time fails with error_code
+	// REQUEST_TIMEOUT inside a 200 response under either behavior; 408 is returned
+	// only when the whole request cannot respond by the deadline.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -4165,6 +4171,9 @@ type WebScreenshotParamsTimeoutOpts struct {
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
 	// "fail" returns 408 at the deadline. "return-partial" returns available results;
 	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
+	// On POST /web/scrape, an output that is not ready in time fails with error_code
+	// REQUEST_TIMEOUT inside a 200 response under either behavior; 408 is returned
+	// only when the whole request cannot respond by the deadline.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -4643,6 +4652,9 @@ type WebSearchParamsMarkdownOptionsTimeoutOpts struct {
 	Milliseconds int64 `json:"milliseconds" api:"required"`
 	// "fail" returns 408 at the deadline. "return-partial" returns available results;
 	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
+	// On POST /web/scrape, an output that is not ready in time fails with error_code
+	// REQUEST_TIMEOUT inside a 200 response under either behavior; 408 is returned
+	// only when the whole request cannot respond by the deadline.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`

@@ -2125,15 +2125,18 @@ type WebSearchResponseResultHighlights struct {
 	// Per-result highlights outcome. Inspect this before reading `highlights`.
 	//
 	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "CONTENT_TOO_LARGE",
-	// "WEBSITE_ACCESS_ERROR", "WEBSITE_BLOCKED", "ERROR".
+	// "WEBSITE_ACCESS_ERROR", "WEBSITE_BLOCKED", "WEBSITE_NOT_FOUND", "ERROR".
 	Code string `json:"code" api:"required"`
 	// Passages relevant to the query, in page order. Null unless
 	// highlightsOptions.enabled is true and the page was read.
 	Highlights []string `json:"highlights" api:"required"`
+	// Why this output is missing. Present only when `code` is a failure.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Code        respjson.Field
 		Highlights  respjson.Field
+		Message     respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
 	} `json:"-"`
@@ -2150,7 +2153,7 @@ type WebSearchResponseResultMarkdown struct {
 	// Per-result scrape outcome. Inspect this before reading `markdown`.
 	//
 	// Any of "SUCCESS", "NOT_REQUESTED", "TIMEOUT", "CONTENT_TOO_LARGE",
-	// "WEBSITE_ACCESS_ERROR", "WEBSITE_BLOCKED", "ERROR".
+	// "WEBSITE_ACCESS_ERROR", "WEBSITE_BLOCKED", "WEBSITE_NOT_FOUND", "ERROR".
 	Code string `json:"code" api:"required"`
 	// GFM Markdown of the page. Null unless markdownOptions.enabled is true and
 	// scraping succeeded.
@@ -2160,11 +2163,14 @@ type WebSearchResponseResultMarkdown struct {
 	//
 	// Any of "loaded", "still-loading".
 	FinalDomState string `json:"finalDOMState"`
+	// Why this output is missing. Present only when `code` is a failure.
+	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Code          respjson.Field
 		Markdown      respjson.Field
 		FinalDomState respjson.Field
+		Message       respjson.Field
 		ExtraFields   map[string]respjson.Field
 		raw           string
 	} `json:"-"`

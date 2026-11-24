@@ -118,8 +118,8 @@ type WebAnswersResponse struct {
 	Sources []string `json:"sources" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata WebAnswersResponseKeyMetadata `json:"key_metadata"`
-	// True when the request deadline ended research and the answer uses the evidence
-	// collected so far.
+	// True when the answer is incomplete: the request deadline ended research, or a
+	// requested list item has no researched values.
 	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {

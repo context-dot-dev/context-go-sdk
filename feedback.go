@@ -97,7 +97,7 @@ type FeedbackSubmitParams struct {
 	// Kind of issue.
 	//
 	// Any of "bug", "docs_mismatch", "friction", "feature_gap", "quality_degradation",
-	// "other".
+	// "bad_brand", "other".
 	Category FeedbackSubmitParamsCategory `json:"category,omitzero" api:"required"`
 	// What went wrong and what you expected instead.
 	Note string `json:"note" api:"required"`
@@ -128,5 +128,6 @@ const (
 	FeedbackSubmitParamsCategoryFriction           FeedbackSubmitParamsCategory = "friction"
 	FeedbackSubmitParamsCategoryFeatureGap         FeedbackSubmitParamsCategory = "feature_gap"
 	FeedbackSubmitParamsCategoryQualityDegradation FeedbackSubmitParamsCategory = "quality_degradation"
+	FeedbackSubmitParamsCategoryBadBrand           FeedbackSubmitParamsCategory = "bad_brand"
 	FeedbackSubmitParamsCategoryOther              FeedbackSubmitParamsCategory = "other"
 )

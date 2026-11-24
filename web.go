@@ -2573,8 +2573,8 @@ func (r *WebWebCrawlMdResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type WebAnswersParams struct {
-	// Research task. The agent selects company/profile lookups, web searches, or page
-	// reads. Include domains or URLs to focus the research.
+	// Research task, up to 2000 characters. The agent selects company/profile lookups,
+	// web searches, or page reads. Include domains or URLs to focus the research.
 	Task string `json:"task" api:"required"`
 	// Example answer object, not JSON Schema. Up to 8 levels, 500 values, and 16000
 	// characters; unknowns may be null.

@@ -1825,14 +1825,26 @@ type WebScrapeResponseProductDataProductVariant struct {
 	SKU    string   `json:"sku" api:"required"`
 	// Variant or offer URL when provided by the source. May be shared by variants.
 	URL string `json:"url" api:"required"`
+	// Normalized stock or ordering availability of this variant.
+	//
+	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
+	// "backorder", "made_to_order", "discontinued".
+	Availability string `json:"availability" api:"nullable"`
+	// Currency code for the variant price (e.g., USD, EUR) when stated with it.
+	Currency string `json:"currency" api:"nullable"`
+	// Price of this variant when the source states one per variant.
+	Price float64 `json:"price" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Attributes  respjson.Field
-		Images      respjson.Field
-		SKU         respjson.Field
-		URL         respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		Attributes   respjson.Field
+		Images       respjson.Field
+		SKU          respjson.Field
+		URL          respjson.Field
+		Availability respjson.Field
+		Currency     respjson.Field
+		Price        respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
 	} `json:"-"`
 }
 
@@ -2317,7 +2329,7 @@ type WebWebCrawlMdResponseResultMetadata struct {
 	FinalURL string `json:"finalUrl" api:"required"`
 	// Original URL requested by the caller.
 	SourceURL string `json:"sourceUrl" api:"required"`
-	// HTTP status code of the response
+	// HTTP status code of the response (0 when the page could not be retrieved)
 	StatusCode int64 `json:"statusCode" api:"required"`
 	// true if the page was fetched and parsed successfully
 	Success bool `json:"success" api:"required"`
@@ -2335,6 +2347,11 @@ type WebWebCrawlMdResponseResultMetadata struct {
 	CanonicalURL string `json:"canonicalUrl"`
 	// Best description extracted from standard, Open Graph, or Twitter metadata.
 	Description string `json:"description"`
+	// Why the page failed. Present only when `success` is `false`: `WEBSITE_BLOCKED`
+	// (the site served an anti-bot challenge or access wall), `WEBSITE_ACCESS_ERROR`
+	// (the page could not be retrieved or had no usable content), `NOT_FOUND`,
+	// `UNSUPPORTED_CONTENT`, `NO_PUBLISHED_MARKDOWN`, or `INTERNAL_ERROR`.
+	ErrorCode string `json:"error_code"`
 	// Resolved favicon URL, when present.
 	Favicon string `json:"favicon"`
 	// Page headings (h1–h6) in document order, extracted from the unfiltered document.
@@ -2374,6 +2391,7 @@ type WebWebCrawlMdResponseResultMetadata struct {
 		Author         respjson.Field
 		CanonicalURL   respjson.Field
 		Description    respjson.Field
+		ErrorCode      respjson.Field
 		Favicon        respjson.Field
 		Headings       respjson.Field
 		Image          respjson.Field

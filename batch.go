@@ -2833,14 +2833,26 @@ type BatchGetResultsResponseDataOkResultProductDataProductVariant struct {
 	SKU    string   `json:"sku" api:"required"`
 	// Variant or offer URL when provided by the source. May be shared by variants.
 	URL string `json:"url" api:"required"`
+	// Normalized stock or ordering availability of this variant.
+	//
+	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
+	// "backorder", "made_to_order", "discontinued".
+	Availability string `json:"availability" api:"nullable"`
+	// Currency code for the variant price (e.g., USD, EUR) when stated with it.
+	Currency string `json:"currency" api:"nullable"`
+	// Price of this variant when the source states one per variant.
+	Price float64 `json:"price" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Attributes  respjson.Field
-		Images      respjson.Field
-		SKU         respjson.Field
-		URL         respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		Attributes   respjson.Field
+		Images       respjson.Field
+		SKU          respjson.Field
+		URL          respjson.Field
+		Availability respjson.Field
+		Currency     respjson.Field
+		Price        respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
 	} `json:"-"`
 }
 
@@ -3713,14 +3725,26 @@ type BatchGetResultsResponseDataErrorResultProductDataProductVariant struct {
 	SKU    string   `json:"sku" api:"required"`
 	// Variant or offer URL when provided by the source. May be shared by variants.
 	URL string `json:"url" api:"required"`
+	// Normalized stock or ordering availability of this variant.
+	//
+	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
+	// "backorder", "made_to_order", "discontinued".
+	Availability string `json:"availability" api:"nullable"`
+	// Currency code for the variant price (e.g., USD, EUR) when stated with it.
+	Currency string `json:"currency" api:"nullable"`
+	// Price of this variant when the source states one per variant.
+	Price float64 `json:"price" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		Attributes  respjson.Field
-		Images      respjson.Field
-		SKU         respjson.Field
-		URL         respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
+		Attributes   respjson.Field
+		Images       respjson.Field
+		SKU          respjson.Field
+		URL          respjson.Field
+		Availability respjson.Field
+		Currency     respjson.Field
+		Price        respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
 	} `json:"-"`
 }
 

@@ -6394,7 +6394,9 @@ type MonitorNewParams struct {
 	//
 	// Any of "web".
 	Mode MonitorNewParamsMode `json:"mode,omitzero"`
-	// Access policy IDs to apply to every run.
+	// Access policy IDs to apply to every run. Leave it out unless access policies are
+	// enabled for your organization; otherwise the request fails with
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
@@ -6847,6 +6849,8 @@ type MonitorUpdateParams struct {
 	// and page targets with `instructions`, otherwise `exact`.
 	ChangeDetection MonitorUpdateParamsChangeDetectionUnion `json:"change_detection,omitzero"`
 	// Access policy IDs to apply to every run. Send an empty list to remove them.
+	// Leave it out unless access policies are enabled for your organization; otherwise
+	// the request fails with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
 	// every 6 hours or every 2 days. The total interval (frequency × unit) must be

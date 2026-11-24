@@ -112,7 +112,9 @@ type UtilityPrefetchParams struct {
 	//
 	// Any of "brand", "styleguide".
 	Type UtilityPrefetchParamsType `json:"type,omitzero" api:"required"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`

@@ -2584,7 +2584,9 @@ type WebAnswersParams struct {
 	//
 	// Any of "fast", "ultra".
 	Mode WebAnswersParamsMode `json:"mode,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -2726,7 +2728,9 @@ type WebExtractStyleguideParams struct {
 	//
 	// Any of "light", "dark".
 	ColorScheme WebExtractStyleguideParamsColorScheme `query:"colorScheme,omitzero" json:"-"`
-	// Comma-separated access policy IDs to apply. A URL must pass every policy.
+	// Comma-separated access policy IDs to apply. A URL must pass every policy. Leave
+	// it out unless access policies are enabled for your organization; otherwise the
+	// request fails with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `query:"policies,omitzero" json:"-"`
 	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
@@ -2815,7 +2819,9 @@ type WebMapURLsParams struct {
 	URLRegex param.Opt[string] `query:"urlRegex,omitzero" json:"-"`
 	// HTTP headers for the target origin. Non-empty headers bypass caching.
 	Headers map[string]string `query:"headers,omitzero" json:"-"`
-	// Comma-separated access policy IDs to apply. A URL must pass every policy.
+	// Comma-separated access policy IDs to apply. A URL must pass every policy. Leave
+	// it out unless access policies are enabled for your organization; otherwise the
+	// request fails with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `query:"policies,omitzero" json:"-"`
 	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
 	Tags []string `query:"tags,omitzero" json:"-"`
@@ -2887,7 +2893,9 @@ type WebScrapeParams struct {
 	MarkdownParams WebScrapeParamsMarkdownParams `json:"markdownParams,omitzero"`
 	// Requires `formats.parse: true`; required when it is set.
 	ParseParams WebScrapeParamsParseParamsUnion `json:"parseParams,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Product options. Requires formats.product: true.
 	ProductParams WebScrapeParamsProductParams `json:"productParams,omitzero"`
@@ -4267,7 +4275,9 @@ type WebSearchParams struct {
 	// Languages to return results in, as BCP 47 language codes such as `en` or `de`,
 	// or "all" for any language. Defaults to "all". Example: ["en", "de"].
 	Languages WebSearchParamsLanguagesUnion `json:"languages,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -4779,7 +4789,9 @@ type WebWebCrawlMdParams struct {
 	Country WebWebCrawlMdParamsCountry `json:"country,omitzero"`
 	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Markdown sources in order of preference: `html-conversion` converts the page
 	// HTML, `markdown-direct` uses Markdown the site publishes.

@@ -4126,7 +4126,9 @@ type BatchSubmitParams struct {
 	// Unique key per submission. Retrying with the same key and body returns the
 	// original batch; a different body returns `409`.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
-	// Access policy IDs to apply to every page. A URL must pass every policy.
+	// Access policy IDs to apply to every page. A URL must pass every policy. Leave it
+	// out unless access policies are enabled for your organization; otherwise the
+	// request fails with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Tags stored on the batch. Filter the batch list by them later.
 	Tags []string `json:"tags,omitzero"`

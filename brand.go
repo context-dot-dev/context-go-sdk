@@ -880,7 +880,9 @@ type BrandGetParamsBodyByDomain struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -1000,7 +1002,9 @@ type BrandGetParamsBodyByName struct {
 	// "tv", "ug", "ua", "ae", "gb", "us", "um", "uy", "uz", "vu", "ve", "vn", "vg",
 	// "vi", "wf", "eh", "ye", "zm", "zw".
 	CountryGl string `json:"country_gl,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -1101,7 +1105,9 @@ type BrandGetParamsBodyByEmail struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -1198,7 +1204,9 @@ type BrandGetParamsBodyByTicker struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -1284,7 +1292,9 @@ type BrandGetParamsBodyByDirectURL struct {
 	// 'https://stripe.com/enterprise'). Only this URL is fetched — not the entire
 	// internet.
 	DirectURL string `json:"direct_url" api:"required" format:"uri"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`
@@ -1408,7 +1418,9 @@ type BrandGetParamsBodyByTransaction struct {
 	Mcc BrandGetParamsBodyByTransactionMccUnion `json:"mcc,omitzero"`
 	// Optional phone number from the transaction to help verify brand match.
 	Phone BrandGetParamsBodyByTransactionPhoneUnion `json:"phone,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy.
+	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
+	// access policies are enabled for your organization; otherwise the request fails
+	// with `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
 	// Labels for filtering usage in the dashboard.
 	Tags []string `json:"tags,omitzero"`

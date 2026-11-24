@@ -97,7 +97,8 @@ func (r *MonitorService) Delete(ctx context.Context, monitorID string, opts ...o
 }
 
 // Return usage per monitor, highest first, for up to the 10,000 most recent runs
-// in the requested window.
+// in the requested window. Pass `tag` to report only the monitors that carry that
+// tag, such as one customer’s monitors.
 func (r *MonitorService) GetCreditUsage(ctx context.Context, query MonitorGetCreditUsageParams, opts ...option.RequestOption) (res *MonitorGetCreditUsageResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "monitors/credit-usage"
@@ -7380,6 +7381,9 @@ const (
 type MonitorGetCreditUsageParams struct {
 	// Only include items at or after this ISO 8601 timestamp.
 	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
+	// Only include monitors that currently have this tag. Deleted monitors are left
+	// out.
+	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
 	// Only include items before this ISO 8601 timestamp.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
 	paramObj

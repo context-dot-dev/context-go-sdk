@@ -3140,39 +3140,45 @@ type WebScrapeParamsParseParamsPrebuiltParser struct {
 	// search.google.com/local/reviews URLs, so the google_maps_url and
 	// google_reviews_url fields of google-maps results work as input. An unknown place
 	// returns no reviews. google-play parses a Play Store app into data: details,
-	// developer contact, ratings, price, permissions, and data safety.
-	// google-play-reviews returns the 200 newest reviews of the app, with developer
-	// replies, in data.reviews. Both Play parsers accept app details URLs
+	// developer contact, ratings, price, permissions, and data safety, plus the
+	// country storefront the record describes and is_available, whether the app is
+	// offered there. Ratings are counted per storefront, so rating, rating_count, and
+	// rating_histogram are null in a storefront where nobody rated the app.
+	// google-play-reviews returns up to the 200 newest reviews written in the hl
+	// language, with developer replies, in data.reviews; an app with fewer such
+	// reviews returns them all. Both Play parsers accept app details URLs
 	// (play.google.com/store/apps/details?id=…); hl and gl set the language and
-	// storefront, defaulting to en and us. app-store parses an App Store app into
-	// data: details, developer, ratings, price, version, and screenshots.
-	// app-store-reviews returns up to the 500 newest reviews in data.reviews. Both App
-	// Store parsers accept app URLs (apps.apple.com/us/app/…/id…); the country in the
-	// path sets the storefront, defaulting to us. g2-reviews returns the 25 most
-	// recently published reviews of a G2 product in data.reviews (rating, title,
-	// likes, dislikes, problems_solved, reviewer role, company size, and industry),
-	// plus data.product. It accepts G2 product URLs (g2.com/products/…), follows
-	// renamed products, and keeps star-rating filters from the URL
-	// (filters[nps_score][]=1 to 5); other filters, sort orders, and pages are
-	// ignored. instagram-profile parses a public profile (instagram.com/{username})
-	// into data: bio, links, follower and post counts, category, business address,
-	// similar_accounts, and latest_posts (up to the 12 posts at the top of the
-	// profile, newest first). Instagram lists pinned posts there ahead of newer ones,
-	// so posts with is_pinned true can be older; when Instagram shows only a rounded
-	// post count (32K), post_count is that rounded number and is_post_count_rounded is
-	// true. instagram-post parses a post or reel (/p/…, /reel/…) into data: caption,
-	// hashtags, mentions, like, comment, and view counts (like_count and view_count
-	// are null when the owner hides them), media URLs, tagged users, collaborators,
-	// location, and the top ~14 comments in data.comments. instagram-feed returns the
-	// top posts for a hashtag or keyword (/explore/tags/…, /popular/…) or the recent
-	// posts at a location (/explore/locations/{id}/…) in data.posts; keyword posts
-	// carry only the shortcode, owner, thumbnail, and views, plus the caption when
-	// Instagram shows it. All three Instagram parsers read public data without logging
-	// in, so private accounts return no posts and follower lists are unavailable.
-	// tiktok-profile parses a public profile (tiktok.com/@{username}) into data:
-	// nickname, bio, bio link, follower, following, like, and video counts, verified,
-	// private, and business flags, and business category; it does not list videos.
-	// tiktok-video parses a video or photo post (/@{username}/video/{id} or
+	// storefront, defaulting to en and us. Without gl, google-play reads an app that
+	// is not offered in the US from the country of its developer instead. app-store
+	// parses an App Store app into data: details, developer, ratings, price, version,
+	// and screenshots. app-store-reviews returns up to the 500 newest reviews in
+	// data.reviews. Both App Store parsers accept app URLs
+	// (apps.apple.com/us/app/…/id…); the country in the path sets the storefront,
+	// defaulting to us. g2-reviews returns the 25 most recently published reviews of a
+	// G2 product in data.reviews (rating, title, likes, dislikes, problems_solved,
+	// reviewer role, company size, and industry), plus data.product. It accepts G2
+	// product URLs (g2.com/products/…), follows renamed products, and keeps
+	// star-rating filters from the URL (filters[nps_score][]=1 to 5); other filters,
+	// sort orders, and pages are ignored. instagram-profile parses a public profile
+	// (instagram.com/{username}) into data: bio, links, follower and post counts,
+	// category, business address, similar_accounts, and latest_posts (up to the 12
+	// posts at the top of the profile, newest first). Instagram lists pinned posts
+	// there ahead of newer ones, so posts with is_pinned true can be older; when
+	// Instagram shows only a rounded post count (32K), post_count is that rounded
+	// number and is_post_count_rounded is true. instagram-post parses a post or reel
+	// (/p/…, /reel/…) into data: caption, hashtags, mentions, like, comment, and view
+	// counts (like_count and view_count are null when the owner hides them), media
+	// URLs, tagged users, collaborators, location, and the top ~14 comments in
+	// data.comments. instagram-feed returns the top posts for a hashtag or keyword
+	// (/explore/tags/…, /popular/…) or the recent posts at a location
+	// (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
+	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
+	// it. All three Instagram parsers read public data without logging in, so private
+	// accounts return no posts and follower lists are unavailable. tiktok-profile
+	// parses a public profile (tiktok.com/@{username}) into data: nickname, bio, bio
+	// link, follower, following, like, and video counts, verified, private, and
+	// business flags, and business category; it does not list videos. tiktok-video
+	// parses a video or photo post (/@{username}/video/{id} or
 	// /@{username}/photo/{id}) into data: caption, hashtags, mentions, author, view,
 	// like, comment, share, save, and repost counts, duration, thumbnail, a video_url
 	// that downloads without cookies, image_urls for photo posts, music, location, and

@@ -227,6 +227,7 @@ func TestMonitorGetCreditUsageWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Monitors.GetCreditUsage(context.TODO(), contextdev.MonitorGetCreditUsageParams{
 		Since: contextdev.Time(time.Now()),
+		Tag:   contextdev.String("pricing"),
 		Until: contextdev.Time(time.Now()),
 	})
 	if err != nil {

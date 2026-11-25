@@ -31,6 +31,8 @@ type Client struct {
 	People   PersonService
 	// Search live and historical news about a company.
 	News NewsService
+	// Search full-text academic papers from arXiv and Europe PMC.
+	Scholar ScholarService
 	// Read your organization's API request logs.
 	Logs    LogService
 	Browser BrowserService
@@ -78,6 +80,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Webhooks = NewWebhookService(opts...)
 	r.People = NewPersonService(opts...)
 	r.News = NewNewsService(opts...)
+	r.Scholar = NewScholarService(opts...)
 	r.Logs = NewLogService(opts...)
 	r.Browser = NewBrowserService(opts...)
 	r.Feedback = NewFeedbackService(opts...)

@@ -180,6 +180,16 @@ Methods:
 
 - <code title="post /news/search">client.News.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#NewsService.Search">Search</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, body <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#NewsSearchParams">NewsSearchParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#NewsSearchResponse">NewsSearchResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
+# Scholar
+
+Response Types:
+
+- <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#ScholarSearchResponse">ScholarSearchResponse</a>
+
+Methods:
+
+- <code title="post /scholar/search">client.Scholar.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#ScholarService.Search">Search</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, body <a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#ScholarSearchParams">ScholarSearchParams</a>) (\*<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2">contextdev</a>.<a href="https://pkg.go.dev/github.com/context-dot-dev/context-go-sdk/v2#ScholarSearchResponse">ScholarSearchResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
 # Logs
 
 Response Types:

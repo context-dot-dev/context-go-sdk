@@ -2121,10 +2121,14 @@ type BatchGetResultsResponseDataOkResult struct {
 	// returns up to 20 latest public reviews in data.reviews, with business details
 	// and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
 	// reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-	// hotel, restaurant, or attraction review URL; emails, phone-numbers, and links
-	// return data.emails, data.phone_numbers, and data.links from the rendered page;
-	// the store, Maps, G2, Instagram, and TikTok parsers read their data directly,
-	// independently of DOM filters and other outputs.
+	// hotel, restaurant, or attraction review URL; car-rental-availability returns
+	// every vehicle with pay-now and pay-later prices in data.vehicles from an
+	// avis.com or budget.com vehicle-availability search URL; car-rental-locations
+	// returns rental branches with codes, addresses, coordinates and hours in
+	// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
+	// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
+	// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
+	// their data directly, independently of DOM filters and other outputs.
 	Parsed BatchGetResultsResponseDataOkResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataOkResultProduct `json:"product" api:"required"`
@@ -2665,10 +2669,14 @@ func (r *BatchGetResultsResponseDataOkResultMetadataTwitterUnion) UnmarshalJSON(
 // returns up to 20 latest public reviews in data.reviews, with business details
 // and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
 // reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-// hotel, restaurant, or attraction review URL; emails, phone-numbers, and links
-// return data.emails, data.phone_numbers, and data.links from the rendered page;
-// the store, Maps, G2, Instagram, and TikTok parsers read their data directly,
-// independently of DOM filters and other outputs.
+// hotel, restaurant, or attraction review URL; car-rental-availability returns
+// every vehicle with pay-now and pay-later prices in data.vehicles from an
+// avis.com or budget.com vehicle-availability search URL; car-rental-locations
+// returns rental branches with codes, addresses, coordinates and hours in
+// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
+// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
+// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
+// their data directly, independently of DOM filters and other outputs.
 type BatchGetResultsResponseDataOkResultParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -2683,7 +2691,8 @@ type BatchGetResultsResponseDataOkResultParsed struct {
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
 	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
 	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews",
-	// "tripadvisor-reviews", "emails", "phone-numbers", "links".
+	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
+	// "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -3011,10 +3020,14 @@ type BatchGetResultsResponseDataErrorResult struct {
 	// returns up to 20 latest public reviews in data.reviews, with business details
 	// and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
 	// reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-	// hotel, restaurant, or attraction review URL; emails, phone-numbers, and links
-	// return data.emails, data.phone_numbers, and data.links from the rendered page;
-	// the store, Maps, G2, Instagram, and TikTok parsers read their data directly,
-	// independently of DOM filters and other outputs.
+	// hotel, restaurant, or attraction review URL; car-rental-availability returns
+	// every vehicle with pay-now and pay-later prices in data.vehicles from an
+	// avis.com or budget.com vehicle-availability search URL; car-rental-locations
+	// returns rental branches with codes, addresses, coordinates and hours in
+	// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
+	// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
+	// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
+	// their data directly, independently of DOM filters and other outputs.
 	Parsed BatchGetResultsResponseDataErrorResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataErrorResultProduct `json:"product" api:"required"`
@@ -3557,10 +3570,14 @@ func (r *BatchGetResultsResponseDataErrorResultMetadataTwitterUnion) UnmarshalJS
 // returns up to 20 latest public reviews in data.reviews, with business details
 // and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
 // reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-// hotel, restaurant, or attraction review URL; emails, phone-numbers, and links
-// return data.emails, data.phone_numbers, and data.links from the rendered page;
-// the store, Maps, G2, Instagram, and TikTok parsers read their data directly,
-// independently of DOM filters and other outputs.
+// hotel, restaurant, or attraction review URL; car-rental-availability returns
+// every vehicle with pay-now and pay-later prices in data.vehicles from an
+// avis.com or budget.com vehicle-availability search URL; car-rental-locations
+// returns rental branches with codes, addresses, coordinates and hours in
+// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
+// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
+// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
+// their data directly, independently of DOM filters and other outputs.
 type BatchGetResultsResponseDataErrorResultParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -3575,7 +3592,8 @@ type BatchGetResultsResponseDataErrorResultParsed struct {
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
 	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
 	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews",
-	// "tripadvisor-reviews", "emails", "phone-numbers", "links".
+	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
+	// "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -4951,7 +4969,8 @@ type BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser str
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
 	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
 	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews",
-	// "tripadvisor-reviews", "emails", "phone-numbers", "links".
+	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
+	// "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews and reddit parsers only. Maximum number of reviews
 	// (google-maps-reviews, default 100), comments (reddit-post, default 100), or
@@ -4981,7 +5000,7 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "tripadvisor-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "tripadvisor-reviews", "car-rental-availability", "car-rental-locations", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",
@@ -6615,7 +6634,8 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltPa
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
 	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
 	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews",
-	// "tripadvisor-reviews", "emails", "phone-numbers", "links".
+	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
+	// "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews and reddit parsers only. Maximum number of reviews
 	// (google-maps-reviews, default 100), comments (reddit-post, default 100), or
@@ -6645,7 +6665,7 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebui
 
 func init() {
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "tripadvisor-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "tripadvisor-reviews", "car-rental-availability", "car-rental-locations", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",

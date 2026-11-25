@@ -1117,10 +1117,14 @@ type WebScrapeResponse struct {
 	// returns up to 20 latest public reviews in data.reviews, with business details
 	// and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
 	// reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-	// hotel, restaurant, or attraction review URL; emails, phone-numbers, and links
-	// return data.emails, data.phone_numbers, and data.links from the rendered page;
-	// the store, Maps, G2, Instagram, and TikTok parsers read their data directly,
-	// independently of DOM filters and other outputs.
+	// hotel, restaurant, or attraction review URL; car-rental-availability returns
+	// every vehicle with pay-now and pay-later prices in data.vehicles from an
+	// avis.com or budget.com vehicle-availability search URL; car-rental-locations
+	// returns rental branches with codes, addresses, coordinates and hours in
+	// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
+	// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
+	// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
+	// their data directly, independently of DOM filters and other outputs.
 	Parsed WebScrapeResponseParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product WebScrapeResponseProduct `json:"product" api:"required"`
@@ -1657,10 +1661,14 @@ func (r *WebScrapeResponseMetadataTwitterUnion) UnmarshalJSON(data []byte) error
 // returns up to 20 latest public reviews in data.reviews, with business details
 // and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
 // reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-// hotel, restaurant, or attraction review URL; emails, phone-numbers, and links
-// return data.emails, data.phone_numbers, and data.links from the rendered page;
-// the store, Maps, G2, Instagram, and TikTok parsers read their data directly,
-// independently of DOM filters and other outputs.
+// hotel, restaurant, or attraction review URL; car-rental-availability returns
+// every vehicle with pay-now and pay-later prices in data.vehicles from an
+// avis.com or budget.com vehicle-availability search URL; car-rental-locations
+// returns rental branches with codes, addresses, coordinates and hours in
+// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
+// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
+// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
+// their data directly, independently of DOM filters and other outputs.
 type WebScrapeResponseParsed struct {
 	Data      map[string]any `json:"data" api:"required"`
 	Requested bool           `json:"requested" api:"required"`
@@ -1675,7 +1683,8 @@ type WebScrapeResponseParsed struct {
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
 	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
 	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews",
-	// "tripadvisor-reviews", "emails", "phone-numbers", "links".
+	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
+	// "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
 	// Why the output failed. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
@@ -3309,7 +3318,8 @@ type WebScrapeParamsParseParamsPrebuiltParser struct {
 	// "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers",
 	// "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search",
 	// "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews",
-	// "tripadvisor-reviews", "emails", "phone-numbers", "links".
+	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
+	// "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
 	// google-maps-reviews and reddit parsers only. Maximum number of reviews
 	// (google-maps-reviews, default 100), comments (reddit-post, default 100), or
@@ -3339,7 +3349,7 @@ func (r *WebScrapeParamsParseParamsPrebuiltParser) UnmarshalJSON(data []byte) er
 
 func init() {
 	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
-		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "tripadvisor-reviews", "emails", "phone-numbers", "links",
+		"parser", "google-maps", "google-maps-reviews", "google-play", "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews", "instagram-profile", "instagram-post", "instagram-feed", "tiktok-profile", "tiktok-video", "tiktok-feed", "tiktok-comments", "tiktok-followers", "tiktok-following", "tiktok-user-search", "reddit-post", "reddit-search", "reddit-subreddit", "reddit-user", "yelp-search", "yelp-reviews", "tripadvisor-reviews", "car-rental-availability", "car-rental-locations", "emails", "phone-numbers", "links",
 	)
 	apijson.RegisterFieldValidator[WebScrapeParamsParseParamsPrebuiltParser](
 		"sort", "newest", "oldest", "relevant", "highest", "lowest",

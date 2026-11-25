@@ -3159,13 +3159,15 @@ func init() {
 // The properties Parser, Type are required.
 type WebScrapeParamsParseParamsPrebuiltParser struct {
 	// google-maps parses Google Maps business data into data.results. Accepts Maps
-	// place, search, and internal data URLs. Uses a US exit and English labels
-	// regardless of hl or Accept-Language. google-maps-reviews returns the reviews of
-	// a place in data.reviews, in the same shape as the Serper reviews API (rating,
-	// date, isoDate, snippet, translatedSnippet, likes, user, media, response, link,
-	// id), plus language, guided ratings in details, and user.isLocalGuide; data also
-	// carries the place featureId, cid, and sort. sort and limit pick the order and
-	// count, and oldest is exact. It accepts Maps place, search, and ?cid= URLs, plus
+	// place, search, and internal data URLs; a search page returns up to 200 places,
+	// ranked as Google ranks them. Uses an exit in the gl country of the URL (US when
+	// absent) and English labels regardless of hl or Accept-Language.
+	// google-maps-reviews returns the reviews of a place in data.reviews, in the same
+	// shape as the Serper reviews API (rating, date, isoDate, snippet,
+	// translatedSnippet, likes, user, media, response, link, id), plus language,
+	// guided ratings in details, and user.isLocalGuide; data also carries the place
+	// featureId, cid, and sort. sort and limit pick the order and count, and oldest is
+	// exact. It accepts Maps place, search, and ?cid= URLs, plus
 	// search.google.com/local/reviews URLs, so the google_maps_url and
 	// google_reviews_url fields of google-maps results work as input. An unknown place
 	// returns no reviews. google-play parses a Play Store app into data: details,

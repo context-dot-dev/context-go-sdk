@@ -41,8 +41,11 @@ type New string             // Always "new"
 type NotFound string        // Always "not_found"
 type Ok string              // Always "ok"
 type Page string            // Always "page"
+type Pagination string      // Always "pagination"
 type Perform string         // Always "perform"
 type Prebuilt string        // Always "prebuilt"
+type Product string         // Always "product"
+type Regex string           // Always "regex"
 type Scrape string          // Always "scrape"
 type Scroll string          // Always "scroll"
 type Search string          // Always "search"
@@ -76,8 +79,11 @@ func (c New) Default() New                         { return "new" }
 func (c NotFound) Default() NotFound               { return "not_found" }
 func (c Ok) Default() Ok                           { return "ok" }
 func (c Page) Default() Page                       { return "page" }
+func (c Pagination) Default() Pagination           { return "pagination" }
 func (c Perform) Default() Perform                 { return "perform" }
 func (c Prebuilt) Default() Prebuilt               { return "prebuilt" }
+func (c Product) Default() Product                 { return "product" }
+func (c Regex) Default() Regex                     { return "regex" }
 func (c Scrape) Default() Scrape                   { return "scrape" }
 func (c Scroll) Default() Scroll                   { return "scroll" }
 func (c Search) Default() Search                   { return "search" }
@@ -111,8 +117,11 @@ func (c New) MarshalJSON() ([]byte, error)             { return marshalString(c)
 func (c NotFound) MarshalJSON() ([]byte, error)        { return marshalString(c) }
 func (c Ok) MarshalJSON() ([]byte, error)              { return marshalString(c) }
 func (c Page) MarshalJSON() ([]byte, error)            { return marshalString(c) }
+func (c Pagination) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c Perform) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c Prebuilt) MarshalJSON() ([]byte, error)        { return marshalString(c) }
+func (c Product) MarshalJSON() ([]byte, error)         { return marshalString(c) }
+func (c Regex) MarshalJSON() ([]byte, error)           { return marshalString(c) }
 func (c Scrape) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Scroll) MarshalJSON() ([]byte, error)          { return marshalString(c) }
 func (c Search) MarshalJSON() ([]byte, error)          { return marshalString(c) }

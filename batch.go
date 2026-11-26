@@ -168,8 +168,12 @@ func (r *Failure) UnmarshalJSON(data []byte) error {
 
 // Crawl settings as submitted.
 type CrawlControls struct {
+	// Pages the crawl skipped. Null when it skipped none.
+	Exclude []CrawlControlsExcludeUnion `json:"exclude" api:"required"`
 	// Regex pattern URLs must not match to be crawled. Null when the crawl set none.
 	ExcludeURLPattern string `json:"exclude_url_pattern" api:"required"`
+	// Links the crawl followed. Null when it followed every link.
+	Follow []CrawlControlsFollowUnion `json:"follow" api:"required"`
 	// Whether links to subdomains were followed. Always false for a sitemap crawl.
 	FollowSubdomains bool `json:"follow_subdomains" api:"required"`
 	// Languages whose pages were followed; null when all languages were.
@@ -180,17 +184,22 @@ type CrawlControls struct {
 	// The `maxUrls` submitted with the crawl. A sitemap crawl scrapes only the URLs
 	// its sitemap actually lists, up to this many, so `input.reserved` is often lower.
 	MaxPages int64 `json:"max_pages" api:"required"`
+	// Pages the crawl returned. Null when it returned every fetched page.
+	Scrape []CrawlControlsScrapeUnion `json:"scrape" api:"required"`
 	// Where the crawl started.
 	Source CrawlControlsSourceUnion `json:"source" api:"required"`
 	// Regex pattern URLs had to match to be crawled. Null when the crawl set none.
 	URLPattern string `json:"url_pattern" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
+		Exclude           respjson.Field
 		ExcludeURLPattern respjson.Field
+		Follow            respjson.Field
 		FollowSubdomains  respjson.Field
 		Languages         respjson.Field
 		MaxDepth          respjson.Field
 		MaxPages          respjson.Field
+		Scrape            respjson.Field
 		Source            respjson.Field
 		URLPattern        respjson.Field
 		ExtraFields       map[string]respjson.Field
@@ -201,6 +210,238 @@ type CrawlControls struct {
 // Returns the unmodified JSON received from the API
 func (r CrawlControls) RawJSON() string { return r.JSON.raw }
 func (r *CrawlControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// CrawlControlsExcludeUnion contains all possible properties and values from
+// [CrawlControlsExcludeRegex], [CrawlControlsExcludeProduct].
+//
+// Use the [CrawlControlsExcludeUnion.AsAny] method to switch on the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type CrawlControlsExcludeUnion struct {
+	// Any of "regex", "product".
+	Kind string `json:"kind"`
+	// This field is from variant [CrawlControlsExcludeRegex].
+	Pattern string `json:"pattern"`
+	JSON    struct {
+		Kind    respjson.Field
+		Pattern respjson.Field
+		raw     string
+	} `json:"-"`
+}
+
+// anyCrawlControlsExclude is implemented by each variant of
+// [CrawlControlsExcludeUnion] to add type safety for the return type of
+// [CrawlControlsExcludeUnion.AsAny]
+type anyCrawlControlsExclude interface {
+	implCrawlControlsExcludeUnion()
+}
+
+func (CrawlControlsExcludeRegex) implCrawlControlsExcludeUnion()   {}
+func (CrawlControlsExcludeProduct) implCrawlControlsExcludeUnion() {}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := CrawlControlsExcludeUnion.AsAny().(type) {
+//	case contextdev.CrawlControlsExcludeRegex:
+//	case contextdev.CrawlControlsExcludeProduct:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u CrawlControlsExcludeUnion) AsAny() anyCrawlControlsExclude {
+	switch u.Kind {
+	case "regex":
+		return u.AsRegex()
+	case "product":
+		return u.AsProduct()
+	}
+	return nil
+}
+
+func (u CrawlControlsExcludeUnion) AsRegex() (v CrawlControlsExcludeRegex) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CrawlControlsExcludeUnion) AsProduct() (v CrawlControlsExcludeProduct) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u CrawlControlsExcludeUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *CrawlControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pages whose URL matches a regex pattern.
+type CrawlControlsExcludeRegex struct {
+	// Match pages by URL pattern.
+	Kind constant.Regex `json:"kind" default:"regex"`
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Kind        respjson.Field
+		Pattern     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsExcludeRegex) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Product detail pages.
+type CrawlControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Kind        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsExcludeProduct) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// CrawlControlsFollowUnion contains all possible properties and values from
+// [CrawlControlsFollowRegex], [CrawlControlsFollowPagination],
+// [CrawlControlsFollowProduct].
+//
+// Use the [CrawlControlsFollowUnion.AsAny] method to switch on the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type CrawlControlsFollowUnion struct {
+	// Any of "regex", "pagination", "product".
+	Kind string `json:"kind"`
+	// This field is from variant [CrawlControlsFollowRegex].
+	Pattern string `json:"pattern"`
+	JSON    struct {
+		Kind    respjson.Field
+		Pattern respjson.Field
+		raw     string
+	} `json:"-"`
+}
+
+// anyCrawlControlsFollow is implemented by each variant of
+// [CrawlControlsFollowUnion] to add type safety for the return type of
+// [CrawlControlsFollowUnion.AsAny]
+type anyCrawlControlsFollow interface {
+	implCrawlControlsFollowUnion()
+}
+
+func (CrawlControlsFollowRegex) implCrawlControlsFollowUnion()      {}
+func (CrawlControlsFollowPagination) implCrawlControlsFollowUnion() {}
+func (CrawlControlsFollowProduct) implCrawlControlsFollowUnion()    {}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := CrawlControlsFollowUnion.AsAny().(type) {
+//	case contextdev.CrawlControlsFollowRegex:
+//	case contextdev.CrawlControlsFollowPagination:
+//	case contextdev.CrawlControlsFollowProduct:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u CrawlControlsFollowUnion) AsAny() anyCrawlControlsFollow {
+	switch u.Kind {
+	case "regex":
+		return u.AsRegex()
+	case "pagination":
+		return u.AsPagination()
+	case "product":
+		return u.AsProduct()
+	}
+	return nil
+}
+
+func (u CrawlControlsFollowUnion) AsRegex() (v CrawlControlsFollowRegex) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CrawlControlsFollowUnion) AsPagination() (v CrawlControlsFollowPagination) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CrawlControlsFollowUnion) AsProduct() (v CrawlControlsFollowProduct) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u CrawlControlsFollowUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *CrawlControlsFollowUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pages whose URL matches a regex pattern.
+type CrawlControlsFollowRegex struct {
+	// Match pages by URL pattern.
+	Kind constant.Regex `json:"kind" default:"regex"`
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Kind        respjson.Field
+		Pattern     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsFollowRegex) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsFollowRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Further pages of a paginated list, such as page 2 of a catalog.
+type CrawlControlsFollowPagination struct {
+	// Match the further pages of a paginated list.
+	Kind constant.Pagination `json:"kind" default:"pagination"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Kind        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsFollowPagination) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsFollowPagination) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Product detail pages.
+type CrawlControlsFollowProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Kind        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsFollowProduct) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsFollowProduct) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -246,6 +487,108 @@ type CrawlControlsLanguagesString string
 const (
 	CrawlControlsLanguagesStringSameAsStartURL CrawlControlsLanguagesString = "same_as_start_url"
 )
+
+// CrawlControlsScrapeUnion contains all possible properties and values from
+// [CrawlControlsScrapeRegex], [CrawlControlsScrapeProduct].
+//
+// Use the [CrawlControlsScrapeUnion.AsAny] method to switch on the variant.
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+type CrawlControlsScrapeUnion struct {
+	// Any of "regex", "product".
+	Kind string `json:"kind"`
+	// This field is from variant [CrawlControlsScrapeRegex].
+	Pattern string `json:"pattern"`
+	JSON    struct {
+		Kind    respjson.Field
+		Pattern respjson.Field
+		raw     string
+	} `json:"-"`
+}
+
+// anyCrawlControlsScrape is implemented by each variant of
+// [CrawlControlsScrapeUnion] to add type safety for the return type of
+// [CrawlControlsScrapeUnion.AsAny]
+type anyCrawlControlsScrape interface {
+	implCrawlControlsScrapeUnion()
+}
+
+func (CrawlControlsScrapeRegex) implCrawlControlsScrapeUnion()   {}
+func (CrawlControlsScrapeProduct) implCrawlControlsScrapeUnion() {}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := CrawlControlsScrapeUnion.AsAny().(type) {
+//	case contextdev.CrawlControlsScrapeRegex:
+//	case contextdev.CrawlControlsScrapeProduct:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u CrawlControlsScrapeUnion) AsAny() anyCrawlControlsScrape {
+	switch u.Kind {
+	case "regex":
+		return u.AsRegex()
+	case "product":
+		return u.AsProduct()
+	}
+	return nil
+}
+
+func (u CrawlControlsScrapeUnion) AsRegex() (v CrawlControlsScrapeRegex) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CrawlControlsScrapeUnion) AsProduct() (v CrawlControlsScrapeProduct) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u CrawlControlsScrapeUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *CrawlControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Pages whose URL matches a regex pattern.
+type CrawlControlsScrapeRegex struct {
+	// Match pages by URL pattern.
+	Kind constant.Regex `json:"kind" default:"regex"`
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Kind        respjson.Field
+		Pattern     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsScrapeRegex) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Product detail pages.
+type CrawlControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Kind        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r CrawlControlsScrapeProduct) RawJSON() string { return r.JSON.raw }
+func (r *CrawlControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
 
 // CrawlControlsSourceUnion contains all possible properties and values from
 // [CrawlControlsSourceStartURL], [CrawlControlsSourceSitemap].
@@ -5611,20 +5954,22 @@ func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL) UnmarshalJSON(da
 
 // Limits and filters for page discovery.
 type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls struct {
-	// Regex pattern for URLs to exclude, even when they match `regex`. The `start_url`
-	// itself is always included.
-	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Follow links to subdomains.
 	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
 	// Maximum link depth. Source pages are depth 0. No limit when omitted.
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Regex pattern for URLs to include. The `start_url` itself is always included.
-	Regex param.Opt[string] `json:"regex,omitzero"`
+	// Pages to skip entirely, even when they match `follow` or `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
+	// Links to follow from each page; every followed page is checked for links again.
+	// Follows all links when omitted.
+	Follow []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
 	// Only follow pages in these languages, or `same_as_start_url`; all languages when
 	// omitted.
 	Languages BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
+	// Pages to return in the results. Returns every fetched page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
 	paramObj
 }
 
@@ -5633,6 +5978,170 @@ func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) MarshalJS
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion struct {
+	OfRegex      *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex      `json:",omitzero,inline"`
+	OfPagination *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination `json:",omitzero,inline"`
+	OfProduct    *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct    `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfPagination, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination]("pagination"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination{
+		Kind: "pagination",
+	}
+}
+
+// Further pages of a paginated list, such as page 2 of a catalog.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination struct {
+	// Match the further pages of a paginated list.
+	Kind constant.Pagination `json:"kind" default:"pagination"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -5659,6 +6168,75 @@ type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesStrin
 const (
 	BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString = "same_as_start_url"
 )
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
 
 // Scrape the pages listed in a domain's sitemap. Links on those pages are not
 // followed.
@@ -5689,18 +6267,17 @@ func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap) UnmarshalJSON(dat
 // Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
 // URLs and never follows links off them, so there is no crawl depth here.
 type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls struct {
-	// Regex pattern; sitemap URLs matching it are not scraped, even when they match
-	// `regex`.
-	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Regex pattern; only sitemap URLs matching it are scraped.
-	Regex param.Opt[string] `json:"regex,omitzero"`
-	// Path fragments that skip a sitemap URL in a crawl. Works separately from any
-	// regex inclusion or exclusion you define. Defaults to
+	// Sitemap pages to skip, even when they match `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
+	// Path fragments that skip a sitemap URL in a crawl. Works separately from
+	// `scrape` and `exclude`. Defaults to
 	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
 	// every listed URL.
 	ExcludePaths []string `json:"excludePaths,omitzero"`
+	// Sitemap pages to return in the results. Returns every listed page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
 	paramObj
 }
 
@@ -5709,6 +6286,144 @@ func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) MarshalJSO
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -5882,20 +6597,22 @@ func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURL) UnmarshalJSON(data [
 
 // Limits and filters for page discovery.
 type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls struct {
-	// Regex pattern for URLs to exclude, even when they match `regex`. The `start_url`
-	// itself is always included.
-	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Follow links to subdomains.
 	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
 	// Maximum link depth. Source pages are depth 0. No limit when omitted.
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Regex pattern for URLs to include. The `start_url` itself is always included.
-	Regex param.Opt[string] `json:"regex,omitzero"`
+	// Pages to skip entirely, even when they match `follow` or `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
+	// Links to follow from each page; every followed page is checked for links again.
+	// Follows all links when omitted.
+	Follow []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
 	// Only follow pages in these languages, or `same_as_start_url`; all languages when
 	// omitted.
 	Languages BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
+	// Pages to return in the results. Returns every fetched page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
 	paramObj
 }
 
@@ -5904,6 +6621,170 @@ func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) MarshalJSON()
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion struct {
+	OfRegex      *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex      `json:",omitzero,inline"`
+	OfPagination *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination `json:",omitzero,inline"`
+	OfProduct    *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct    `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfPagination, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination]("pagination"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination{
+		Kind: "pagination",
+	}
+}
+
+// Further pages of a paginated list, such as page 2 of a catalog.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination struct {
+	// Match the further pages of a paginated list.
+	Kind constant.Pagination `json:"kind" default:"pagination"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -5930,6 +6811,75 @@ type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesString st
 const (
 	BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesString = "same_as_start_url"
 )
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
 
 // Scrape the pages listed in a domain's sitemap. Links on those pages are not
 // followed.
@@ -5960,18 +6910,17 @@ func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemap) UnmarshalJSON(data []
 // Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
 // URLs and never follows links off them, so there is no crawl depth here.
 type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls struct {
-	// Regex pattern; sitemap URLs matching it are not scraped, even when they match
-	// `regex`.
-	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Regex pattern; only sitemap URLs matching it are scraped.
-	Regex param.Opt[string] `json:"regex,omitzero"`
-	// Path fragments that skip a sitemap URL in a crawl. Works separately from any
-	// regex inclusion or exclusion you define. Defaults to
+	// Sitemap pages to skip, even when they match `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
+	// Path fragments that skip a sitemap URL in a crawl. Works separately from
+	// `scrape` and `exclude`. Defaults to
 	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
 	// every listed URL.
 	ExcludePaths []string `json:"excludePaths,omitzero"`
+	// Sitemap pages to return in the results. Returns every listed page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
 	paramObj
 }
 
@@ -5980,6 +6929,144 @@ func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) MarshalJSON() 
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -6196,20 +7283,22 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURL) U
 
 // Limits and filters for page discovery.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControls struct {
-	// Regex pattern for URLs to exclude, even when they match `regex`. The `start_url`
-	// itself is always included.
-	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Follow links to subdomains.
 	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
 	// Maximum link depth. Source pages are depth 0. No limit when omitted.
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Regex pattern for URLs to include. The `start_url` itself is always included.
-	Regex param.Opt[string] `json:"regex,omitzero"`
+	// Pages to skip entirely, even when they match `follow` or `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
+	// Links to follow from each page; every followed page is checked for links again.
+	// Follows all links when omitted.
+	Follow []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
 	// Only follow pages in these languages, or `same_as_start_url`; all languages when
 	// omitted.
 	Languages BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
+	// Pages to return in the results. Returns every fetched page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
 	paramObj
 }
 
@@ -6218,6 +7307,170 @@ func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLCont
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct() BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowUnion struct {
+	OfRegex      *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowRegex      `json:",omitzero,inline"`
+	OfPagination *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination `json:",omitzero,inline"`
+	OfProduct    *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct    `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfPagination, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination]("pagination"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination() BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination {
+	return BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination{
+		Kind: "pagination",
+	}
+}
+
+// Further pages of a paginated list, such as page 2 of a catalog.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination].
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination struct {
+	// Match the further pages of a paginated list.
+	Kind constant.Pagination `json:"kind" default:"pagination"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowPagination) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct() BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct {
+	return BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct].
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowProduct) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -6244,6 +7497,75 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControl
 const (
 	BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsLanguagesString = "same_as_start_url"
 )
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct() BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
 
 // Scrape the pages listed in a domain's sitemap. Links on those pages are not
 // followed.
@@ -6274,18 +7596,17 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemap) Un
 // Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
 // URLs and never follows links off them, so there is no crawl depth here.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControls struct {
-	// Regex pattern; sitemap URLs matching it are not scraped, even when they match
-	// `regex`.
-	ExcludeRegex param.Opt[string] `json:"excludeRegex,omitzero"`
 	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Regex pattern; only sitemap URLs matching it are scraped.
-	Regex param.Opt[string] `json:"regex,omitzero"`
-	// Path fragments that skip a sitemap URL in a crawl. Works separately from any
-	// regex inclusion or exclusion you define. Defaults to
+	// Sitemap pages to skip, even when they match `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
+	// Path fragments that skip a sitemap URL in a crawl. Works separately from
+	// `scrape` and `exclude`. Defaults to
 	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
 	// every listed URL.
 	ExcludePaths []string `json:"excludePaths,omitzero"`
+	// Sitemap pages to return in the results. Returns every listed page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
 	paramObj
 }
 
@@ -6294,6 +7615,144 @@ func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapContr
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct() BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeRegex struct {
+	// Regex pattern for the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct() BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeProduct) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

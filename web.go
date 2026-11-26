@@ -2603,6 +2603,8 @@ type WebAnswersParams struct {
 	// Research task, up to 2000 characters. The agent selects company/profile lookups,
 	// web searches, or page reads. Include domains or URLs to focus the research.
 	Task string `json:"task" api:"required"`
+	// Limits what the research may use.
+	Controls WebAnswersParamsControls `json:"controls,omitzero"`
 	// Example answer object, not JSON Schema. Up to 8 levels, 500 values, and 16000
 	// characters; unknowns may be null.
 	JsonFormat map[string]any `json:"json_format,omitzero"`
@@ -2632,6 +2634,27 @@ func (r WebAnswersParams) MarshalJSON() (data []byte, err error) {
 	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *WebAnswersParams) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits what the research may use.
+type WebAnswersParamsControls struct {
+	// Never search, read or cite these sites, sections or pages. Same format as
+	// `sources`. Up to 100 entries.
+	ExcludeSources []string `json:"excludeSources,omitzero"`
+	// Only search, read and cite these sites, sections or pages. Each entry is a URL
+	// prefix: "example.com" covers the site and its subdomains, "example.com/docs"
+	// covers that section, and "example.com/docs/setup.html" is one page. Up to 20
+	// entries.
+	Sources []string `json:"sources,omitzero"`
+	paramObj
+}
+
+func (r WebAnswersParamsControls) MarshalJSON() (data []byte, err error) {
+	type shadow WebAnswersParamsControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *WebAnswersParamsControls) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

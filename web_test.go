@@ -28,6 +28,10 @@ func TestWebAnswersWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Web.Answers(context.TODO(), contextdev.WebAnswersParams{
 		Task: "Find the pricing page URL and plan names for context.dev.",
+		Controls: contextdev.WebAnswersParamsControls{
+			ExcludeSources: []string{"string"},
+			Sources:        []string{"string"},
+		},
 		JsonFormat: map[string]any{
 			"pricing_page_url": "bar",
 			"plans":            "bar",

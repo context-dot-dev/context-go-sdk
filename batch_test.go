@@ -50,12 +50,11 @@ func TestBatchListWithOptionalParams(t *testing.T) {
 		option.WithAPIKey("My API Key"),
 	)
 	_, err := client.Batch.List(context.TODO(), contextdev.BatchListParams{
-		Cursor:               contextdev.String("cursor"),
-		Limit:                contextdev.Int(1),
-		Q:                    contextdev.String("batch_1a2b"),
-		SearchType:           contextdev.BatchListParamsSearchTypeExact,
-		ShouldIncludeUnified: contextdev.Bool(true),
-		Status:               contextdev.BatchListParamsStatusPending,
+		Cursor:     contextdev.String("cursor"),
+		Limit:      contextdev.Int(1),
+		Q:          contextdev.String("batch_1a2b"),
+		SearchType: contextdev.BatchListParamsSearchTypeExact,
+		Status:     contextdev.BatchListParamsStatusPending,
 		Tags: contextdev.BatchListParamsTagsUnion{
 			OfString: contextdev.String("docs,competitor"),
 		},

@@ -4428,8 +4428,6 @@ type BatchListParams struct {
 	// Free-text search term, matched against the batch id, crawl source (start URL or
 	// sitemap domain), and tags.
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
-	// Include batches submitted with Scrape Anything formats. Defaults to false.
-	ShouldIncludeUnified param.Opt[bool] `query:"shouldIncludeUnified,omitzero" json:"-"`
 	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
 	// matching.
 	//

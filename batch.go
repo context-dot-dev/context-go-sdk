@@ -5466,9 +5466,6 @@ type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParams struct {
 	DismissCookies param.Opt[bool] `json:"dismissCookies,omitzero"`
 	// Close other popups before actions and capture.
 	DismissPopups param.Opt[bool] `json:"dismissPopups,omitzero"`
-	// Include iframe content in HTML and text outputs. Screenshots always show visible
-	// frames.
-	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
 	// Keep only the main content. Doesn't affect `screenshot`, `bytes`, or `product`.
 	MainContentOnly param.Opt[bool] `json:"mainContentOnly,omitzero"`
 	// Wait for CSS animations to finish before capture. Defaults to `true` when
@@ -5481,6 +5478,12 @@ type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParams struct {
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
 	// HTTP headers to send to the target site. Requests with headers skip the cache.
 	Headers map[string]string `json:"headers,omitzero"`
+	// Which iframe contents to include in HTML and text outputs. Screenshots always
+	// show visible frames. `auto` (default) inlines only iframes that hold page
+	// content, such as same-site documents, framesets, job boards, forms and embedded
+	// documents, and skips ads and widgets. `true` inlines every iframe. `false`
+	// inlines none.
+	IncludeFrames BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesUnion `json:"includeFrames,omitzero"`
 	// Keep only elements matching these CSS selectors.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// Document parsing options.
@@ -5658,6 +5661,30 @@ func (r BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionWaitFor)
 func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionWaitFor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesString)
+	OfBatchSubmitsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesString)
+}
+func (u *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesString string
+
+const (
+	BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesStringAuto BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesString = "auto"
+)
 
 // Document parsing options.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsers struct {
@@ -8247,9 +8274,6 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParams struct {
 	DismissCookies param.Opt[bool] `json:"dismissCookies,omitzero"`
 	// Close other popups before actions and capture.
 	DismissPopups param.Opt[bool] `json:"dismissPopups,omitzero"`
-	// Include iframe content in HTML and text outputs. Screenshots always show visible
-	// frames.
-	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
 	// Keep only the main content. Doesn't affect `screenshot`, `bytes`, or `product`.
 	MainContentOnly param.Opt[bool] `json:"mainContentOnly,omitzero"`
 	// Wait for CSS animations to finish before capture. Defaults to `true` when
@@ -8262,6 +8286,12 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParams struct {
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
 	// HTTP headers to send to the target site. Requests with headers skip the cache.
 	Headers map[string]string `json:"headers,omitzero"`
+	// Which iframe contents to include in HTML and text outputs. Screenshots always
+	// show visible frames. `auto` (default) inlines only iframes that hold page
+	// content, such as same-site documents, framesets, job boards, forms and embedded
+	// documents, and skips ads and widgets. `true` inlines every iframe. `false`
+	// inlines none.
+	IncludeFrames BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesUnion `json:"includeFrames,omitzero"`
 	// Keep only elements matching these CSS selectors.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// Document parsing options.
@@ -8439,6 +8469,30 @@ func (r BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsAction
 func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActionWaitFor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesString)
+	OfBatchSubmitsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfBatchSubmitsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesString)
+}
+func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesString string
+
+const (
+	BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesStringAuto BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesString = "auto"
+)
 
 // Document parsing options.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsParsers struct {

@@ -253,7 +253,9 @@ func TestWebScrapeWithOptionalParams(t *testing.T) {
 			Headers: map[string]string{
 				"Accept-Language": "en-US",
 			},
-			IncludeFrames:    contextdev.Bool(true),
+			IncludeFrames: contextdev.WebScrapeParamsSharedParamsIncludeFramesUnion{
+				OfWebScrapesSharedParamsIncludeFramesString: contextdev.String("auto"),
+			},
 			IncludeSelectors: []string{"P"},
 			MainContentOnly:  contextdev.Bool(true),
 			Parsers: contextdev.WebScrapeParamsSharedParamsParsers{
@@ -371,8 +373,10 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 			OfWebSearchsLanguagesString: contextdev.String("all"),
 		},
 		MarkdownOptions: contextdev.WebSearchParamsMarkdownOptions{
-			Enabled:       contextdev.Bool(true),
-			IncludeFrames: contextdev.Bool(true),
+			Enabled: contextdev.Bool(true),
+			IncludeFrames: contextdev.WebSearchParamsMarkdownOptionsIncludeFramesUnion{
+				OfWebSearchsMarkdownOptionsIncludeFramesString: contextdev.String("auto"),
+			},
 			IncludeImages: contextdev.Bool(true),
 			IncludeLinks:  contextdev.Bool(true),
 			MaxAgeMs:      contextdev.Int(0),
@@ -427,7 +431,9 @@ func TestWebWebCrawlMdWithOptionalParams(t *testing.T) {
 		ExcludeSelectors: []string{"x"},
 		ExcludeURLRegex:  contextdev.String("/tag/|/author/"),
 		FollowSubdomains: contextdev.Bool(true),
-		IncludeFrames:    contextdev.Bool(true),
+		IncludeFrames: contextdev.WebWebCrawlMdParamsIncludeFramesUnion{
+			OfWebWebCrawlMdsIncludeFramesString: contextdev.String("auto"),
+		},
 		IncludeImages:    contextdev.Bool(true),
 		IncludeLinks:     contextdev.Bool(true),
 		IncludeSelectors: []string{"x"},

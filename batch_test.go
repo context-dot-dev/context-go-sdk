@@ -251,7 +251,9 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 							Headers: map[string]string{
 								"Accept-Language": "en-US",
 							},
-							IncludeFrames:    contextdev.Bool(true),
+							IncludeFrames: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesUnion{
+								OfBatchSubmitsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesString: contextdev.String("auto"),
+							},
 							IncludeSelectors: []string{"P"},
 							MainContentOnly:  contextdev.Bool(true),
 							Parsers: contextdev.BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsers{

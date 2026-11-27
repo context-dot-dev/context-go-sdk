@@ -3495,9 +3495,6 @@ type WebScrapeParamsSharedParams struct {
 	DismissCookies param.Opt[bool] `json:"dismissCookies,omitzero"`
 	// Close other popups before actions and capture.
 	DismissPopups param.Opt[bool] `json:"dismissPopups,omitzero"`
-	// Include iframe content in HTML and text outputs. Screenshots always show visible
-	// frames.
-	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
 	// Keep only the main content. Doesn't affect `screenshot`, `bytes`, or `product`.
 	MainContentOnly param.Opt[bool] `json:"mainContentOnly,omitzero"`
 	// Wait for CSS animations to finish before capture. Defaults to `true` when
@@ -3510,6 +3507,12 @@ type WebScrapeParamsSharedParams struct {
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
 	// HTTP headers to send to the target site. Requests with headers skip the cache.
 	Headers map[string]string `json:"headers,omitzero"`
+	// Which iframe contents to include in HTML and text outputs. Screenshots always
+	// show visible frames. `auto` (default) inlines only iframes that hold page
+	// content, such as same-site documents, framesets, job boards, forms and embedded
+	// documents, and skips ads and widgets. `true` inlines every iframe. `false`
+	// inlines none.
+	IncludeFrames WebScrapeParamsSharedParamsIncludeFramesUnion `json:"includeFrames,omitzero"`
 	// Keep only elements matching these CSS selectors.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
 	// Document parsing options.
@@ -3687,6 +3690,30 @@ func (r WebScrapeParamsSharedParamsActionWaitFor) MarshalJSON() (data []byte, er
 func (r *WebScrapeParamsSharedParamsActionWaitFor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebScrapeParamsSharedParamsIncludeFramesUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebScrapesSharedParamsIncludeFramesString)
+	OfWebScrapesSharedParamsIncludeFramesString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebScrapeParamsSharedParamsIncludeFramesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfWebScrapesSharedParamsIncludeFramesString)
+}
+func (u *WebScrapeParamsSharedParamsIncludeFramesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type WebScrapeParamsSharedParamsIncludeFramesString string
+
+const (
+	WebScrapeParamsSharedParamsIncludeFramesStringAuto WebScrapeParamsSharedParamsIncludeFramesString = "auto"
+)
 
 // Document parsing options.
 type WebScrapeParamsSharedParamsParsers struct {
@@ -4662,8 +4689,6 @@ type WebSearchParamsMarkdownOptions struct {
 	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
 	// Scrape each result to Markdown. Adds 1 credit per result with Markdown.
 	Enabled param.Opt[bool] `json:"enabled,omitzero"`
-	// Render iframe contents into the Markdown.
-	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
 	// Emit image references in the Markdown.
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Keep hyperlinks in the Markdown.
@@ -4672,6 +4697,11 @@ type WebSearchParamsMarkdownOptions struct {
 	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
 	// Strip nav, header, footer, and sidebar — keep only the primary article content.
 	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// Which iframe contents to render into the Markdown. `auto` (default) inlines only
+	// iframes that hold page content, such as same-site documents, framesets, job
+	// boards, forms and embedded documents, and skips ads and widgets. `true` inlines
+	// every iframe. `false` inlines none.
+	IncludeFrames WebSearchParamsMarkdownOptionsIncludeFramesUnion `json:"includeFrames,omitzero"`
 	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf WebSearchParamsMarkdownOptionsPdf `json:"pdf,omitzero"`
 	// Request deadline and what to return when it passes.
@@ -4686,6 +4716,30 @@ func (r WebSearchParamsMarkdownOptions) MarshalJSON() (data []byte, err error) {
 func (r *WebSearchParamsMarkdownOptions) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebSearchParamsMarkdownOptionsIncludeFramesUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebSearchsMarkdownOptionsIncludeFramesString)
+	OfWebSearchsMarkdownOptionsIncludeFramesString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebSearchParamsMarkdownOptionsIncludeFramesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfWebSearchsMarkdownOptionsIncludeFramesString)
+}
+func (u *WebSearchParamsMarkdownOptionsIncludeFramesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type WebSearchParamsMarkdownOptionsIncludeFramesString string
+
+const (
+	WebSearchParamsMarkdownOptionsIncludeFramesStringAuto WebSearchParamsMarkdownOptionsIncludeFramesString = "auto"
+)
 
 // PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 type WebSearchParamsMarkdownOptionsPdf struct {
@@ -4790,9 +4844,6 @@ type WebWebCrawlMdParams struct {
 	// docs.example.com when starting from example.com). www and apex are always
 	// treated as equivalent.
 	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
-	// When true, the contents of iframes are rendered to Markdown for each crawled
-	// page.
-	IncludeFrames param.Opt[bool] `json:"includeFrames,omitzero"`
 	// Include image references in the Markdown output (`html-conversion` only).
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Preserve hyperlinks in the Markdown output (`html-conversion` only).
@@ -4840,6 +4891,11 @@ type WebWebCrawlMdParams struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country WebWebCrawlMdParamsCountry `json:"country,omitzero"`
+	// Which iframe contents to render to Markdown for each crawled page. `auto`
+	// (default) inlines only iframes that hold page content, such as same-site
+	// documents, framesets, job boards, forms and embedded documents, and skips ads
+	// and widgets. `true` inlines every iframe. `false` inlines none.
+	IncludeFrames WebWebCrawlMdParamsIncludeFramesUnion `json:"includeFrames,omitzero"`
 	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
 	Pdf WebWebCrawlMdParamsPdf `json:"pdf,omitzero"`
 	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
@@ -5079,6 +5135,30 @@ const (
 	WebWebCrawlMdParamsCountryZa WebWebCrawlMdParamsCountry = "za"
 	WebWebCrawlMdParamsCountryZm WebWebCrawlMdParamsCountry = "zm"
 	WebWebCrawlMdParamsCountryZw WebWebCrawlMdParamsCountry = "zw"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type WebWebCrawlMdParamsIncludeFramesUnion struct {
+	OfBool param.Opt[bool] `json:",omitzero,inline"`
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfWebWebCrawlMdsIncludeFramesString)
+	OfWebWebCrawlMdsIncludeFramesString param.Opt[string] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u WebWebCrawlMdParamsIncludeFramesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBool, u.OfWebWebCrawlMdsIncludeFramesString)
+}
+func (u *WebWebCrawlMdParamsIncludeFramesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type WebWebCrawlMdParamsIncludeFramesString string
+
+const (
+	WebWebCrawlMdParamsIncludeFramesStringAuto WebWebCrawlMdParamsIncludeFramesString = "auto"
 )
 
 // PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.

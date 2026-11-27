@@ -176,7 +176,6 @@ func TestMonitorListWithOptionalParams(t *testing.T) {
 		SearchBy:            []string{"name"},
 		SearchType:          contextdev.MonitorListParamsSearchTypeExact,
 		Status:              contextdev.MonitorListParamsStatusActive,
-		Tag:                 contextdev.String("pricing"),
 		Tags:                []string{"x"},
 		TargetType:          contextdev.MonitorListParamsTargetTypePage,
 	})

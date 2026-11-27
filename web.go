@@ -4312,8 +4312,6 @@ type WebSearchParams struct {
 	DescriptionMaxCharacters param.Opt[int64] `json:"descriptionMaxCharacters,omitzero"`
 	// Number of results to request and return (1–100). Defaults to 10.
 	NumResults param.Opt[int64] `json:"numResults,omitzero"`
-	// Currently has no effect.
-	QueryFanout param.Opt[bool] `json:"queryFanout,omitzero"`
 	// Passages from each result page that are relevant to the query. Pages are read
 	// with the `markdownOptions` settings.
 	HighlightsOptions WebSearchParamsHighlightsOptions `json:"highlightsOptions,omitzero"`

@@ -296,7 +296,6 @@ func TestBatchSubmitWithOptionalParams(t *testing.T) {
 				DelaysSeconds: []int64{10, 60, 300, 1800, 7200, 21600, 57600},
 			},
 		},
-		WebhookURL:     contextdev.String("https://example.com"),
 		IdempotencyKey: contextdev.String("Idempotency-Key"),
 	})
 	if err != nil {

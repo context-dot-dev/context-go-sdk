@@ -7309,8 +7309,6 @@ type MonitorListParams struct {
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
 	// Free-text search term, matched against the fields named in `search_by`.
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
-	// Filter to items that have this tag.
-	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
 	// Fields to search with `q`. Defaults to all fields; page, extract, and search
 	// targets can have instructions, and `url` matches a search target’s query.
 	//

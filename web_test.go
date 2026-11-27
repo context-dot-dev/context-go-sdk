@@ -393,10 +393,9 @@ func TestWebSearchWithOptionalParams(t *testing.T) {
 			UseMainContentOnly: contextdev.Bool(true),
 			WaitForMs:          contextdev.Int(0),
 		},
-		NumResults:  contextdev.Int(10),
-		Policies:    []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
-		QueryFanout: contextdev.Bool(true),
-		Tags:        []string{"production", "team-alpha"},
+		NumResults: contextdev.Int(10),
+		Policies:   []string{"pol_3f9c2a7e5b8d4c1f9a6e0b2d7c4f8a1e"},
+		Tags:       []string{"production", "team-alpha"},
 		TimeoutOpts: contextdev.WebSearchParamsTimeoutOpts{
 			Milliseconds: 1000,
 			Behavior:     "fail",

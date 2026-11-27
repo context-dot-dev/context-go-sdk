@@ -4503,9 +4503,6 @@ func (r BatchGetResultsParams) URLQuery() (v url.Values, err error) {
 type BatchSubmitParams struct {
 	// Choose a URL list or a site crawl.
 	Input BatchSubmitParamsInputUnion `json:"input,omitzero" api:"required"`
-	// Legacy URL notified when the batch finishes. Preserves one best-effort attempt.
-	// Cannot be combined with webhook.
-	WebhookURL param.Opt[string] `json:"webhookUrl,omitzero" format:"uri"`
 	// Unique key per submission. Retrying with the same key and body returns the
 	// original batch; a different body returns `409`.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`

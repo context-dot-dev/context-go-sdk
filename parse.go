@@ -44,10 +44,14 @@ func NewParseService(opts ...option.RequestOption) (r ParseService) {
 // order. Revisit and segmented records are skipped. Decoded WARC content is
 // limited to 50 MiB.
 func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseHandleParams, opts ...option.RequestOption) (res *ParseHandleResponse, err error) {
+	query, err := params.URLQuery()
+	if err != nil {
+		return nil, err
+	}
 	opts = slices.Concat(r.options, opts)
 	opts = append([]option.RequestOption{option.WithRequestBody("application/octet-stream", body)}, opts...)
-	path := "parse"
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, nil, &res, opts...)
+	path := url.URL{Path: "parse", RawQuery: query.Encode()}
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path.String(), nil, &res, opts...)
 	return res, err
 }
 

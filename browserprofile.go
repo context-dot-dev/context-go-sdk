@@ -17,7 +17,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
-// See the authenticated browser profiles your organization created.
+// List the authenticated browser profiles your organization created.
 //
 // BrowserProfileService contains methods and other services that help with
 // interacting with the context.dev API.
@@ -38,8 +38,9 @@ func NewBrowserProfileService(opts ...option.RequestOption) (r BrowserProfileSer
 	return
 }
 
-// List the browser profiles your organization created with `/web/scrape`, newest
-// first.
+// List the browser profiles your organization saved through `POST /web/scrape`,
+// newest first. Pass a profile `id` as `sharedParams.profile.profileId` to scrape
+// as that signed-in user.
 func (r *BrowserProfileService) List(ctx context.Context, query BrowserProfileListParams, opts ...option.RequestOption) (res *BrowserProfileListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "org/browser/profiles"
@@ -48,11 +49,11 @@ func (r *BrowserProfileService) List(ctx context.Context, query BrowserProfileLi
 }
 
 type BrowserProfileListResponse struct {
-	// Browser profiles, newest first.
+	// Browser profiles on this page, newest first.
 	Data []BrowserProfileListResponseData `json:"data" api:"required"`
-	// Whether a next page exists.
+	// Whether more results are available after this page.
 	HasMore bool `json:"has_more" api:"required"`
-	// Pass as `cursor` to fetch the next page.
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
 	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
@@ -78,11 +79,12 @@ func (r *BrowserProfileListResponse) UnmarshalJSON(data []byte) error {
 }
 
 type BrowserProfileListResponseData struct {
-	// Profile ID to pass as `sharedParams.profile.profileId` on `/web/scrape`.
+	// Unique ID of the browser profile. Pass it as `sharedParams.profile.profileId` on
+	// `POST /web/scrape`.
 	ID string `json:"id" api:"required"`
-	// When the profile was created.
+	// When the browser profile was created.
 	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
-	// The description supplied when the profile was created, or null.
+	// Label set when the profile was created. `null` when none was set.
 	Description string `json:"description" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -104,7 +106,7 @@ func (r *BrowserProfileListResponseData) UnmarshalJSON(data []byte) error {
 type BrowserProfileListResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -122,9 +124,9 @@ func (r *BrowserProfileListResponseKeyMetadata) UnmarshalJSON(data []byte) error
 }
 
 type BrowserProfileListParams struct {
-	// The `next_cursor` from the previous page.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Number of profiles per page.
+	// Maximum number of profiles to return per page.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
 	paramObj
 }

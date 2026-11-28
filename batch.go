@@ -20,7 +20,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
-// Scrape many pages or crawl a site asynchronously.
+// Scrape up to 100,000 URLs or crawl a site asynchronously.
 //
 // BatchService contains methods and other services that help with interacting with
 // the context.dev API.
@@ -41,8 +41,9 @@ func NewBatchService(opts ...option.RequestOption) (r BatchService) {
 	return
 }
 
-// Get batch progress and result download links. Result files are deleted 180 days
-// after the batch finishes.
+// Retrieve a batch's status, progress, and credit usage, plus links to download
+// its results once it finishes. Result files are deleted 180 days after the batch
+// finishes.
 func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -54,7 +55,8 @@ func (r *BatchService) Get(ctx context.Context, batchID string, opts ...option.R
 	return res, err
 }
 
-// List your batches, newest first, with optional filters.
+// List your batches, newest first. Filter by status or tags, or search by batch
+// ID, crawl source, or tag.
 func (r *BatchService) List(ctx context.Context, query BatchListParams, opts ...option.RequestOption) (res *BatchListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "batch/list"
@@ -75,8 +77,8 @@ func (r *BatchService) Delete(ctx context.Context, batchID string, opts ...optio
 	return res, err
 }
 
-// Stop a batch from starting new pages. Pages already in progress finish before
-// the batch becomes cancelled.
+// Stop a batch from starting new pages. Pages already in progress finish, then the
+// batch becomes `cancelled` and unused credits are refunded.
 func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...option.RequestOption) (res *BatchCancelResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -88,9 +90,9 @@ func (r *BatchService) Cancel(ctx context.Context, batchID string, opts ...optio
 	return res, err
 }
 
-// Page through a finished batch’s results as JSON. Each record contains result
-// with the same outputs and per-format errors as POST /web/scrape. Results remain
-// available for 180 days.
+// Page through a finished batch's results as JSON. Each record's `result` has the
+// same outputs and per-format errors as `POST /web/scrape`. Results are kept for
+// 180 days after the batch finishes.
 func (r *BatchService) GetResults(ctx context.Context, batchID string, query BatchGetResultsParams, opts ...option.RequestOption) (res *BatchGetResultsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if batchID == "" {
@@ -102,17 +104,11 @@ func (r *BatchService) GetResults(ctx context.Context, batchID string, query Bat
 	return res, err
 }
 
-// Scrape up to 100,000 URLs, or crawl a site, asynchronously using the same
-// formats and scrape parameters as POST /web/scrape. Choose Markdown, HTML,
-// screenshots, images, bytes, parsed fields, products, highlights, and JSON.
-// Submission persists the input and returns immediately with status pending.
-// Organizations with fewer than 10 available credits and no overage are rejected
-// with 402 up front. Each organization can submit up to 2,500 batches per minute,
-// independently of its polling budget. Batches wait pending when execution
-// capacity is full. Validation, sitemap discovery, the full credit quote, and
-// shard scheduling happen afterward. Poll the batch ID or receive a webhook when
-// it finishes. Deferred rejections appear as status failed with a failure code and
-// message.
+// Scrape up to 100,000 URLs, or crawl a site, asynchronously with every Scrape
+// Anything format and option from `POST /web/scrape`. Poll `GET /batch/{batch_id}`
+// or pass `webhook` to be notified when the batch finishes. URLs and credits are
+// checked after the batch is accepted, so a batch that fails those checks ends as
+// `failed` with a `failure` code instead of returning an error.
 func (r *BatchService) Submit(ctx context.Context, params BatchSubmitParams, opts ...option.RequestOption) (res *BatchSubmitResponse, err error) {
 	if !param.IsOmitted(params.IdempotencyKey) {
 		opts = append(opts, option.WithHeader("Idempotency-Key", fmt.Sprintf("%v", params.IdempotencyKey.Value)))
@@ -127,7 +123,7 @@ func (r *BatchService) Submit(ctx context.Context, params BatchSubmitParams, opt
 type PageErrorCount struct {
 	// Error code for these failures.
 	Code string `json:"code" api:"required"`
-	// Pages that failed with this code.
+	// Number of pages that failed with this code.
 	Count int64 `json:"count" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -144,12 +140,12 @@ func (r *PageErrorCount) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// A failure of the batch as a whole, distinct from the per-page failures in
+// Why the batch as a whole failed. Individual page failures are counted in
 // `page_errors`.
 type Failure struct {
-	// Why the batch itself stopped.
+	// Machine-readable failure code, such as `stalled` or `USAGE_EXCEEDED`.
 	Code string `json:"code" api:"required"`
-	// Human-readable explanation.
+	// Human-readable explanation of the failure.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -168,27 +164,29 @@ func (r *Failure) UnmarshalJSON(data []byte) error {
 
 // Crawl settings as submitted.
 type CrawlControls struct {
-	// Pages the crawl skipped. Null when it skipped none.
+	// Matchers for the pages the crawl skipped. `null` when it skipped none.
 	Exclude []CrawlControlsExcludeUnion `json:"exclude" api:"required"`
-	// Regex pattern URLs must not match to be crawled. Null when the crawl set none.
+	// Regex that excluded matching URLs from the crawl. `null` when the crawl set
+	// none.
 	ExcludeURLPattern string `json:"exclude_url_pattern" api:"required"`
-	// Links the crawl followed. Null when it followed every link.
+	// Matchers for the links the crawl followed. `null` when it followed every link.
 	Follow []CrawlControlsFollowUnion `json:"follow" api:"required"`
-	// Whether links to subdomains were followed. Always false for a sitemap crawl.
+	// Whether links to subdomains were followed. Always `false` for a sitemap crawl.
 	FollowSubdomains bool `json:"follow_subdomains" api:"required"`
-	// Languages whose pages were followed; null when all languages were.
+	// Languages whose pages were followed. `null` when all languages were.
 	Languages CrawlControlsLanguagesUnion `json:"languages" api:"required"`
-	// Link depth limit. Always 0 for a sitemap crawl, which never follows links off
-	// its URLs; null when a `start_url` crawl set no limit.
+	// Maximum link depth. Always `0` for a sitemap crawl; `null` when a `start_url`
+	// crawl set no limit.
 	MaxDepth int64 `json:"max_depth" api:"required"`
 	// The `maxUrls` submitted with the crawl. A sitemap crawl scrapes only the URLs
-	// its sitemap actually lists, up to this many, so `input.reserved` is often lower.
+	// its sitemap lists, up to this many, so `input.reserved` can be lower.
 	MaxPages int64 `json:"max_pages" api:"required"`
-	// Pages the crawl returned. Null when it returned every fetched page.
+	// Matchers for the pages the crawl returned. `null` when it returned every fetched
+	// page.
 	Scrape []CrawlControlsScrapeUnion `json:"scrape" api:"required"`
 	// Where the crawl started.
 	Source CrawlControlsSourceUnion `json:"source" api:"required"`
-	// Regex pattern URLs had to match to be crawled. Null when the crawl set none.
+	// Regex that URLs had to match to be crawled. `null` when the crawl set none.
 	URLPattern string `json:"url_pattern" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -280,7 +278,7 @@ func (r *CrawlControlsExcludeUnion) UnmarshalJSON(data []byte) error {
 type CrawlControlsExcludeRegex struct {
 	// Match pages by URL pattern.
 	Kind constant.Regex `json:"kind" default:"regex"`
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -392,7 +390,7 @@ func (r *CrawlControlsFollowUnion) UnmarshalJSON(data []byte) error {
 type CrawlControlsFollowRegex struct {
 	// Match pages by URL pattern.
 	Kind constant.Regex `json:"kind" default:"regex"`
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -555,7 +553,7 @@ func (r *CrawlControlsScrapeUnion) UnmarshalJSON(data []byte) error {
 type CrawlControlsScrapeRegex struct {
 	// Match pages by URL pattern.
 	Kind constant.Regex `json:"kind" default:"regex"`
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -667,20 +665,19 @@ func (r *CrawlControlsSourceSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What the submission accepted.
+// Page counts from your submission.
 type Intake struct {
-	// URLs dropped before reserving because another entry resolved to the same page.
-	// Non-zero for sitemap crawls too, whose sitemaps routinely list a page more than
-	// once.
+	// URLs dropped because another entry resolved to the same page. Sitemap crawls
+	// report duplicates too, since sitemaps often list a page more than once.
 	Duplicates int64 `json:"duplicates" api:"required"`
-	// Rejected input URLs; `null` for a crawl.
+	// URLs rejected as invalid. `null` for a crawl.
 	Invalid int64 `json:"invalid" api:"required"`
-	// Pages accepted; progress counts toward this total.
+	// Pages accepted for scraping. `progress` counts toward this total.
 	Reserved int64 `json:"reserved" api:"required"`
-	// True when `reserved` is a crawl ceiling; false when it is an exact URL count.
+	// `true` when `reserved` is a crawl ceiling, `false` when it is an exact URL
+	// count.
 	ReservedIsCeiling bool `json:"reserved_is_ceiling" api:"required"`
-	// URLs in the list you sent, before validation and de-duplication. Null for a
-	// crawl, which is given a source rather than a list.
+	// URLs in your list before validation and de-duplication. `null` for a crawl.
 	Submitted int64 `json:"submitted" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -701,51 +698,54 @@ func (r *Intake) UnmarshalJSON(data []byte) error {
 }
 
 type BatchGetResponse struct {
-	// Batch ID.
+	// Unique ID of the batch.
 	ID string `json:"id" api:"required"`
 	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
-	// Batch credit usage and settlement.
+	// Credits reserved, refunded, and charged for the batch.
 	Credits BatchGetResponseCredits `json:"credits" api:"required"`
-	// A failure of the batch as a whole, distinct from the per-page failures in
+	// Why the batch as a whole failed. Individual page failures are counted in
 	// `page_errors`.
 	Failure Failure `json:"failure" api:"required"`
-	// Outputs requested for each page. Matches input.data.formats on submission.
+	// Formats requested for each page, as submitted in `input.data.formats`.
 	Formats BatchGetResponseFormats `json:"formats" api:"required"`
-	// What the submission accepted.
+	// Page counts from your submission.
 	Input Intake `json:"input" api:"required"`
-	// Rejected URLs (first 100).
+	// URLs rejected from your list, up to the first 100.
 	InvalidURLs []BatchGetResponseInvalidURL `json:"invalid_urls" api:"required"`
-	// `scrape` (URL list) or `crawl`.
+	// `scrape` for a URL list, `crawl` for a site crawl.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchGetResponseMode `json:"mode" api:"required"`
-	// Individual page failures grouped by error code, sorted by count. Unrelated to
-	// `failure`, which is the batch itself failing.
+	// Page failures grouped by error code, most common first. For the batch itself
+	// failing, see `failure`.
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
-	// Pages attempted so far. Use `status` to check completion.
+	// Page counts so far. Check `status` to know when the batch is done.
 	Progress BatchGetResponseProgress `json:"progress" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Result download links; null until the batch finishes. Files are deleted 180 days
-	// after the batch finishes.
+	// Links to download the results. `null` until the batch finishes; the files are
+	// deleted 180 days after that.
 	Results BatchGetResponseResults `json:"results" api:"required"`
-	// Current state. `pending` means waiting for execution capacity or background
-	// validation. Capacity-limited batches remain pending until a slot opens.
-	// `completed`, `cancelled`, and `failed` are final.
+	// Current state. `pending` batches are being validated or are waiting for a slot
+	// under your plan's concurrent batch limit, `queued` batches are ready to start,
+	// and `running` batches are scraping. `completed`, `cancelled`, and `failed` are
+	// final.
 	//
 	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
 	// "failed".
 	Status BatchGetResponseStatus `json:"status" api:"required"`
-	// Tags stored on the batch at submission.
-	Tags   []string               `json:"tags" api:"required"`
+	// Tags set when the batch was submitted.
+	Tags []string `json:"tags" api:"required"`
+	// When the batch was created, started, and finished.
 	Timing BatchGetResponseTiming `json:"timing" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BatchGetResponseKeyMetadata `json:"key_metadata"`
 	// Access policy IDs applied to every page.
 	Policies []string `json:"policies"`
-	// Batch completion delivery ID, when available.
+	// ID of the batch's final-status webhook delivery, for
+	// `GET /webhooks/deliveries/{delivery_id}`. Omitted until a delivery exists.
 	WebhookDeliveryID string `json:"webhook_delivery_id"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -778,16 +778,16 @@ func (r *BatchGetResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Batch credit usage and settlement.
+// Credits reserved, refunded, and charged for the batch.
 type BatchGetResponseCredits struct {
 	// `reserved` minus `refunded` plus `ocr_charged`.
 	Net int64 `json:"net" api:"required"`
-	// OCR usage charged when the batch settles.
+	// Credits charged for OCR when the batch finishes.
 	OcrCharged int64 `json:"ocr_charged" api:"required"`
-	// Credits returned for unsuccessful pages when the batch settles.
+	// Credits returned when the batch finishes, such as for failed or unattempted
+	// pages.
 	Refunded int64 `json:"refunded" api:"required"`
-	// Credits held by background preparation before scraping starts. Zero while
-	// pending.
+	// Credits reserved before scraping starts. `0` while `pending`.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -806,26 +806,26 @@ func (r *BatchGetResponseCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Outputs requested for each page. Matches input.data.formats on submission.
+// Formats requested for each page, as submitted in `input.data.formats`.
 type BatchGetResponseFormats struct {
-	// The original HTTP response body.
+	// Return the original HTTP response body.
 	Bytes bool `json:"bytes"`
-	// Markdown excerpts relevant to `highlightsParams.query`.
+	// Return Markdown excerpts relevant to `highlightsParams.query`.
 	Highlights bool `json:"highlights"`
-	// Rendered HTML.
+	// Return the rendered HTML.
 	HTML bool `json:"html"`
-	// Images found on the page.
+	// Return the images found on the page.
 	Images bool `json:"images"`
-	// An object matching `jsonParams.schema`, extracted from the page text and its
-	// embedded data (JSON-LD, meta tags, framework state).
+	// Return an object matching `jsonParams.schema`, extracted from the page text and
+	// embedded data such as JSON-LD, meta tags, and framework state.
 	Json bool `json:"json"`
-	// Page content or video transcript as Markdown.
+	// Return the page content, or a video transcript, as Markdown.
 	Markdown bool `json:"markdown"`
-	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
+	// Return fields extracted with custom rules or a prebuilt parser, as `parsed`.
 	Parse bool `json:"parse"`
-	// Product details such as name, price, and availability.
+	// Return product details such as name, price, and availability.
 	Product bool `json:"product"`
-	// A screenshot of the page.
+	// Return a screenshot of the page.
 	Screenshot bool `json:"screenshot"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -869,7 +869,7 @@ func (r *BatchGetResponseInvalidURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// `scrape` (URL list) or `crawl`.
+// `scrape` for a URL list, `crawl` for a site crawl.
 type BatchGetResponseMode string
 
 const (
@@ -877,12 +877,12 @@ const (
 	BatchGetResponseModeCrawl  BatchGetResponseMode = "crawl"
 )
 
-// Pages attempted so far. Use `status` to check completion.
+// Page counts so far. Check `status` to know when the batch is done.
 type BatchGetResponseProgress struct {
 	// Pages that could not be scraped.
 	Failed int64 `json:"failed" api:"required"`
-	// Accepted pages not yet attempted. Unused crawl capacity is excluded after
-	// completion.
+	// Accepted pages not yet attempted. A link-following crawl reports `0` once it
+	// finishes, since its unused page budget is not counted.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -902,12 +902,13 @@ func (r *BatchGetResponseProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Result download links; null until the batch finishes. Files are deleted 180 days
-// after the batch finishes.
+// Links to download the results. `null` until the batch finishes; the files are
+// deleted 180 days after that.
 type BatchGetResponseResults struct {
-	// When these links expire (24 hours after this response).
+	// When these links expire, 24 hours after this response. Retrieve the batch again
+	// for fresh links.
 	ExpiresAt string `json:"expires_at" api:"required"`
-	// Result files. Order is not guaranteed.
+	// Result files, in no particular order.
 	Files []BatchGetResponseResultsFile `json:"files" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -927,9 +928,9 @@ func (r *BatchGetResponseResults) UnmarshalJSON(data []byte) error {
 type BatchGetResponseResultsFile struct {
 	// Compressed file size in bytes.
 	Bytes int64 `json:"bytes" api:"required"`
-	// Results in this file.
+	// Number of result records in this file.
 	Items int64 `json:"items" api:"required"`
-	// Temporary URL for a gzipped NDJSON file.
+	// Temporary download URL for a gzipped NDJSON file of result records.
 	URL string `json:"url" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -947,9 +948,10 @@ func (r *BatchGetResponseResultsFile) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current state. `pending` means waiting for execution capacity or background
-// validation. Capacity-limited batches remain pending until a slot opens.
-// `completed`, `cancelled`, and `failed` are final.
+// Current state. `pending` batches are being validated or are waiting for a slot
+// under your plan's concurrent batch limit, `queued` batches are ready to start,
+// and `running` batches are scraping. `completed`, `cancelled`, and `failed` are
+// final.
 type BatchGetResponseStatus string
 
 const (
@@ -962,12 +964,13 @@ const (
 	BatchGetResponseStatusFailed     BatchGetResponseStatus = "failed"
 )
 
+// When the batch was created, started, and finished.
 type BatchGetResponseTiming struct {
-	// When processing finished. Null while active.
+	// When the batch reached a final status. `null` until then.
 	CompletedAt string `json:"completed_at" api:"required"`
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
-	// When processing started. Null while queued.
+	// When scraping started. `null` until the batch is `running`.
 	StartedAt string `json:"started_at" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -989,7 +992,7 @@ func (r *BatchGetResponseTiming) UnmarshalJSON(data []byte) error {
 type BatchGetResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1012,11 +1015,11 @@ type BatchListResponse struct {
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Batches on this page.
 	Data []BatchListResponseData `json:"data"`
-	// Whether another page is available.
+	// Whether more results are available after this page.
 	HasMore bool `json:"has_more"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BatchListResponseKeyMetadata `json:"key_metadata"`
-	// Cursor for the next page.
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
 	NextCursor string `json:"next_cursor" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1036,42 +1039,44 @@ func (r *BatchListResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// An asynchronous web scraping job.
+// An asynchronous scrape or crawl job.
 type BatchListResponseData struct {
-	// Batch ID.
+	// Unique ID of the batch.
 	ID string `json:"id" api:"required"`
 	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
-	// Batch credit usage and settlement.
+	// Credits reserved, refunded, and charged for the batch.
 	Credits BatchListResponseDataCredits `json:"credits" api:"required"`
-	// A failure of the batch as a whole, distinct from the per-page failures in
+	// Why the batch as a whole failed. Individual page failures are counted in
 	// `page_errors`.
 	Failure Failure `json:"failure" api:"required"`
-	// Outputs requested for each page. Matches input.data.formats on submission.
+	// Formats requested for each page, as submitted in `input.data.formats`.
 	Formats BatchListResponseDataFormats `json:"formats" api:"required"`
-	// What the submission accepted.
+	// Page counts from your submission.
 	Input Intake `json:"input" api:"required"`
-	// `scrape` (URL list) or `crawl`.
+	// `scrape` for a URL list, `crawl` for a site crawl.
 	//
 	// Any of "scrape", "crawl".
 	Mode string `json:"mode" api:"required"`
-	// Individual page failures grouped by error code, sorted by count. Unrelated to
-	// `failure`, which is the batch itself failing.
+	// Page failures grouped by error code, most common first. For the batch itself
+	// failing, see `failure`.
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
-	// Pages attempted so far. Use `status` to check completion.
+	// Page counts so far. Check `status` to know when the batch is done.
 	Progress BatchListResponseDataProgress `json:"progress" api:"required"`
-	// Result download links; null until the batch finishes. Files are deleted 180 days
-	// after the batch finishes.
+	// Links to download the results. `null` until the batch finishes; the files are
+	// deleted 180 days after that.
 	Results BatchListResponseDataResults `json:"results" api:"required"`
-	// Current state. `pending` means waiting for execution capacity or background
-	// validation. Capacity-limited batches remain pending until a slot opens.
-	// `completed`, `cancelled`, and `failed` are final.
+	// Current state. `pending` batches are being validated or are waiting for a slot
+	// under your plan's concurrent batch limit, `queued` batches are ready to start,
+	// and `running` batches are scraping. `completed`, `cancelled`, and `failed` are
+	// final.
 	//
 	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
 	// "failed".
 	Status string `json:"status" api:"required"`
-	// Tags stored on the batch at submission.
-	Tags   []string                    `json:"tags" api:"required"`
+	// Tags set when the batch was submitted.
+	Tags []string `json:"tags" api:"required"`
+	// When the batch was created, started, and finished.
 	Timing BatchListResponseDataTiming `json:"timing" api:"required"`
 	// Access policy IDs applied to every page.
 	Policies []string `json:"policies"`
@@ -1102,16 +1107,16 @@ func (r *BatchListResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Batch credit usage and settlement.
+// Credits reserved, refunded, and charged for the batch.
 type BatchListResponseDataCredits struct {
 	// `reserved` minus `refunded` plus `ocr_charged`.
 	Net int64 `json:"net" api:"required"`
-	// OCR usage charged when the batch settles.
+	// Credits charged for OCR when the batch finishes.
 	OcrCharged int64 `json:"ocr_charged" api:"required"`
-	// Credits returned for unsuccessful pages when the batch settles.
+	// Credits returned when the batch finishes, such as for failed or unattempted
+	// pages.
 	Refunded int64 `json:"refunded" api:"required"`
-	// Credits held by background preparation before scraping starts. Zero while
-	// pending.
+	// Credits reserved before scraping starts. `0` while `pending`.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1130,26 +1135,26 @@ func (r *BatchListResponseDataCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Outputs requested for each page. Matches input.data.formats on submission.
+// Formats requested for each page, as submitted in `input.data.formats`.
 type BatchListResponseDataFormats struct {
-	// The original HTTP response body.
+	// Return the original HTTP response body.
 	Bytes bool `json:"bytes"`
-	// Markdown excerpts relevant to `highlightsParams.query`.
+	// Return Markdown excerpts relevant to `highlightsParams.query`.
 	Highlights bool `json:"highlights"`
-	// Rendered HTML.
+	// Return the rendered HTML.
 	HTML bool `json:"html"`
-	// Images found on the page.
+	// Return the images found on the page.
 	Images bool `json:"images"`
-	// An object matching `jsonParams.schema`, extracted from the page text and its
-	// embedded data (JSON-LD, meta tags, framework state).
+	// Return an object matching `jsonParams.schema`, extracted from the page text and
+	// embedded data such as JSON-LD, meta tags, and framework state.
 	Json bool `json:"json"`
-	// Page content or video transcript as Markdown.
+	// Return the page content, or a video transcript, as Markdown.
 	Markdown bool `json:"markdown"`
-	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
+	// Return fields extracted with custom rules or a prebuilt parser, as `parsed`.
 	Parse bool `json:"parse"`
-	// Product details such as name, price, and availability.
+	// Return product details such as name, price, and availability.
 	Product bool `json:"product"`
-	// A screenshot of the page.
+	// Return a screenshot of the page.
 	Screenshot bool `json:"screenshot"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1173,12 +1178,12 @@ func (r *BatchListResponseDataFormats) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pages attempted so far. Use `status` to check completion.
+// Page counts so far. Check `status` to know when the batch is done.
 type BatchListResponseDataProgress struct {
 	// Pages that could not be scraped.
 	Failed int64 `json:"failed" api:"required"`
-	// Accepted pages not yet attempted. Unused crawl capacity is excluded after
-	// completion.
+	// Accepted pages not yet attempted. A link-following crawl reports `0` once it
+	// finishes, since its unused page budget is not counted.
 	Pending int64 `json:"pending" api:"required"`
 	// Pages scraped successfully.
 	Succeeded int64 `json:"succeeded" api:"required"`
@@ -1198,12 +1203,13 @@ func (r *BatchListResponseDataProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Result download links; null until the batch finishes. Files are deleted 180 days
-// after the batch finishes.
+// Links to download the results. `null` until the batch finishes; the files are
+// deleted 180 days after that.
 type BatchListResponseDataResults struct {
-	// When these links expire (24 hours after this response).
+	// When these links expire, 24 hours after this response. Retrieve the batch again
+	// for fresh links.
 	ExpiresAt string `json:"expires_at" api:"required"`
-	// Result files. Order is not guaranteed.
+	// Result files, in no particular order.
 	Files []BatchListResponseDataResultsFile `json:"files" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1223,9 +1229,9 @@ func (r *BatchListResponseDataResults) UnmarshalJSON(data []byte) error {
 type BatchListResponseDataResultsFile struct {
 	// Compressed file size in bytes.
 	Bytes int64 `json:"bytes" api:"required"`
-	// Results in this file.
+	// Number of result records in this file.
 	Items int64 `json:"items" api:"required"`
-	// Temporary URL for a gzipped NDJSON file.
+	// Temporary download URL for a gzipped NDJSON file of result records.
 	URL string `json:"url" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1243,12 +1249,13 @@ func (r *BatchListResponseDataResultsFile) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// When the batch was created, started, and finished.
 type BatchListResponseDataTiming struct {
-	// When processing finished. Null while active.
+	// When the batch reached a final status. `null` until then.
 	CompletedAt string `json:"completed_at" api:"required"`
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
-	// When processing started. Null while queued.
+	// When scraping started. `null` until the batch is `running`.
 	StartedAt string `json:"started_at" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1270,7 +1277,7 @@ func (r *BatchListResponseDataTiming) UnmarshalJSON(data []byte) error {
 type BatchListResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1293,7 +1300,7 @@ type BatchDeleteResponse struct {
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// ID of the deleted batch.
 	ID string `json:"id"`
-	// Always true on success.
+	// Always `true`.
 	Deleted bool `json:"deleted"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BatchDeleteResponseKeyMetadata `json:"key_metadata"`
@@ -1318,7 +1325,7 @@ func (r *BatchDeleteResponse) UnmarshalJSON(data []byte) error {
 type BatchDeleteResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1336,35 +1343,35 @@ func (r *BatchDeleteResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchCancelResponse struct {
-	// Batch ID.
+	// Unique ID of the batch.
 	ID string `json:"id" api:"required"`
 	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
-	// What this batch cost so far.
+	// Credits reserved for the batch.
 	Credits BatchCancelResponseCredits `json:"credits" api:"required"`
-	// Outputs requested for each page. Matches input.data.formats on submission.
+	// Formats requested for each page, as submitted in `input.data.formats`.
 	Formats BatchCancelResponseFormats `json:"formats" api:"required"`
-	// What the submission accepted.
+	// Page counts from your submission.
 	Input Intake `json:"input" api:"required"`
-	// How pages were selected.
+	// `scrape` for a URL list, `crawl` for a site crawl.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchCancelResponseMode `json:"mode" api:"required"`
-	// Page failures so far, grouped by error code and sorted by count.
+	// Page failures so far, grouped by error code, most common first.
 	PageErrors []PageErrorCount `json:"page_errors" api:"required"`
 	// How far the batch got before cancellation.
 	Progress BatchCancelResponseProgress `json:"progress" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Always `cancelling`. Work already in flight finishes; the batch reaches
-	// `cancelled` shortly after.
+	// Always `cancelling`. Pages in progress finish, then the batch becomes
+	// `cancelled`.
 	//
 	// Any of "cancelling".
 	Status BatchCancelResponseStatus `json:"status" api:"required"`
-	// Tags stored on the batch at submission.
+	// Tags set when the batch was submitted.
 	Tags []string `json:"tags" api:"required"`
-	// Batch timestamps.
+	// When the batch was created and started.
 	Timing BatchCancelResponseTiming `json:"timing" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BatchCancelResponseKeyMetadata `json:"key_metadata"`
@@ -1394,9 +1401,10 @@ func (r *BatchCancelResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What this batch cost so far.
+// Credits reserved for the batch.
 type BatchCancelResponseCredits struct {
-	// Credits held at submission; unused credits are refunded when the batch settles.
+	// Credits reserved for the batch. Unused credits are refunded once it reaches
+	// `cancelled`.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1412,26 +1420,26 @@ func (r *BatchCancelResponseCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Outputs requested for each page. Matches input.data.formats on submission.
+// Formats requested for each page, as submitted in `input.data.formats`.
 type BatchCancelResponseFormats struct {
-	// The original HTTP response body.
+	// Return the original HTTP response body.
 	Bytes bool `json:"bytes"`
-	// Markdown excerpts relevant to `highlightsParams.query`.
+	// Return Markdown excerpts relevant to `highlightsParams.query`.
 	Highlights bool `json:"highlights"`
-	// Rendered HTML.
+	// Return the rendered HTML.
 	HTML bool `json:"html"`
-	// Images found on the page.
+	// Return the images found on the page.
 	Images bool `json:"images"`
-	// An object matching `jsonParams.schema`, extracted from the page text and its
-	// embedded data (JSON-LD, meta tags, framework state).
+	// Return an object matching `jsonParams.schema`, extracted from the page text and
+	// embedded data such as JSON-LD, meta tags, and framework state.
 	Json bool `json:"json"`
-	// Page content or video transcript as Markdown.
+	// Return the page content, or a video transcript, as Markdown.
 	Markdown bool `json:"markdown"`
-	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
+	// Return fields extracted with custom rules or a prebuilt parser, as `parsed`.
 	Parse bool `json:"parse"`
-	// Product details such as name, price, and availability.
+	// Return product details such as name, price, and availability.
 	Product bool `json:"product"`
-	// A screenshot of the page.
+	// Return a screenshot of the page.
 	Screenshot bool `json:"screenshot"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1455,7 +1463,7 @@ func (r *BatchCancelResponseFormats) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How pages were selected.
+// `scrape` for a URL list, `crawl` for a site crawl.
 type BatchCancelResponseMode string
 
 const (
@@ -1465,11 +1473,11 @@ const (
 
 // How far the batch got before cancellation.
 type BatchCancelResponseProgress struct {
-	// Pages that could not be scraped before the request landed.
+	// Pages that could not be scraped before cancellation.
 	Failed int64 `json:"failed" api:"required"`
-	// Pages that will be skipped.
+	// Pages not yet attempted, which will be skipped.
 	Pending int64 `json:"pending" api:"required"`
-	// Pages scraped successfully before the request landed.
+	// Pages scraped successfully before cancellation.
 	Succeeded int64 `json:"succeeded" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1487,19 +1495,19 @@ func (r *BatchCancelResponseProgress) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Always `cancelling`. Work already in flight finishes; the batch reaches
-// `cancelled` shortly after.
+// Always `cancelling`. Pages in progress finish, then the batch becomes
+// `cancelled`.
 type BatchCancelResponseStatus string
 
 const (
 	BatchCancelResponseStatusCancelling BatchCancelResponseStatus = "cancelling"
 )
 
-// Batch timestamps.
+// When the batch was created and started.
 type BatchCancelResponseTiming struct {
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
-	// When processing started. Null if it was cancelled while still queued.
+	// When scraping started. `null` if the batch was cancelled before it started.
 	StartedAt string `json:"started_at" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1520,7 +1528,7 @@ func (r *BatchCancelResponseTiming) UnmarshalJSON(data []byte) error {
 type BatchCancelResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1541,13 +1549,13 @@ type BatchGetResultsResponse struct {
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Result records on this page.
+	// Results on this page.
 	Data []BatchGetResultsResponseDataUnion `json:"data"`
-	// Whether another page is available.
+	// Whether more results are available after this page.
 	HasMore bool `json:"has_more"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BatchGetResultsResponseKeyMetadata `json:"key_metadata"`
-	// Cursor for the next page.
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
 	NextCursor string `json:"next_cursor" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2392,23 +2400,23 @@ func (r *BatchGetResultsResponseDataUnionResultKeyMetadata) UnmarshalJSON(data [
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// At least one requested output succeeded. Check result.isPartial and each output
-// success for incomplete results.
+// A page where at least one requested format succeeded. Check `result.isPartial`
+// and each format's `success` for incomplete results.
 type BatchGetResultsResponseDataOk struct {
-	// Credits charged for this page, including OCR. Cached outputs use the same
-	// pricing as POST /web/scrape.
+	// Credits charged for this page, including OCR. Cached results are priced the same
+	// as in `POST /web/scrape`.
 	CreditsUsed int64 `json:"credits_used" api:"required"`
-	// The same response as POST /web/scrape, including per-format success, failure,
-	// and partial results.
+	// Scrape output, in the same shape as a `POST /web/scrape` response.
 	Result BatchGetResultsResponseDataOkResult `json:"result" api:"required"`
-	Status constant.Ok                         `json:"status" default:"ok"`
+	// The page was scraped.
+	Status constant.Ok `json:"status" default:"ok"`
 	// URL as submitted, or as discovered by the crawl.
 	URL string `json:"url" api:"required"`
-	// Your `itemId` from submission.
+	// The `itemId` you submitted with this URL.
 	ItemID string `json:"itemId"`
-	// Caller-supplied metadata echoed from submission.
+	// The `meta` you submitted with this URL.
 	Meta map[string]any `json:"meta"`
-	// PDF pages recovered by OCR. Omitted when OCR did not run.
+	// Number of PDF pages read with OCR. Omitted when OCR did not run.
 	OcrPages int64 `json:"ocr_pages"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2430,53 +2438,32 @@ func (r *BatchGetResultsResponseDataOk) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The same response as POST /web/scrape, including per-format success, failure,
-// and partial results.
+// Scrape output, in the same shape as a `POST /web/scrape` response.
 type BatchGetResultsResponseDataOkResult struct {
 	// The original HTTP response body, unchanged by waits, actions, and filters.
 	Bytes BatchGetResultsResponseDataOkResultBytes `json:"bytes" api:"required"`
-	// Whether this response came from cache.
+	// Cache status of this response.
 	CacheMetadata BatchGetResultsResponseDataOkResultCacheMetadata `json:"cache_metadata" api:"required"`
 	// Relevant Markdown excerpts in page order. `[Heading]` adds context; `…` marks
 	// omitted text.
 	Highlights BatchGetResultsResponseDataOkResultHighlights `json:"highlights" api:"required"`
-	// Rendered HTML after content filters.
+	// Rendered HTML of the page, after content filters.
 	HTML BatchGetResultsResponseDataOkResultHTML `json:"html" api:"required"`
-	// Images after content filters. `[]` when none are found.
+	// Images found on the page, after content filters. `[]` when there are none.
 	Images BatchGetResultsResponseDataOkResultImages `json:"images" api:"required"`
 	// Object matching `jsonParams.schema`.
 	Json BatchGetResultsResponseDataOkResultJson `json:"json" api:"required"`
-	// Markdown after content filters.
+	// Page content as Markdown, after content filters.
 	Markdown BatchGetResultsResponseDataOkResultMarkdown `json:"markdown" api:"required"`
 	// Page metadata. Fields are omitted when not found.
 	Metadata BatchGetResultsResponseDataOkResultMetadata `json:"metadata" api:"required"`
-	// Custom rules return fields after content filters; unmatched fields are null ([]
-	// for lists). The google-maps parser returns business records in data.results,
-	// google-maps-reviews returns data.reviews, and the google-play parser returns one
-	// app record as data, google-play-reviews returns data.reviews, app-store and
-	// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-	// for a G2 product, instagram-profile and instagram-post return one record as
-	// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
-	// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
-	// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
-	// data.users, yelp-search returns up to 20 ranked organic businesses in
-	// data.businesses, plus total and pagination, from a Yelp search URL; yelp-reviews
-	// returns up to 20 latest public reviews in data.reviews, with business details
-	// and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
-	// reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-	// hotel, restaurant, or attraction review URL; car-rental-availability returns
-	// every vehicle with pay-now and pay-later prices in data.vehicles from an
-	// avis.com or budget.com vehicle-availability search URL; car-rental-locations
-	// returns rental branches with codes, addresses, coordinates and hours in
-	// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
-	// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
-	// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
-	// their data directly, independently of DOM filters and other outputs.
+	// Fields extracted by `parseParams`. Custom rules return each field after content
+	// filters, with `null` when nothing matches (`[]` for `list` rules). Prebuilt
+	// parsers return the record or lists described under `parseParams.parser`.
 	Parsed BatchGetResultsResponseDataOkResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataOkResultProduct `json:"product" api:"required"`
-	// Authenticated browser profile used for this scrape, or null when no profile was
-	// requested. New and existing profile requests both return the profile ID.
+	// Browser profile used for this scrape. `null` when no profile was requested.
 	Profile BatchGetResultsResponseDataOkResultProfile `json:"profile" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
@@ -2485,8 +2472,8 @@ type BatchGetResultsResponseDataOkResult struct {
 	Screenshot BatchGetResultsResponseDataOkResultScreenshot `json:"screenshot" api:"required"`
 	// Final URL after redirects and browser actions.
 	URL string `json:"url" api:"required" format:"uri"`
-	// True when at least one requested output succeeds but the response has failed or
-	// incomplete outputs. Absent when all requested outputs fail.
+	// `true` when at least one requested output succeeded but others failed or are
+	// incomplete. Absent otherwise.
 	//
 	// Any of true.
 	IsPartial bool `json:"isPartial"`
@@ -2523,13 +2510,15 @@ func (r *BatchGetResultsResponseDataOkResult) UnmarshalJSON(data []byte) error {
 
 // The original HTTP response body, unchanged by waits, actions, and filters.
 type BatchGetResultsResponseDataOkResultBytes struct {
-	Data      BatchGetResultsResponseDataOkResultBytesData `json:"data" api:"required"`
-	Requested bool                                         `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data BatchGetResultsResponseDataOkResultBytesData `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2550,8 +2539,9 @@ func (r *BatchGetResultsResponseDataOkResultBytes) UnmarshalJSON(data []byte) er
 }
 
 type BatchGetResultsResponseDataOkResultBytesData struct {
-	// Body as base64, after HTTP decompression. Up to 50 MiB decoded.
-	Base64      string `json:"base64" api:"required"`
+	// Response body as base64, after HTTP decompression. Up to 50 MiB decoded.
+	Base64 string `json:"base64" api:"required"`
+	// `Content-Type` of the response.
 	ContentType string `json:"contentType" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2568,12 +2558,12 @@ func (r *BatchGetResultsResponseDataOkResultBytesData) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Whether this response came from cache.
+// Cache status of this response.
 type BatchGetResultsResponseDataOkResultCacheMetadata struct {
-	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	// Age of the cached data, in milliseconds. `0` for `miss` and `zdr`.
 	AgeMs int64 `json:"age_ms" api:"required"`
-	// Whether the response was served from cache, required fresh work, or honored
-	// zero-data-retention cache bypass.
+	// `hit` when served from cache, `miss` when fetched fresh, `zdr` when zero data
+	// retention bypassed the cache.
 	//
 	// Any of "hit", "miss", "zdr".
 	Status string `json:"status" api:"required"`
@@ -2595,13 +2585,15 @@ func (r *BatchGetResultsResponseDataOkResultCacheMetadata) UnmarshalJSON(data []
 // Relevant Markdown excerpts in page order. `[Heading]` adds context; `…` marks
 // omitted text.
 type BatchGetResultsResponseDataOkResultHighlights struct {
-	Data      []string `json:"data" api:"required"`
-	Requested bool     `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data []string `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2621,15 +2613,17 @@ func (r *BatchGetResultsResponseDataOkResultHighlights) UnmarshalJSON(data []byt
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Rendered HTML after content filters.
+// Rendered HTML of the page, after content filters.
 type BatchGetResultsResponseDataOkResultHTML struct {
-	Data      string `json:"data" api:"required"`
-	Requested bool   `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data string `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2649,15 +2643,17 @@ func (r *BatchGetResultsResponseDataOkResultHTML) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Images after content filters. `[]` when none are found.
+// Images found on the page, after content filters. `[]` when there are none.
 type BatchGetResultsResponseDataOkResultImages struct {
-	Data      []BatchGetResultsResponseDataOkResultImagesData `json:"data" api:"required"`
-	Requested bool                                            `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data []BatchGetResultsResponseDataOkResultImagesData `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2678,18 +2674,23 @@ func (r *BatchGetResultsResponseDataOkResultImages) UnmarshalJSON(data []byte) e
 }
 
 type BatchGetResultsResponseDataOkResultImagesData struct {
-	// Alt text, if present.
+	// Alt text. `null` when the image has none.
 	Alt string `json:"alt" api:"required"`
 	// Image URL, or a data URI for inline images.
 	URL string `json:"url" api:"required" format:"uri"`
+	// What the image shows, such as a photo, logo, or icon. Requires `classification`
+	// enrichment.
+	//
 	// Any of "photography", "illustration", "logo", "wordmark", "icon", "pattern",
 	// "graphic", "other".
 	Classification string `json:"classification"`
-	// Hosted image URL, valid for 24 hours after capture. Requires `file` enrichment
-	// and ZDR disabled.
+	// Hosted copy of the image, valid for 24 hours after capture. Requires `file`
+	// enrichment; not returned with ZDR.
 	FileURL string `json:"fileUrl" format:"uri"`
-	Height  int64  `json:"height"`
-	Width   int64  `json:"width"`
+	// Image height in pixels. Requires `dimensions` enrichment.
+	Height int64 `json:"height"`
+	// Image width in pixels. Requires `dimensions` enrichment.
+	Width int64 `json:"width"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Alt            respjson.Field
@@ -2711,18 +2712,20 @@ func (r *BatchGetResultsResponseDataOkResultImagesData) UnmarshalJSON(data []byt
 
 // Object matching `jsonParams.schema`.
 type BatchGetResultsResponseDataOkResultJson struct {
-	Data      map[string]any `json:"data" api:"required"`
-	Requested bool           `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data map[string]any `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// True when the page was too long to read in full, so values found only in the
-	// unread parts may be missing.
+	// `true` when the page was too long to read in full, so values that appear only in
+	// the unread part may be missing.
 	//
 	// Any of true.
 	IsTruncated bool `json:"isTruncated"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2743,15 +2746,17 @@ func (r *BatchGetResultsResponseDataOkResultJson) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Markdown after content filters.
+// Page content as Markdown, after content filters.
 type BatchGetResultsResponseDataOkResultMarkdown struct {
-	Data      string `json:"data" api:"required"`
-	Requested bool   `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data string `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2773,41 +2778,42 @@ func (r *BatchGetResultsResponseDataOkResultMarkdown) UnmarshalJSON(data []byte)
 
 // Page metadata. Fields are omitted when not found.
 type BatchGetResultsResponseDataOkResultMetadata struct {
-	// Additional non-social meta tags not promoted to top-level metadata fields.
+	// Other non-social meta tags that don't have their own field.
 	AdditionalMeta map[string]BatchGetResultsResponseDataOkResultMetadataAdditionalMetaUnion `json:"additionalMeta"`
-	// Resolved alternate links from link rel=alternate tags.
+	// Alternate links from `link rel="alternate"` tags, as absolute URLs.
 	Alternates []BatchGetResultsResponseDataOkResultMetadataAlternate `json:"alternates"`
-	// Author metadata, when present.
+	// Author, when present.
 	Author string `json:"author"`
-	// Resolved canonical URL, when present.
+	// Absolute canonical URL, when present.
 	CanonicalURL string `json:"canonicalUrl"`
-	// Best description extracted from standard, Open Graph, or Twitter metadata.
+	// Best available description, from standard, Open Graph, or Twitter meta tags.
 	Description string `json:"description"`
-	// Resolved favicon URL, when present.
+	// Absolute favicon URL, when present.
 	Favicon string `json:"favicon"`
-	// Up to 500 h1–h6 headings in document order, before content filtering.
+	// Headings (`h1` to `h6`) in document order, from the full page before any
+	// filtering. Up to 500. Omitted when the page has none.
 	Headings []BatchGetResultsResponseDataOkResultMetadataHeading `json:"headings"`
-	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
+	// Main preview image URL, from Open Graph, Twitter, or image meta tags.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
 	JsonLd []map[string]any `json:"jsonLd"`
-	// Keywords extracted from the page's keywords meta tag.
+	// Keywords from the page's `keywords` meta tag.
 	Keywords []string `json:"keywords"`
-	// Language extracted from html lang or language meta tags.
+	// Page language, from the `html` `lang` attribute or language meta tags.
 	Language string `json:"language"`
-	// Modified timestamp/date from page metadata, when present.
+	// Last-modified date or timestamp from page metadata, when present.
 	ModifiedTime string `json:"modifiedTime"`
-	// Open Graph metadata with the og: prefix removed and keys camel-cased.
+	// Open Graph tags, with the `og:` prefix removed and keys in camelCase.
 	OpenGraph map[string]BatchGetResultsResponseDataOkResultMetadataOpenGraphUnion `json:"openGraph"`
-	// Published timestamp/date from page metadata, when present.
+	// Publish date or timestamp from page metadata, when present.
 	PublishedTime string `json:"publishedTime"`
-	// Robots meta directive, when present.
+	// `robots` meta directive, when present.
 	Robots string `json:"robots"`
-	// Site or application name from page metadata.
+	// Site or app name from page metadata.
 	SiteName string `json:"siteName"`
-	// Best title extracted from the page.
+	// Best available page title.
 	Title string `json:"title"`
-	// Twitter card metadata with the twitter: prefix removed and keys camel-cased.
+	// Twitter card tags, with the `twitter:` prefix removed and keys in camelCase.
 	Twitter map[string]BatchGetResultsResponseDataOkResultMetadataTwitterUnion `json:"twitter"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2879,13 +2885,13 @@ func (r *BatchGetResultsResponseDataOkResultMetadataAdditionalMetaUnion) Unmarsh
 }
 
 type BatchGetResultsResponseDataOkResultMetadataAlternate struct {
-	// Resolved alternate URL.
+	// Absolute URL of the alternate version.
 	Href string `json:"href" api:"required"`
-	// Language or locale for the alternate URL, when present.
+	// Language or locale of the alternate version, when present.
 	Hreflang string `json:"hreflang"`
-	// Alternate resource title, when present.
+	// Title of the alternate version, when present.
 	Title string `json:"title"`
-	// Alternate resource MIME type, when present.
+	// MIME type of the alternate version, when present.
 	Type string `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2905,7 +2911,7 @@ func (r *BatchGetResultsResponseDataOkResultMetadataAlternate) UnmarshalJSON(dat
 }
 
 type BatchGetResultsResponseDataOkResultMetadataHeading struct {
-	// Heading level, 1–6 (from h1–h6).
+	// Heading level, from 1 (`h1`) to 6 (`h6`).
 	Level int64 `json:"level" api:"required"`
 	// Heading text with whitespace collapsed, truncated to 1000 characters.
 	Text string `json:"text" api:"required"`
@@ -2998,35 +3004,18 @@ func (r *BatchGetResultsResponseDataOkResultMetadataTwitterUnion) UnmarshalJSON(
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Custom rules return fields after content filters; unmatched fields are null ([]
-// for lists). The google-maps parser returns business records in data.results,
-// google-maps-reviews returns data.reviews, and the google-play parser returns one
-// app record as data, google-play-reviews returns data.reviews, app-store and
-// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-// for a G2 product, instagram-profile and instagram-post return one record as
-// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
-// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
-// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
-// data.users, yelp-search returns up to 20 ranked organic businesses in
-// data.businesses, plus total and pagination, from a Yelp search URL; yelp-reviews
-// returns up to 20 latest public reviews in data.reviews, with business details
-// and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
-// reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-// hotel, restaurant, or attraction review URL; car-rental-availability returns
-// every vehicle with pay-now and pay-later prices in data.vehicles from an
-// avis.com or budget.com vehicle-availability search URL; car-rental-locations
-// returns rental branches with codes, addresses, coordinates and hours in
-// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
-// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
-// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
-// their data directly, independently of DOM filters and other outputs.
+// Fields extracted by `parseParams`. Custom rules return each field after content
+// filters, with `null` when nothing matches (`[]` for `list` rules). Prebuilt
+// parsers return the record or lists described under `parseParams.parser`.
 type BatchGetResultsResponseDataOkResultParsed struct {
-	Data      map[string]any `json:"data" api:"required"`
-	Requested bool           `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data map[string]any `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// The selected prebuilt parser name, or custom when type is omitted, custom rules
-	// are used, or parsing is not requested.
+	// Prebuilt parser that ran, or `custom` for custom rules or when `parse` was not
+	// requested.
 	//
 	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
@@ -3037,9 +3026,9 @@ type BatchGetResultsResponseDataOkResultParsed struct {
 	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
 	// "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3062,13 +3051,15 @@ func (r *BatchGetResultsResponseDataOkResultParsed) UnmarshalJSON(data []byte) e
 
 // Product details found on the page.
 type BatchGetResultsResponseDataOkResultProduct struct {
-	Data      BatchGetResultsResponseDataOkResultProductData `json:"data" api:"required"`
-	Requested bool                                           `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data BatchGetResultsResponseDataOkResultProductData `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3091,7 +3082,7 @@ func (r *BatchGetResultsResponseDataOkResultProduct) UnmarshalJSON(data []byte) 
 type BatchGetResultsResponseDataOkResultProductData struct {
 	// Whether the page is a product detail page.
 	IsProductPage bool `json:"isProductPage" api:"required"`
-	// The extracted product, or null when the page is not a product detail page.
+	// The extracted product. `null` when the page is not a product detail page.
 	Product BatchGetResultsResponseDataOkResultProductDataProduct `json:"product" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3108,7 +3099,7 @@ func (r *BatchGetResultsResponseDataOkResultProductData) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The extracted product, or null when the page is not a product detail page.
+// The extracted product. `null` when the page is not a product detail page.
 type BatchGetResultsResponseDataOkResultProductDataProduct struct {
 	// Stock or ordering availability.
 	//
@@ -3119,7 +3110,7 @@ type BatchGetResultsResponseDataOkResultProductDataProduct struct {
 	Brand string `json:"brand" api:"required"`
 	// Product category.
 	Category string `json:"category" api:"required"`
-	// ISO 4217 currency code.
+	// ISO 4217 currency code of `price`.
 	Currency string `json:"currency" api:"required"`
 	// Product description.
 	Description string `json:"description" api:"required"`
@@ -3143,9 +3134,8 @@ type BatchGetResultsResponseDataOkResultProductDataProduct struct {
 	Tags []string `json:"tags" api:"required"`
 	// Intended audience.
 	TargetAudience []string `json:"targetAudience" api:"required"`
-	// Product variations, such as different colors or sizes, with their attributes and
-	// images. Empty if none are found. May not include every variation offered by the
-	// store.
+	// Product variants, such as colors or sizes, with their attributes and images.
+	// `[]` when none are found. May not include every variant the store offers.
 	Variants []BatchGetResultsResponseDataOkResultProductDataProductVariant `json:"variants" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3177,22 +3167,24 @@ func (r *BatchGetResultsResponseDataOkResultProductDataProduct) UnmarshalJSON(da
 }
 
 type BatchGetResultsResponseDataOkResultProductDataProductVariant struct {
-	// Explicit variant attributes such as color, size, material, pattern and
-	// properties declared by page.
+	// Attributes that define this variant, such as color, size, material, or pattern,
+	// as stated on the page.
 	Attributes map[string]string `json:"attributes" api:"required"`
-	// Original source image URLs explicitly attached to this variant.
+	// Image URLs the source attaches to this variant.
 	Images []string `json:"images" api:"required"`
-	SKU    string   `json:"sku" api:"required"`
-	// Variant or offer URL when provided by the source. May be shared by variants.
+	// SKU of this variant. `null` when the source does not state one.
+	SKU string `json:"sku" api:"required"`
+	// URL of this variant or offer, when the source provides one. Several variants can
+	// share a URL.
 	URL string `json:"url" api:"required"`
-	// Normalized stock or ordering availability of this variant.
+	// Stock or ordering availability of this variant.
 	//
 	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
 	// "backorder", "made_to_order", "discontinued".
 	Availability string `json:"availability" api:"nullable"`
-	// Currency code for the variant price (e.g., USD, EUR) when stated with it.
+	// Currency code of `price`, such as `USD` or `EUR`, when stated.
 	Currency string `json:"currency" api:"nullable"`
-	// Price of this variant when the source states one per variant.
+	// Price of this variant, when the source states one per variant.
 	Price float64 `json:"price" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3216,11 +3208,10 @@ func (r *BatchGetResultsResponseDataOkResultProductDataProductVariant) Unmarshal
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Authenticated browser profile used for this scrape, or null when no profile was
-// requested. New and existing profile requests both return the profile ID.
+// Browser profile used for this scrape. `null` when no profile was requested.
 type BatchGetResultsResponseDataOkResultProfile struct {
-	// Save this ID after creating a profile, then reuse it as
-	// sharedParams.profile.profileId with type "existing".
+	// ID of the browser profile. After creating a profile, save it and pass it as
+	// `sharedParams.profile.profileId` with `type: "existing"`.
 	ID string `json:"id" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3238,13 +3229,15 @@ func (r *BatchGetResultsResponseDataOkResultProfile) UnmarshalJSON(data []byte) 
 
 // Screenshot as a base64 image data URL.
 type BatchGetResultsResponseDataOkResultScreenshot struct {
-	Data      string `json:"data" api:"required" format:"uri"`
-	Requested bool   `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data string `json:"data" api:"required" format:"uri"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3268,7 +3261,7 @@ func (r *BatchGetResultsResponseDataOkResultScreenshot) UnmarshalJSON(data []byt
 type BatchGetResultsResponseDataOkResultKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3285,27 +3278,27 @@ func (r *BatchGetResultsResponseDataOkResultKeyMetadata) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// A page the batch could not fetch.
+// A page that could not be scraped.
 type BatchGetResultsResponseDataError struct {
-	// Why the page failed.
+	// Machine-readable error code, such as `NOT_FOUND`.
 	ErrorCode string `json:"error_code" api:"required"`
-	// Human-readable failure detail.
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// The page could not be scraped.
 	Status constant.Error `json:"status" default:"error"`
 	// URL as submitted, or as discovered by the crawl.
 	URL string `json:"url" api:"required"`
-	// Credits charged for this page, including OCR. Cached outputs use the same
-	// pricing as POST /web/scrape.
+	// Credits charged for this page, including OCR. Cached results are priced the same
+	// as in `POST /web/scrape`.
 	CreditsUsed int64 `json:"credits_used"`
-	// Your `itemId` from submission.
+	// The `itemId` you submitted with this URL.
 	ItemID string `json:"itemId"`
-	// Caller-supplied metadata echoed from submission.
+	// The `meta` you submitted with this URL.
 	Meta map[string]any `json:"meta"`
-	// PDF pages recovered by OCR. Omitted when OCR did not run.
+	// Number of PDF pages read with OCR. Omitted when OCR did not run.
 	OcrPages int64 `json:"ocr_pages"`
-	// Per-format failures when scraping returned a structured response. Omitted for
-	// errors that prevent scraping.
+	// Per-format errors, when the scrape returned a response. Omitted when the page
+	// could not be scraped at all.
 	Result BatchGetResultsResponseDataErrorResult `json:"result"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3329,53 +3322,33 @@ func (r *BatchGetResultsResponseDataError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Per-format failures when scraping returned a structured response. Omitted for
-// errors that prevent scraping.
+// Per-format errors, when the scrape returned a response. Omitted when the page
+// could not be scraped at all.
 type BatchGetResultsResponseDataErrorResult struct {
 	// The original HTTP response body, unchanged by waits, actions, and filters.
 	Bytes BatchGetResultsResponseDataErrorResultBytes `json:"bytes" api:"required"`
-	// Whether this response came from cache.
+	// Cache status of this response.
 	CacheMetadata BatchGetResultsResponseDataErrorResultCacheMetadata `json:"cache_metadata" api:"required"`
 	// Relevant Markdown excerpts in page order. `[Heading]` adds context; `…` marks
 	// omitted text.
 	Highlights BatchGetResultsResponseDataErrorResultHighlights `json:"highlights" api:"required"`
-	// Rendered HTML after content filters.
+	// Rendered HTML of the page, after content filters.
 	HTML BatchGetResultsResponseDataErrorResultHTML `json:"html" api:"required"`
-	// Images after content filters. `[]` when none are found.
+	// Images found on the page, after content filters. `[]` when there are none.
 	Images BatchGetResultsResponseDataErrorResultImages `json:"images" api:"required"`
 	// Object matching `jsonParams.schema`.
 	Json BatchGetResultsResponseDataErrorResultJson `json:"json" api:"required"`
-	// Markdown after content filters.
+	// Page content as Markdown, after content filters.
 	Markdown BatchGetResultsResponseDataErrorResultMarkdown `json:"markdown" api:"required"`
 	// Page metadata. Fields are omitted when not found.
 	Metadata BatchGetResultsResponseDataErrorResultMetadata `json:"metadata" api:"required"`
-	// Custom rules return fields after content filters; unmatched fields are null ([]
-	// for lists). The google-maps parser returns business records in data.results,
-	// google-maps-reviews returns data.reviews, and the google-play parser returns one
-	// app record as data, google-play-reviews returns data.reviews, app-store and
-	// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-	// for a G2 product, instagram-profile and instagram-post return one record as
-	// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
-	// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
-	// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
-	// data.users, yelp-search returns up to 20 ranked organic businesses in
-	// data.businesses, plus total and pagination, from a Yelp search URL; yelp-reviews
-	// returns up to 20 latest public reviews in data.reviews, with business details
-	// and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
-	// reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-	// hotel, restaurant, or attraction review URL; car-rental-availability returns
-	// every vehicle with pay-now and pay-later prices in data.vehicles from an
-	// avis.com or budget.com vehicle-availability search URL; car-rental-locations
-	// returns rental branches with codes, addresses, coordinates and hours in
-	// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
-	// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
-	// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
-	// their data directly, independently of DOM filters and other outputs.
+	// Fields extracted by `parseParams`. Custom rules return each field after content
+	// filters, with `null` when nothing matches (`[]` for `list` rules). Prebuilt
+	// parsers return the record or lists described under `parseParams.parser`.
 	Parsed BatchGetResultsResponseDataErrorResultParsed `json:"parsed" api:"required"`
 	// Product details found on the page.
 	Product BatchGetResultsResponseDataErrorResultProduct `json:"product" api:"required"`
-	// Authenticated browser profile used for this scrape, or null when no profile was
-	// requested. New and existing profile requests both return the profile ID.
+	// Browser profile used for this scrape. `null` when no profile was requested.
 	Profile BatchGetResultsResponseDataErrorResultProfile `json:"profile" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
@@ -3384,8 +3357,8 @@ type BatchGetResultsResponseDataErrorResult struct {
 	Screenshot BatchGetResultsResponseDataErrorResultScreenshot `json:"screenshot" api:"required"`
 	// Final URL after redirects and browser actions.
 	URL string `json:"url" api:"required" format:"uri"`
-	// True when at least one requested output succeeds but the response has failed or
-	// incomplete outputs. Absent when all requested outputs fail.
+	// `true` when at least one requested output succeeded but others failed or are
+	// incomplete. Absent otherwise.
 	//
 	// Any of true.
 	IsPartial bool `json:"isPartial"`
@@ -3422,13 +3395,15 @@ func (r *BatchGetResultsResponseDataErrorResult) UnmarshalJSON(data []byte) erro
 
 // The original HTTP response body, unchanged by waits, actions, and filters.
 type BatchGetResultsResponseDataErrorResultBytes struct {
-	Data      BatchGetResultsResponseDataErrorResultBytesData `json:"data" api:"required"`
-	Requested bool                                            `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data BatchGetResultsResponseDataErrorResultBytesData `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3449,8 +3424,9 @@ func (r *BatchGetResultsResponseDataErrorResultBytes) UnmarshalJSON(data []byte)
 }
 
 type BatchGetResultsResponseDataErrorResultBytesData struct {
-	// Body as base64, after HTTP decompression. Up to 50 MiB decoded.
-	Base64      string `json:"base64" api:"required"`
+	// Response body as base64, after HTTP decompression. Up to 50 MiB decoded.
+	Base64 string `json:"base64" api:"required"`
+	// `Content-Type` of the response.
 	ContentType string `json:"contentType" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3467,12 +3443,12 @@ func (r *BatchGetResultsResponseDataErrorResultBytesData) UnmarshalJSON(data []b
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Whether this response came from cache.
+// Cache status of this response.
 type BatchGetResultsResponseDataErrorResultCacheMetadata struct {
-	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	// Age of the cached data, in milliseconds. `0` for `miss` and `zdr`.
 	AgeMs int64 `json:"age_ms" api:"required"`
-	// Whether the response was served from cache, required fresh work, or honored
-	// zero-data-retention cache bypass.
+	// `hit` when served from cache, `miss` when fetched fresh, `zdr` when zero data
+	// retention bypassed the cache.
 	//
 	// Any of "hit", "miss", "zdr".
 	Status string `json:"status" api:"required"`
@@ -3494,13 +3470,15 @@ func (r *BatchGetResultsResponseDataErrorResultCacheMetadata) UnmarshalJSON(data
 // Relevant Markdown excerpts in page order. `[Heading]` adds context; `…` marks
 // omitted text.
 type BatchGetResultsResponseDataErrorResultHighlights struct {
-	Data      []string `json:"data" api:"required"`
-	Requested bool     `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data []string `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3520,15 +3498,17 @@ func (r *BatchGetResultsResponseDataErrorResultHighlights) UnmarshalJSON(data []
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Rendered HTML after content filters.
+// Rendered HTML of the page, after content filters.
 type BatchGetResultsResponseDataErrorResultHTML struct {
-	Data      string `json:"data" api:"required"`
-	Requested bool   `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data string `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3548,15 +3528,17 @@ func (r *BatchGetResultsResponseDataErrorResultHTML) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Images after content filters. `[]` when none are found.
+// Images found on the page, after content filters. `[]` when there are none.
 type BatchGetResultsResponseDataErrorResultImages struct {
-	Data      []BatchGetResultsResponseDataErrorResultImagesData `json:"data" api:"required"`
-	Requested bool                                               `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data []BatchGetResultsResponseDataErrorResultImagesData `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3577,18 +3559,23 @@ func (r *BatchGetResultsResponseDataErrorResultImages) UnmarshalJSON(data []byte
 }
 
 type BatchGetResultsResponseDataErrorResultImagesData struct {
-	// Alt text, if present.
+	// Alt text. `null` when the image has none.
 	Alt string `json:"alt" api:"required"`
 	// Image URL, or a data URI for inline images.
 	URL string `json:"url" api:"required" format:"uri"`
+	// What the image shows, such as a photo, logo, or icon. Requires `classification`
+	// enrichment.
+	//
 	// Any of "photography", "illustration", "logo", "wordmark", "icon", "pattern",
 	// "graphic", "other".
 	Classification string `json:"classification"`
-	// Hosted image URL, valid for 24 hours after capture. Requires `file` enrichment
-	// and ZDR disabled.
+	// Hosted copy of the image, valid for 24 hours after capture. Requires `file`
+	// enrichment; not returned with ZDR.
 	FileURL string `json:"fileUrl" format:"uri"`
-	Height  int64  `json:"height"`
-	Width   int64  `json:"width"`
+	// Image height in pixels. Requires `dimensions` enrichment.
+	Height int64 `json:"height"`
+	// Image width in pixels. Requires `dimensions` enrichment.
+	Width int64 `json:"width"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Alt            respjson.Field
@@ -3610,18 +3597,20 @@ func (r *BatchGetResultsResponseDataErrorResultImagesData) UnmarshalJSON(data []
 
 // Object matching `jsonParams.schema`.
 type BatchGetResultsResponseDataErrorResultJson struct {
-	Data      map[string]any `json:"data" api:"required"`
-	Requested bool           `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data map[string]any `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// True when the page was too long to read in full, so values found only in the
-	// unread parts may be missing.
+	// `true` when the page was too long to read in full, so values that appear only in
+	// the unread part may be missing.
 	//
 	// Any of true.
 	IsTruncated bool `json:"isTruncated"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3642,15 +3631,17 @@ func (r *BatchGetResultsResponseDataErrorResultJson) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Markdown after content filters.
+// Page content as Markdown, after content filters.
 type BatchGetResultsResponseDataErrorResultMarkdown struct {
-	Data      string `json:"data" api:"required"`
-	Requested bool   `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data string `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3672,41 +3663,42 @@ func (r *BatchGetResultsResponseDataErrorResultMarkdown) UnmarshalJSON(data []by
 
 // Page metadata. Fields are omitted when not found.
 type BatchGetResultsResponseDataErrorResultMetadata struct {
-	// Additional non-social meta tags not promoted to top-level metadata fields.
+	// Other non-social meta tags that don't have their own field.
 	AdditionalMeta map[string]BatchGetResultsResponseDataErrorResultMetadataAdditionalMetaUnion `json:"additionalMeta"`
-	// Resolved alternate links from link rel=alternate tags.
+	// Alternate links from `link rel="alternate"` tags, as absolute URLs.
 	Alternates []BatchGetResultsResponseDataErrorResultMetadataAlternate `json:"alternates"`
-	// Author metadata, when present.
+	// Author, when present.
 	Author string `json:"author"`
-	// Resolved canonical URL, when present.
+	// Absolute canonical URL, when present.
 	CanonicalURL string `json:"canonicalUrl"`
-	// Best description extracted from standard, Open Graph, or Twitter metadata.
+	// Best available description, from standard, Open Graph, or Twitter meta tags.
 	Description string `json:"description"`
-	// Resolved favicon URL, when present.
+	// Absolute favicon URL, when present.
 	Favicon string `json:"favicon"`
-	// Up to 500 h1–h6 headings in document order, before content filtering.
+	// Headings (`h1` to `h6`) in document order, from the full page before any
+	// filtering. Up to 500. Omitted when the page has none.
 	Headings []BatchGetResultsResponseDataErrorResultMetadataHeading `json:"headings"`
-	// Primary resolved preview image from Open Graph, Twitter, or image metadata.
+	// Main preview image URL, from Open Graph, Twitter, or image meta tags.
 	Image string `json:"image"`
 	// JSON-LD structured data blocks parsed from the page.
 	JsonLd []map[string]any `json:"jsonLd"`
-	// Keywords extracted from the page's keywords meta tag.
+	// Keywords from the page's `keywords` meta tag.
 	Keywords []string `json:"keywords"`
-	// Language extracted from html lang or language meta tags.
+	// Page language, from the `html` `lang` attribute or language meta tags.
 	Language string `json:"language"`
-	// Modified timestamp/date from page metadata, when present.
+	// Last-modified date or timestamp from page metadata, when present.
 	ModifiedTime string `json:"modifiedTime"`
-	// Open Graph metadata with the og: prefix removed and keys camel-cased.
+	// Open Graph tags, with the `og:` prefix removed and keys in camelCase.
 	OpenGraph map[string]BatchGetResultsResponseDataErrorResultMetadataOpenGraphUnion `json:"openGraph"`
-	// Published timestamp/date from page metadata, when present.
+	// Publish date or timestamp from page metadata, when present.
 	PublishedTime string `json:"publishedTime"`
-	// Robots meta directive, when present.
+	// `robots` meta directive, when present.
 	Robots string `json:"robots"`
-	// Site or application name from page metadata.
+	// Site or app name from page metadata.
 	SiteName string `json:"siteName"`
-	// Best title extracted from the page.
+	// Best available page title.
 	Title string `json:"title"`
-	// Twitter card metadata with the twitter: prefix removed and keys camel-cased.
+	// Twitter card tags, with the `twitter:` prefix removed and keys in camelCase.
 	Twitter map[string]BatchGetResultsResponseDataErrorResultMetadataTwitterUnion `json:"twitter"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3778,13 +3770,13 @@ func (r *BatchGetResultsResponseDataErrorResultMetadataAdditionalMetaUnion) Unma
 }
 
 type BatchGetResultsResponseDataErrorResultMetadataAlternate struct {
-	// Resolved alternate URL.
+	// Absolute URL of the alternate version.
 	Href string `json:"href" api:"required"`
-	// Language or locale for the alternate URL, when present.
+	// Language or locale of the alternate version, when present.
 	Hreflang string `json:"hreflang"`
-	// Alternate resource title, when present.
+	// Title of the alternate version, when present.
 	Title string `json:"title"`
-	// Alternate resource MIME type, when present.
+	// MIME type of the alternate version, when present.
 	Type string `json:"type"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3804,7 +3796,7 @@ func (r *BatchGetResultsResponseDataErrorResultMetadataAlternate) UnmarshalJSON(
 }
 
 type BatchGetResultsResponseDataErrorResultMetadataHeading struct {
-	// Heading level, 1–6 (from h1–h6).
+	// Heading level, from 1 (`h1`) to 6 (`h6`).
 	Level int64 `json:"level" api:"required"`
 	// Heading text with whitespace collapsed, truncated to 1000 characters.
 	Text string `json:"text" api:"required"`
@@ -3899,35 +3891,18 @@ func (r *BatchGetResultsResponseDataErrorResultMetadataTwitterUnion) UnmarshalJS
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Custom rules return fields after content filters; unmatched fields are null ([]
-// for lists). The google-maps parser returns business records in data.results,
-// google-maps-reviews returns data.reviews, and the google-play parser returns one
-// app record as data, google-play-reviews returns data.reviews, app-store and
-// app-store-reviews do the same for the App Store, g2-reviews returns data.reviews
-// for a G2 product, instagram-profile and instagram-post return one record as
-// data, instagram-feed returns data.posts, tiktok-profile and tiktok-video return
-// one record as data, tiktok-feed returns data.videos, tiktok-comments returns
-// data.comments, tiktok-followers, tiktok-following, and tiktok-user-search return
-// data.users, yelp-search returns up to 20 ranked organic businesses in
-// data.businesses, plus total and pagination, from a Yelp search URL; yelp-reviews
-// returns up to 20 latest public reviews in data.reviews, with business details
-// and next_offset, from a Yelp business URL; tripadvisor-reviews returns 20
-// reviews in data.reviews, with data.location and next_offset, from a Tripadvisor
-// hotel, restaurant, or attraction review URL; car-rental-availability returns
-// every vehicle with pay-now and pay-later prices in data.vehicles from an
-// avis.com or budget.com vehicle-availability search URL; car-rental-locations
-// returns rental branches with codes, addresses, coordinates and hours in
-// data.locations from an avis.com or budget.com /locations?keyword= URL; emails,
-// phone-numbers, and links return data.emails, data.phone_numbers, and data.links
-// from the rendered page; the store, Maps, G2, Instagram, and TikTok parsers read
-// their data directly, independently of DOM filters and other outputs.
+// Fields extracted by `parseParams`. Custom rules return each field after content
+// filters, with `null` when nothing matches (`[]` for `list` rules). Prebuilt
+// parsers return the record or lists described under `parseParams.parser`.
 type BatchGetResultsResponseDataErrorResultParsed struct {
-	Data      map[string]any `json:"data" api:"required"`
-	Requested bool           `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data map[string]any `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// The selected prebuilt parser name, or custom when type is omitted, custom rules
-	// are used, or parsing is not requested.
+	// Prebuilt parser that ran, or `custom` for custom rules or when `parse` was not
+	// requested.
 	//
 	// Any of "custom", "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
@@ -3938,9 +3913,9 @@ type BatchGetResultsResponseDataErrorResultParsed struct {
 	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
 	// "emails", "phone-numbers", "links".
 	Type string `json:"type" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3963,13 +3938,15 @@ func (r *BatchGetResultsResponseDataErrorResultParsed) UnmarshalJSON(data []byte
 
 // Product details found on the page.
 type BatchGetResultsResponseDataErrorResultProduct struct {
-	Data      BatchGetResultsResponseDataErrorResultProductData `json:"data" api:"required"`
-	Requested bool                                              `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data BatchGetResultsResponseDataErrorResultProductData `json:"data" api:"required"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3992,7 +3969,7 @@ func (r *BatchGetResultsResponseDataErrorResultProduct) UnmarshalJSON(data []byt
 type BatchGetResultsResponseDataErrorResultProductData struct {
 	// Whether the page is a product detail page.
 	IsProductPage bool `json:"isProductPage" api:"required"`
-	// The extracted product, or null when the page is not a product detail page.
+	// The extracted product. `null` when the page is not a product detail page.
 	Product BatchGetResultsResponseDataErrorResultProductDataProduct `json:"product" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4009,7 +3986,7 @@ func (r *BatchGetResultsResponseDataErrorResultProductData) UnmarshalJSON(data [
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The extracted product, or null when the page is not a product detail page.
+// The extracted product. `null` when the page is not a product detail page.
 type BatchGetResultsResponseDataErrorResultProductDataProduct struct {
 	// Stock or ordering availability.
 	//
@@ -4020,7 +3997,7 @@ type BatchGetResultsResponseDataErrorResultProductDataProduct struct {
 	Brand string `json:"brand" api:"required"`
 	// Product category.
 	Category string `json:"category" api:"required"`
-	// ISO 4217 currency code.
+	// ISO 4217 currency code of `price`.
 	Currency string `json:"currency" api:"required"`
 	// Product description.
 	Description string `json:"description" api:"required"`
@@ -4044,9 +4021,8 @@ type BatchGetResultsResponseDataErrorResultProductDataProduct struct {
 	Tags []string `json:"tags" api:"required"`
 	// Intended audience.
 	TargetAudience []string `json:"targetAudience" api:"required"`
-	// Product variations, such as different colors or sizes, with their attributes and
-	// images. Empty if none are found. May not include every variation offered by the
-	// store.
+	// Product variants, such as colors or sizes, with their attributes and images.
+	// `[]` when none are found. May not include every variant the store offers.
 	Variants []BatchGetResultsResponseDataErrorResultProductDataProductVariant `json:"variants" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4078,22 +4054,24 @@ func (r *BatchGetResultsResponseDataErrorResultProductDataProduct) UnmarshalJSON
 }
 
 type BatchGetResultsResponseDataErrorResultProductDataProductVariant struct {
-	// Explicit variant attributes such as color, size, material, pattern and
-	// properties declared by page.
+	// Attributes that define this variant, such as color, size, material, or pattern,
+	// as stated on the page.
 	Attributes map[string]string `json:"attributes" api:"required"`
-	// Original source image URLs explicitly attached to this variant.
+	// Image URLs the source attaches to this variant.
 	Images []string `json:"images" api:"required"`
-	SKU    string   `json:"sku" api:"required"`
-	// Variant or offer URL when provided by the source. May be shared by variants.
+	// SKU of this variant. `null` when the source does not state one.
+	SKU string `json:"sku" api:"required"`
+	// URL of this variant or offer, when the source provides one. Several variants can
+	// share a URL.
 	URL string `json:"url" api:"required"`
-	// Normalized stock or ordering availability of this variant.
+	// Stock or ordering availability of this variant.
 	//
 	// Any of "in_stock", "out_of_stock", "limited_availability", "preorder",
 	// "backorder", "made_to_order", "discontinued".
 	Availability string `json:"availability" api:"nullable"`
-	// Currency code for the variant price (e.g., USD, EUR) when stated with it.
+	// Currency code of `price`, such as `USD` or `EUR`, when stated.
 	Currency string `json:"currency" api:"nullable"`
-	// Price of this variant when the source states one per variant.
+	// Price of this variant, when the source states one per variant.
 	Price float64 `json:"price" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4117,11 +4095,10 @@ func (r *BatchGetResultsResponseDataErrorResultProductDataProductVariant) Unmars
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Authenticated browser profile used for this scrape, or null when no profile was
-// requested. New and existing profile requests both return the profile ID.
+// Browser profile used for this scrape. `null` when no profile was requested.
 type BatchGetResultsResponseDataErrorResultProfile struct {
-	// Save this ID after creating a profile, then reuse it as
-	// sharedParams.profile.profileId with type "existing".
+	// ID of the browser profile. After creating a profile, save it and pass it as
+	// `sharedParams.profile.profileId` with `type: "existing"`.
 	ID string `json:"id" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4139,13 +4116,15 @@ func (r *BatchGetResultsResponseDataErrorResultProfile) UnmarshalJSON(data []byt
 
 // Screenshot as a base64 image data URL.
 type BatchGetResultsResponseDataErrorResultScreenshot struct {
-	Data      string `json:"data" api:"required" format:"uri"`
-	Requested bool   `json:"requested" api:"required"`
-	// `true` if returned, `false` if it failed, `null` if not requested.
+	Data string `json:"data" api:"required" format:"uri"`
+	// Whether you requested this output in `formats`.
+	Requested bool `json:"requested" api:"required"`
+	// `true` when the output succeeded, `false` when it failed, `null` when it was not
+	// requested.
 	Success bool `json:"success" api:"required"`
-	// Why the output failed. Present only when `success` is `false`.
+	// Machine-readable error code. Present only when `success` is `false`.
 	ErrorCode string `json:"error_code"`
-	// Explanation of the failure and possible next steps.
+	// Human-readable explanation of the error and how to resolve it.
 	Message string `json:"message"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4169,7 +4148,7 @@ func (r *BatchGetResultsResponseDataErrorResultScreenshot) UnmarshalJSON(data []
 type BatchGetResultsResponseDataErrorResultKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4190,7 +4169,7 @@ func (r *BatchGetResultsResponseDataErrorResultKeyMetadata) UnmarshalJSON(data [
 type BatchGetResultsResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4208,41 +4187,43 @@ func (r *BatchGetResultsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchSubmitResponse struct {
-	// Batch ID. Poll GET /batch/{batch_id} with it.
+	// Unique ID of the batch. Pass it to `GET /batch/{batch_id}` to track progress.
 	ID string `json:"id" api:"required"`
-	// Whether this response came from cache.
+	// Cache status of this response.
 	CacheMetadata BatchSubmitResponseCacheMetadata `json:"cache_metadata" api:"required"`
 	// Crawl settings as submitted.
 	Crawl CrawlControls `json:"crawl" api:"required"`
 	// When the batch was created.
 	CreatedAt string `json:"created_at" api:"required"`
-	// Credits are reserved after background validation, before scraping starts.
+	// Credits reserved for the batch.
 	Credits BatchSubmitResponseCredits `json:"credits" api:"required"`
-	// Outputs requested for each page. Matches input.data.formats on submission.
+	// Formats requested for each page, as submitted in `input.data.formats`.
 	Formats BatchSubmitResponseFormats `json:"formats" api:"required"`
-	// What the submission accepted.
+	// Page counts from your submission.
 	Input Intake `json:"input" api:"required"`
-	// Rejected URLs (first 100).
+	// URLs rejected from your list, up to the first 100.
 	InvalidURLs []BatchSubmitResponseInvalidURL `json:"invalid_urls" api:"required"`
-	// How pages will be selected.
+	// `scrape` for a URL list, `crawl` for a site crawl.
 	//
 	// Any of "scrape", "crawl".
 	Mode BatchSubmitResponseMode `json:"mode" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Current state. `pending` means waiting for execution capacity or background
-	// validation. Capacity-limited batches remain pending until a slot opens.
-	// `completed`, `cancelled`, and `failed` are final.
+	// Current state. `pending` batches are being validated or are waiting for a slot
+	// under your plan's concurrent batch limit, `queued` batches are ready to start,
+	// and `running` batches are scraping. `completed`, `cancelled`, and `failed` are
+	// final.
 	//
 	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
 	// "failed".
 	Status BatchSubmitResponseStatus `json:"status" api:"required"`
-	// Tags stored on the batch.
+	// Tags set when the batch was submitted.
 	Tags []string `json:"tags" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BatchSubmitResponseKeyMetadata `json:"key_metadata"`
-	// Secret for verifying `X-Context-Signature`. Only submit returns it, so store it.
+	// Secret for verifying `X-Context-Signature` on this batch's webhooks. Returned
+	// only here and only when you set a webhook, so store it.
 	WebhookSecret string `json:"webhook_secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4271,12 +4252,12 @@ func (r *BatchSubmitResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Whether this response came from cache.
+// Cache status of this response.
 type BatchSubmitResponseCacheMetadata struct {
-	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	// Age of the cached data, in milliseconds. `0` for `miss` and `zdr`.
 	AgeMs int64 `json:"age_ms" api:"required"`
-	// Whether the response was served from cache, required fresh work, or honored
-	// zero-data-retention cache bypass.
+	// `hit` when served from cache, `miss` when fetched fresh, `zdr` when zero data
+	// retention bypassed the cache.
 	//
 	// Any of "hit", "miss", "zdr".
 	Status string `json:"status" api:"required"`
@@ -4295,9 +4276,9 @@ func (r *BatchSubmitResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Credits are reserved after background validation, before scraping starts.
+// Credits reserved for the batch.
 type BatchSubmitResponseCredits struct {
-	// Credits reserved by background preparation. Zero while pending.
+	// Credits reserved after validation, before scraping starts. `0` while `pending`.
 	Reserved int64 `json:"reserved" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4313,26 +4294,26 @@ func (r *BatchSubmitResponseCredits) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Outputs requested for each page. Matches input.data.formats on submission.
+// Formats requested for each page, as submitted in `input.data.formats`.
 type BatchSubmitResponseFormats struct {
-	// The original HTTP response body.
+	// Return the original HTTP response body.
 	Bytes bool `json:"bytes"`
-	// Markdown excerpts relevant to `highlightsParams.query`.
+	// Return Markdown excerpts relevant to `highlightsParams.query`.
 	Highlights bool `json:"highlights"`
-	// Rendered HTML.
+	// Return the rendered HTML.
 	HTML bool `json:"html"`
-	// Images found on the page.
+	// Return the images found on the page.
 	Images bool `json:"images"`
-	// An object matching `jsonParams.schema`, extracted from the page text and its
-	// embedded data (JSON-LD, meta tags, framework state).
+	// Return an object matching `jsonParams.schema`, extracted from the page text and
+	// embedded data such as JSON-LD, meta tags, and framework state.
 	Json bool `json:"json"`
-	// Page content or video transcript as Markdown.
+	// Return the page content, or a video transcript, as Markdown.
 	Markdown bool `json:"markdown"`
-	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
+	// Return fields extracted with custom rules or a prebuilt parser, as `parsed`.
 	Parse bool `json:"parse"`
-	// Product details such as name, price, and availability.
+	// Return product details such as name, price, and availability.
 	Product bool `json:"product"`
-	// A screenshot of the page.
+	// Return a screenshot of the page.
 	Screenshot bool `json:"screenshot"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4376,7 +4357,7 @@ func (r *BatchSubmitResponseInvalidURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How pages will be selected.
+// `scrape` for a URL list, `crawl` for a site crawl.
 type BatchSubmitResponseMode string
 
 const (
@@ -4384,9 +4365,10 @@ const (
 	BatchSubmitResponseModeCrawl  BatchSubmitResponseMode = "crawl"
 )
 
-// Current state. `pending` means waiting for execution capacity or background
-// validation. Capacity-limited batches remain pending until a slot opens.
-// `completed`, `cancelled`, and `failed` are final.
+// Current state. `pending` batches are being validated or are waiting for a slot
+// under your plan's concurrent batch limit, `queued` batches are ready to start,
+// and `running` batches are scraping. `completed`, `cancelled`, and `failed` are
+// final.
 type BatchSubmitResponseStatus string
 
 const (
@@ -4403,7 +4385,7 @@ const (
 type BatchSubmitResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4421,25 +4403,25 @@ func (r *BatchSubmitResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type BatchListParams struct {
-	// Cursor from the previous page.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Batches per page. Defaults to 25.
+	// Maximum number of batches to return per page.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Free-text search term, matched against the batch id, crawl source (start URL or
-	// sitemap domain), and tags.
+	// Search term matched against batch IDs, crawl sources (start URL or sitemap
+	// domain), and tags.
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
-	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
-	// matching.
+	// How `q` matches: `prefix` matches the start of a term, for search-as-you-type,
+	// and `exact` matches whole terms. Defaults to `prefix`.
 	//
 	// Any of "exact", "prefix".
 	SearchType BatchListParamsSearchType `query:"search_type,omitzero" json:"-"`
-	// Filter by status.
+	// Filter by batch status.
 	//
 	// Any of "pending", "queued", "running", "cancelling", "completed", "cancelled",
 	// "failed".
 	Status BatchListParamsStatus `query:"status,omitzero" json:"-"`
-	// Tags to filter by (matches batches having any of them). Pass repeated `tags`
-	// params or one comma-separated list, e.g. `tags=docs,competitor`.
+	// Comma-separated tags. Returns batches that have any of them. You can also repeat
+	// the `tags` parameter.
 	Tags BatchListParamsTagsUnion `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -4452,8 +4434,8 @@ func (r BatchListParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// `prefix` for as-you-type prefix matching (default), `exact` for full-token
-// matching.
+// How `q` matches: `prefix` matches the start of a term, for search-as-you-type,
+// and `exact` matches whole terms. Defaults to `prefix`.
 type BatchListParamsSearchType string
 
 const (
@@ -4461,7 +4443,7 @@ const (
 	BatchListParamsSearchTypePrefix BatchListParamsSearchType = "prefix"
 )
 
-// Filter by status.
+// Filter by batch status.
 type BatchListParamsStatus string
 
 const (
@@ -4484,10 +4466,10 @@ type BatchListParamsTagsUnion struct {
 }
 
 type BatchGetResultsParams struct {
-	// next_cursor from the previous page.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Records per page. Defaults to 25. A page can close early so its payload stays
-	// under ~8 MB; rely on next_cursor rather than counting records.
+	// Maximum number of results to return per page. A page can hold fewer to stay
+	// under about 8 MB, so page with `next_cursor` instead of counting records.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
 	paramObj
 }
@@ -4501,19 +4483,19 @@ func (r BatchGetResultsParams) URLQuery() (v url.Values, err error) {
 }
 
 type BatchSubmitParams struct {
-	// Choose a URL list or a site crawl.
+	// What to scrape: a list of URLs (`scrape`) or a site crawl (`crawl`).
 	Input BatchSubmitParamsInputUnion `json:"input,omitzero" api:"required"`
-	// Unique key per submission. Retrying with the same key and body returns the
-	// original batch; a different body returns `409`.
+	// Unique key for this submission. Retrying with the same key and body returns the
+	// original batch instead of creating another; a different body returns `409`.
 	IdempotencyKey param.Opt[string] `header:"Idempotency-Key,omitzero" json:"-"`
-	// Access policy IDs to apply to every page. A URL must pass every policy. Leave it
-	// out unless access policies are enabled for your organization; otherwise the
-	// request fails with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply to every page; each URL must pass all of them.
+	// Requires access policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Tags stored on the batch. Filter the batch list by them later.
+	// Tags to store on the batch. Filter `GET /batch/list` by them later.
 	Tags []string `json:"tags,omitzero"`
-	// Where to send the batch's final-status event. Omit `retry` for one attempt; `{}`
-	// uses the default retry schedule.
+	// Webhook to notify when the batch finishes. Omit `retry` for a single attempt, or
+	// pass `retry: {}` for the default retry schedule.
 	Webhook BatchSubmitParamsWebhook `json:"webhook,omitzero"`
 	paramObj
 }
@@ -4554,7 +4536,7 @@ func init() {
 //
 // The properties Data, Mode are required.
 type BatchSubmitParamsInputScrape struct {
-	// Pages to scrape and their output format.
+	// URLs to scrape, with the formats and options to apply to each page.
 	Data BatchSubmitParamsInputScrapeDataUnion `json:"data,omitzero" api:"required"`
 	// Scrape the pages in `data.urls`.
 	//
@@ -4575,327 +4557,58 @@ func (r *BatchSubmitParamsInputScrape) UnmarshalJSON(data []byte) error {
 //
 // Use [param.IsOmitted] to confirm if a field is set.
 type BatchSubmitParamsInputScrapeDataUnion struct {
+	OfScrapeAnything *BatchSubmitParamsInputScrapeDataScrapeAnything `json:",omitzero,inline"`
 	OfMarkdown       *BatchSubmitParamsInputScrapeDataMarkdown       `json:",omitzero,inline"`
 	OfHTML           *BatchSubmitParamsInputScrapeDataHTML           `json:",omitzero,inline"`
-	OfScrapeAnything *BatchSubmitParamsInputScrapeDataScrapeAnything `json:",omitzero,inline"`
 	paramUnion
 }
 
 func (u BatchSubmitParamsInputScrapeDataUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfMarkdown, u.OfHTML, u.OfScrapeAnything)
+	return param.MarshalUnion(u, u.OfScrapeAnything, u.OfMarkdown, u.OfHTML)
 }
 func (u *BatchSubmitParamsInputScrapeDataUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Scrape the listed pages as Markdown.
-//
-// Deprecated: deprecated
-//
-// The properties Format, URLs are required.
-type BatchSubmitParamsInputScrapeDataMarkdown struct {
-	// Return page content as Markdown.
-	//
-	// Any of "markdown".
-	Format string `json:"format,omitzero" api:"required"`
-	// Pages to scrape. Maximum 100000.
-	URLs []BatchSubmitParamsInputScrapeDataMarkdownURL `json:"urls,omitzero" api:"required"`
-	// Options for Markdown output.
-	Options BatchSubmitParamsInputScrapeDataMarkdownOptions `json:"options,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataMarkdown) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataMarkdown
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataMarkdown) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataMarkdown](
-		"format", "markdown",
-	)
-}
-
-// A page to scrape, with optional data for matching results.
-//
-// The property URL is required.
-type BatchSubmitParamsInputScrapeDataMarkdownURL struct {
-	// Page URL to scrape.
-	URL string `json:"url" api:"required"`
-	// Your ID for this page, returned with its result. The same URL can use different
-	// IDs.
-	ItemID param.Opt[string] `json:"itemId,omitzero"`
-	// Custom JSON returned unchanged with this page result.
-	Meta map[string]any `json:"meta,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataMarkdownURL) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataMarkdownURL
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataMarkdownURL) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Options for Markdown output.
-type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
-	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
-	// year (31536000000 ms). `0` fetches fresh.
-	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Also return each page's HTML in `html`.
-	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
-	// Include image references in the Markdown (`html-conversion` only).
-	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
-	// Include links in the Markdown (`html-conversion` only).
-	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
-	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
-	// Shorten inline base64 image data (`html-conversion` only).
-	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
-	// Return the main content without navigation or footers.
-	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
-	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
-	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
-	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
-	// so an element matching both is removed.
-	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Keep only elements matching these CSS selectors. Filtered pages ignore
-	// `maxAgeMs`.
-	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch from this country (ISO 3166-1 alpha-2).
-	//
-	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
-	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
-	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
-	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
-	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
-	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
-	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
-	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
-	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
-	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
-	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
-	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
-	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
-	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
-	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
-	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
-	Country string `json:"country,omitzero"`
-	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-	Pdf BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf `json:"pdf,omitzero"`
-	// Markdown sources in order of preference: `html-conversion` converts the page
-	// HTML, `markdown-direct` uses Markdown the site publishes.
-	//
-	// Any of "html-conversion", "markdown-direct".
-	SourcePreference []string `json:"sourcePreference,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataMarkdownOptions) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataMarkdownOptions
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataMarkdownOptions) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataMarkdownOptions](
-		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
-	)
-}
-
-// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf struct {
-	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
-	// be >= start.
-	End param.Opt[int64] `json:"end,omitzero"`
-	// Read scanned PDF pages with OCR; preserve pages that already have text.
-	Ocr param.Opt[bool] `json:"ocr,omitzero"`
-	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
-	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse.
-	Start param.Opt[int64] `json:"start,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Scrape the listed pages as HTML.
-//
-// Deprecated: deprecated
-//
-// The properties Format, URLs are required.
-type BatchSubmitParamsInputScrapeDataHTML struct {
-	// Return page content as HTML.
-	//
-	// Any of "html".
-	Format string `json:"format,omitzero" api:"required"`
-	// Pages to scrape. Maximum 100000.
-	URLs []BatchSubmitParamsInputScrapeDataHTMLURL `json:"urls,omitzero" api:"required"`
-	// Options for HTML output.
-	Options BatchSubmitParamsInputScrapeDataHTMLOptions `json:"options,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataHTML) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataHTML
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataHTML) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataHTML](
-		"format", "html",
-	)
-}
-
-// A page to scrape, with optional data for matching results.
-//
-// The property URL is required.
-type BatchSubmitParamsInputScrapeDataHTMLURL struct {
-	// Page URL to scrape.
-	URL string `json:"url" api:"required"`
-	// Your ID for this page, returned with its result. The same URL can use different
-	// IDs.
-	ItemID param.Opt[string] `json:"itemId,omitzero"`
-	// Custom JSON returned unchanged with this page result.
-	Meta map[string]any `json:"meta,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataHTMLURL) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataHTMLURL
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataHTMLURL) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Options for HTML output.
-type BatchSubmitParamsInputScrapeDataHTMLOptions struct {
-	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
-	// year (31536000000 ms). `0` fetches fresh.
-	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
-	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
-	// Return the main content without navigation or footers.
-	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
-	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
-	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
-	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
-	// so an element matching both is removed.
-	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
-	// Keep only elements matching these CSS selectors. Filtered pages ignore
-	// `maxAgeMs`.
-	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch from this country (ISO 3166-1 alpha-2).
-	//
-	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
-	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
-	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
-	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
-	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
-	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
-	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
-	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
-	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
-	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
-	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
-	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
-	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
-	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
-	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
-	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
-	Country string `json:"country,omitzero"`
-	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-	Pdf BatchSubmitParamsInputScrapeDataHTMLOptionsPdf `json:"pdf,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataHTMLOptions) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataHTMLOptions
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataHTMLOptions) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataHTMLOptions](
-		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
-	)
-}
-
-// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-type BatchSubmitParamsInputScrapeDataHTMLOptionsPdf struct {
-	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
-	// be >= start.
-	End param.Opt[int64] `json:"end,omitzero"`
-	// Read scanned PDF pages with OCR; preserve pages that already have text.
-	Ocr param.Opt[bool] `json:"ocr,omitzero"`
-	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
-	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse.
-	Start param.Opt[int64] `json:"start,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputScrapeDataHTMLOptionsPdf
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Use the same formats and parameters as POST /web/scrape, replacing url with
-// urls. Options apply to every page.
+// The same formats and options as `POST /web/scrape`, with `urls` in place of
+// `url`. Options apply to every page.
 //
 // The properties Formats, URLs are required.
 type BatchSubmitParamsInputScrapeDataScrapeAnything struct {
 	// Outputs to return. Set at least one to `true`.
 	Formats BatchSubmitParamsInputScrapeDataScrapeAnythingFormats `json:"formats,omitzero" api:"required"`
-	// Pages to scrape. Maximum 100000.
+	// Pages to scrape, up to 100,000.
 	URLs []BatchSubmitParamsInputScrapeDataScrapeAnythingURL `json:"urls,omitzero" api:"required"`
-	// Maximum age of a cached output, in milliseconds. `0` fetches fresh. Defaults to
-	// 3 days (259200000 ms). Maximum: 1 year (31536000000 ms).
+	// Maximum age of a cached result, in milliseconds. `0` always fetches fresh.
+	// Defaults to 3 days (259200000 ms). Maximum: 1 year (31536000000 ms).
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Requires `formats.highlights: true`; required when it is set.
+	// Query for the `highlights` output. Required when `formats.highlights` is `true`,
+	// and allowed only then.
 	HighlightsParams BatchSubmitParamsInputScrapeDataScrapeAnythingHighlightsParams `json:"highlightsParams,omitzero"`
-	// Image options. Requires formats.images: true.
+	// Options for the `images` output. Requires `formats.images: true`.
 	ImageParams BatchSubmitParamsInputScrapeDataScrapeAnythingImageParams `json:"imageParams,omitzero"`
-	// Requires `formats.json: true`; required when it is set.
+	// Schema and instructions for the `json` output. Required when `formats.json` is
+	// `true`, and allowed only then.
 	JsonParams BatchSubmitParamsInputScrapeDataScrapeAnythingJsonParams `json:"jsonParams,omitzero"`
-	// Markdown options. Requires `formats.markdown`.
+	// Options for the `markdown` output. Requires `formats.markdown: true`.
 	MarkdownParams BatchSubmitParamsInputScrapeDataScrapeAnythingMarkdownParams `json:"markdownParams,omitzero"`
-	// Requires `formats.parse: true`; required when it is set.
+	// Custom rules or a prebuilt parser for the `parsed` output. Required when
+	// `formats.parse` is `true`, and allowed only then.
 	ParseParams BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsUnion `json:"parseParams,omitzero"`
-	// Product options. Requires formats.product: true.
+	// Options for the `product` output. Requires `formats.product: true`.
 	ProductParams BatchSubmitParamsInputScrapeDataScrapeAnythingProductParams `json:"productParams,omitzero"`
-	// Screenshot options. Requires formats.screenshot: true.
+	// Options for the `screenshot` output. Requires `formats.screenshot: true`.
 	ScreenshotParams BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParams `json:"screenshotParams,omitzero"`
 	// Browser and content settings shared by all outputs.
 	SharedParams BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParams `json:"sharedParams,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
-	// Deadline for each page, using the same behavior and defaults as POST
-	// /web/scrape.
+	// Time limit for each page, with the same behavior and defaults as in
+	// `POST /web/scrape`.
 	TimeoutOpts BatchSubmitParamsInputScrapeDataScrapeAnythingTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// Batches persist their results. Only disabled is supported; enabled returns
-	// ZDR_NOT_SUPPORTED.
+	// Zero data retention is not available for batches, because batches store their
+	// results. Sending `enabled` returns `ZDR_NOT_SUPPORTED`.
 	//
 	// Any of "disabled".
 	Zdr string `json:"zdr,omitzero"`
@@ -4918,24 +4631,24 @@ func init() {
 
 // Outputs to return. Set at least one to `true`.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingFormats struct {
-	// The original HTTP response body.
+	// Return the original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
-	// Markdown excerpts relevant to `highlightsParams.query`.
+	// Return Markdown excerpts relevant to `highlightsParams.query`.
 	Highlights param.Opt[bool] `json:"highlights,omitzero"`
-	// Rendered HTML.
+	// Return the rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`
-	// Images found on the page.
+	// Return the images found on the page.
 	Images param.Opt[bool] `json:"images,omitzero"`
-	// An object matching `jsonParams.schema`, extracted from the page text and its
-	// embedded data (JSON-LD, meta tags, framework state).
+	// Return an object matching `jsonParams.schema`, extracted from the page text and
+	// embedded data such as JSON-LD, meta tags, and framework state.
 	Json param.Opt[bool] `json:"json,omitzero"`
-	// Page content or video transcript as Markdown.
+	// Return the page content, or a video transcript, as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
-	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
+	// Return fields extracted with custom rules or a prebuilt parser, as `parsed`.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
-	// Product details such as name, price, and availability.
+	// Return product details such as name, price, and availability.
 	Product param.Opt[bool] `json:"product,omitzero"`
-	// A screenshot of the page.
+	// Return a screenshot of the page.
 	Screenshot param.Opt[bool] `json:"screenshot,omitzero"`
 	paramObj
 }
@@ -4948,16 +4661,16 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingFormats) UnmarshalJSON(da
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// A page to scrape, with optional data for matching results.
+// A page to scrape, with optional `itemId` and `meta` to match it to its result.
 //
 // The property URL is required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingURL struct {
-	// Page URL to scrape.
+	// URL of the page.
 	URL string `json:"url" api:"required"`
 	// Your ID for this page, returned with its result. The same URL can use different
 	// IDs.
 	ItemID param.Opt[string] `json:"itemId,omitzero"`
-	// Custom JSON returned unchanged with this page result.
+	// Custom JSON returned unchanged with this page's result.
 	Meta map[string]any `json:"meta,omitzero"`
 	paramObj
 }
@@ -4970,13 +4683,14 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingURL) UnmarshalJSON(data [
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Requires `formats.highlights: true`; required when it is set.
+// Query for the `highlights` output. Required when `formats.highlights` is `true`,
+// and allowed only then.
 //
 // The property Query is required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingHighlightsParams struct {
-	// The question or topic to find passages for.
+	// Question or topic to find relevant passages for.
 	Query string `json:"query" api:"required"`
-	// Maximum combined length of returned passages.
+	// Maximum combined length of the returned passages, in characters.
 	MaxCharacters param.Opt[int64] `json:"maxCharacters,omitzero"`
 	paramObj
 }
@@ -4989,13 +4703,14 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingHighlightsParams) Unmarsh
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Image options. Requires formats.images: true.
+// Options for the `images` output. Requires `formats.images: true`.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingImageParams struct {
-	// Set `visual` to drop visual duplicates, keeping the largest copy.
+	// Set to `visual` to drop visually duplicate images, keeping the largest copy.
 	//
 	// Any of "none", "visual".
 	Dedupe string `json:"dedupe,omitzero"`
-	// Extra data per image: `dimensions`, `classification`, or a hosted `file` URL.
+	// Extra data to add to each image: `dimensions` adds `width` and `height`,
+	// `classification` adds `classification`, and `file` adds a hosted `fileUrl`.
 	//
 	// Any of "dimensions", "classification", "file".
 	Enrich []string `json:"enrich,omitzero"`
@@ -5016,12 +4731,14 @@ func init() {
 	)
 }
 
-// Requires `formats.json: true`; required when it is set.
+// Schema and instructions for the `json` output. Required when `formats.json` is
+// `true`, and allowed only then.
 //
 // The property Schema is required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingJsonParams struct {
-	// JSON Schema (not an example object) for a top-level object, up to 50 KB. Use
-	// optional or nullable fields for missing facts.
+	// JSON Schema for the object to extract, not an example object. Must describe a
+	// top-level object, up to 50 KB. Make fields optional or nullable when the page
+	// may not state them.
 	Schema map[string]any `json:"schema,omitzero" api:"required"`
 	// Extra guidance, such as which facts to prefer or how to read a field.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
@@ -5036,13 +4753,14 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingJsonParams) UnmarshalJSON
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Markdown options. Requires `formats.markdown`.
+// Options for the `markdown` output. Requires `formats.markdown: true`.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingMarkdownParams struct {
-	// Include images in the Markdown (`html-conversion` only).
+	// Include image references in the Markdown (`html-conversion` only).
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Keep link URLs in the Markdown (`html-conversion` only).
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// How base64 images appear when `includeImages` is set (`html-conversion` only).
+	// How to write base64 images when `includeImages` is `true`: `placeholder`
+	// shortens the data, `preserve` keeps it in full (`html-conversion` only).
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
@@ -5086,10 +4804,10 @@ func (u *BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsUnion) Unmarsh
 
 // The property Rules is required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsCustomParser struct {
-	// Field names mapped to CSS selectors (`h1`, `a@href`) or rule objects. Max 100
-	// fields, 5 levels.
+	// Output field names mapped to a CSS selector (such as `h1` or `a@href`) or a rule
+	// object. Up to 100 fields, nested up to 5 levels.
 	Rules map[string]BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsCustomParserRuleUnion `json:"rules,omitzero" api:"required"`
-	// Extract fields using custom CSS rules. This is the default when type is omitted.
+	// Extract fields with custom CSS rules. The default when `type` is omitted.
 	//
 	// Any of "custom".
 	Type string `json:"type,omitzero"`
@@ -5130,8 +4848,8 @@ func (u *BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsCustomParserRu
 type BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsCustomParserRuleObject struct {
 	// CSS selector to match within the current page or parent rule.
 	Selector string `json:"selector" api:"required"`
-	// Return text, HTML, an attribute such as `@href`, or nested field rules. Defaults
-	// to text.
+	// What to return: `text`, `html`, an attribute such as `@href`, or nested field
+	// rules. Defaults to `text`.
 	Output string `json:"output,omitzero"`
 	// Return the first match with `item` or all matches with `list`.
 	//
@@ -5156,150 +4874,178 @@ func init() {
 
 // The properties Parser, Type are required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser struct {
-	// google-maps parses Google Maps business data into data.results. Accepts Maps
-	// place, search, and internal data URLs; a search page returns up to 200 places,
-	// ranked as Google ranks them. Uses an exit in the gl country of the URL (US when
-	// absent) and English labels regardless of hl or Accept-Language.
-	// google-maps-reviews returns the reviews of a place in data.reviews, in the same
-	// shape as the Serper reviews API (rating, date, isoDate, snippet,
-	// translatedSnippet, likes, user, media, response, link, id), plus language,
-	// guided ratings in details, and user.isLocalGuide; data also carries the place
-	// featureId, cid, and sort. sort and limit pick the order and count, and oldest is
-	// exact. It accepts Maps place, search, and ?cid= URLs, plus
-	// search.google.com/local/reviews URLs, so the google_maps_url and
-	// google_reviews_url fields of google-maps results work as input. An unknown place
-	// returns no reviews. google-play parses a Play Store app into data: details,
-	// developer contact, ratings, price, permissions, and data safety, plus the
-	// country storefront the record describes and is_available, whether the app is
-	// offered there. Ratings are counted per storefront, so rating, rating_count, and
-	// rating_histogram are null in a storefront where nobody rated the app.
-	// google-play-reviews returns up to the 200 newest reviews written in the hl
-	// language, with developer replies, in data.reviews; an app with fewer such
-	// reviews returns them all. Both Play parsers accept app details URLs
-	// (play.google.com/store/apps/details?id=…); hl and gl set the language and
-	// storefront, defaulting to en and us. Without gl, google-play reads an app that
-	// is not offered in the US from the country of its developer instead. app-store
-	// parses an App Store app into data: details, developer, ratings, price, version,
-	// and screenshots. app-store-reviews returns up to the 500 newest reviews in
-	// data.reviews. Both App Store parsers accept app URLs
-	// (apps.apple.com/us/app/…/id…); the country in the path sets the storefront,
-	// defaulting to us. g2-reviews returns the 25 most recently published reviews of a
-	// G2 product in data.reviews (rating, title, likes, dislikes, problems_solved,
-	// reviewer role, company size, and industry), plus data.product. It accepts G2
-	// product URLs (g2.com/products/…), follows renamed products, and keeps
-	// star-rating filters from the URL (filters[nps_score][]=1 to 5); other filters,
-	// sort orders, and pages are ignored. instagram-profile parses a public profile
-	// (instagram.com/{username}) into data: bio, links, follower and post counts,
-	// category, business address, similar_accounts, and latest_posts (up to the 12
-	// posts at the top of the profile, newest first). Instagram lists pinned posts
-	// there ahead of newer ones, so posts with is_pinned true can be older; when
-	// Instagram shows only a rounded post count (32K), post_count is that rounded
-	// number and is_post_count_rounded is true. instagram-post parses a post or reel
-	// (/p/…, /reel/…) into data: caption, hashtags, mentions, like, comment, and view
-	// counts (like_count and view_count are null when the owner hides them), media
-	// URLs, tagged users, collaborators, location, and the top ~14 comments in
-	// data.comments. instagram-feed returns the top posts for a hashtag or keyword
-	// (/explore/tags/…, /popular/…) or the recent posts at a location
-	// (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
-	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
-	// it. All three Instagram parsers read public data without logging in, so private
-	// accounts return no posts and follower lists are unavailable. tiktok-profile
-	// parses a public profile (tiktok.com/@{username}) into data: nickname, bio, bio
-	// link, follower, following, like, and video counts, verified, private, and
-	// business flags, and business category; it does not list videos. tiktok-video
-	// parses a video or photo post (/@{username}/video/{id} or
-	// /@{username}/photo/{id}) into data: caption, hashtags, mentions, author, view,
-	// like, comment, share, save, and repost counts, duration, thumbnail, a video_url
-	// that downloads without cookies, image_urls for photo posts, music, location, and
-	// ad, paid-partnership, and AI-generated flags. tiktok-feed returns videos in the
-	// tiktok-video shape as data.videos: the latest 15 from a profile URL, the top 30
-	// from a hashtag URL (/tag/{name}), or the top 12 from a search URL
-	// (/search?q={query}). tiktok-comments returns the first 20 comments of a video or
-	// photo post as data.comments: text, posted_at, like and reply counts, whether the
-	// author liked it, and the commenter. tiktok-followers and tiktok-following return
-	// up to 30 accounts of a profile as data.users, in the tiktok-profile shape.
-	// tiktok-user-search returns the top 10 accounts for a user search URL
-	// (/search/user?q={query}) as data.users: id, username, nickname, biography,
-	// avatar_url, sec_uid, follower_count, like_count, and is_verified. The TikTok
-	// parsers accept tiktok.com, www.tiktok.com, and m.tiktok.com URLs but not short
-	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). reddit-post parses a post
-	// (reddit.com/r/{subreddit}/comments/{id}, reddit.com/comments/{id}, or
-	// redd.it/{id}) into data.post: title, body as Markdown, type (text, link, image,
-	// gallery, or video), link_url, subreddit, author, flairs, score, upvote_ratio,
-	// comment and crosspost counts, NSFW, spoiler, locked, stickied, and archived
-	// flags, images (every gallery image in order), and video (an MP4 url plus an
-	// hls_url that carries the audio). data.comments holds the comment tree, each
-	// comment with id, author, body as Markdown, score, posted_at, depth, parent_id,
-	// url, is_submitter, is_deleted, and its replies; limit caps the total number of
-	// comments (default 100), filled shallowest first so whole conversations are kept,
-	// and data.has_more_comments says whether the thread has more. The sort query of
-	// the URL (best, top, new, controversial, old, qa) orders the comments.
-	// reddit-search returns search results for a search URL
-	// (reddit.com/search?q={query}, or reddit.com/r/{subreddit}/search?q={query} to
-	// search one subreddit). With type=link or no type it returns posts in the
-	// reddit-post shape as data.posts, ordered by the sort (relevance, hot, top, new,
-	// comments) and limited to the t time range (hour, day, week, month, year, all) of
-	// the URL; type=sr returns communities as data.communities (name, title,
-	// description, sidebar, subscriber_count, created_at, type, NSFW and quarantine
-	// flags, language, category, icon and banner URLs, and allowed post types);
-	// type=user returns accounts as data.users (username, display_name, bio,
-	// created_at, post and comment karma, avatar and banner URLs, and verified,
-	// employee, moderator, premium, and NSFW flags). limit caps the number of results
-	// (default 100), in the order Reddit returns them, and data.has_more says whether
-	// Reddit has more. reddit-subreddit reads a subreddit URL
-	// (reddit.com/r/{subreddit}, optionally followed by /hot, /new, /top, /rising, or
-	// /controversial, with t setting the time range of top and controversial, default
-	// day) into data.subreddit in the community shape of reddit-search, data.rules
-	// (name, description, applies_to, violation_reason, created_at), and data.posts in
-	// the reddit-post shape, ordered like the tab (default hot) and with stickied
-	// posts flagged; r/all and r/popular return posts with a null subreddit and rules.
-	// limit caps the posts (default 100) and data.has_more says whether Reddit has
-	// more. Private and quarantined subreddits return WEBSITE_ACCESS_ERROR.
-	// reddit-user reads a profile URL (reddit.com/user/{username} or
-	// reddit.com/u/{username}, optionally followed by /overview, /submitted, or
-	// /comments, with sort set to new, hot, top, or controversial and t setting the
-	// time range of top and controversial, default all) into data.user (id, username,
-	// display_name, bio, created_at, total, post, comment, awardee, and awarder karma,
-	// avatar and banner URLs, and verified, suspended, employee, moderator, premium,
-	// and NSFW flags), data.trophies (name, description, icon_url, granted_at, url),
-	// data.moderated_communities (name, title, url, subscriber_count, icon_url,
-	// is_nsfw), data.posts in the reddit-post shape, and data.comments, each with id,
-	// author, body as Markdown, score, posted_at, edited_at, url, subreddit, parent_id
-	// (null for a top-level comment), is_submitter, is_stickied, distinguished,
-	// award_count, and the post it was left on (id, title, url, author, is_nsfw). The
-	// overview tab returns both posts and comments; submitted returns null comments
-	// and comments returns null posts. limit caps the posts and comments together
-	// (default 100) and data.has_more says whether Reddit has more. Users who hide
-	// their activity return empty lists, and suspended accounts return their profile
-	// with null posts and comments. yelp-search accepts Yelp search URLs with
-	// find_desc and find_loc, reads start as the result offset, and returns up to 20
-	// ranked organic businesses in data.businesses with total and pagination.
-	// yelp-reviews accepts a Yelp business URL (yelp.com/biz/{alias}), uses optional
-	// start for the offset, and always sorts newest first; unsupported sort and review
-	// filters are rejected, while tracking params are ignored. It returns up to 20
-	// latest public reviews in data.reviews with business details and
-	// pagination.next_offset. Each review has rating, full text, updated_at, and
-	// author (id is the Yelp user id from the reviewer profile URL, url links to that
-	// profile, plus name, location, and review_count); owner replies and photos are
-	// not included. tripadvisor-reviews accepts a Tripadvisor hotel, restaurant, or
-	// attraction review URL (tripadvisor.com/Hotel_Review-g{geo}-d{id}-Reviews-….html,
-	// on any Tripadvisor country domain), reads -or{N}- in the path as the offset, and
-	// returns 20 reviews in data.reviews in the order Tripadvisor shows them, with
-	// data.location (id, name, type, url, review_count) and pagination.next_offset.
-	// Each review has id, url, title, full text, rating, language, published_at,
-	// visit_month, helpful_votes, subratings, photo_urls, owner_response (text,
-	// published_at, author_name), and author (id, username, name, url,
-	// contribution_count); an unknown location returns no reviews. emails accepts any
-	// page and returns its email addresses as data.emails ([{ email }]), read from
-	// mailto links, Cloudflare-protected addresses, and visible text. phone-numbers
-	// accepts any page and returns its valid phone numbers in E.164 as
-	// data.phone_numbers ([{ phone }]), read from tel links and visible text; numbers
-	// without a country code are read for the country of the site TLD, defaulting to
-	// US. links accepts any page and returns its unique http(s) links as data.links
-	// ([{ url, text }]), with absolute URLs; text falls back to aria-label or image
-	// alt and is null when a link has none. The emails parser reads the rendered page
-	// and respects content filters; the other prebuilt parsers read their data
-	// independently of DOM filters.
+	// Prebuilt parser to run. Each one accepts specific URLs and returns its result in
+	// `parsed.data`. `emails`, `phone-numbers`, and `links` read the rendered page and
+	// respect content filters; the others read their source directly, independently of
+	// content filters and other outputs.
+	//
+	//   - `google-maps`: Google Maps place, search, and internal data URLs. Returns
+	//     businesses in `data.results`; a search URL returns up to 200 places. Results
+	//     use the country set in the URL, or the US when none is set, and come back with
+	//     English labels.
+	//   - `google-maps-reviews`: Google Maps place, search, and `?cid=` URLs, plus
+	//     `search.google.com/local/reviews` URLs, so the `google_maps_url` and
+	//     `google_reviews_url` fields of `google-maps` results work as input. Returns
+	//     the reviews of the place in `data.reviews` (`rating`, `date`, `isoDate`,
+	//     `snippet`, `translatedSnippet`, `likes`, `user`, `media`, `response`, `link`,
+	//     `id`, `language`, guided ratings in `details`, and `user.isLocalGuide`), plus
+	//     the place `featureId`, `cid`, and `sort` in `data`. `sort` and `limit` set the
+	//     order and count; `oldest` is exact. An unknown place returns no reviews.
+	//   - `google-play`: Play Store app details URLs
+	//     (`play.google.com/store/apps/details?id=…`). Returns one app in `data`:
+	//     details, developer contact, ratings, price, permissions, data safety, the
+	//     storefront country the record describes, and `is_available` (whether the app
+	//     is offered there). Ratings are counted per storefront, so `rating`,
+	//     `rating_count`, and `rating_histogram` are `null` where nobody rated the app.
+	//     The language and storefront country set in the URL apply (default English and
+	//     the US); without a storefront country, an app not offered in the US is read
+	//     from the country of its developer.
+	//   - `google-play-reviews`: Same URLs as `google-play`. Returns up to the 200
+	//     newest reviews in the language set in the URL, with developer replies, in
+	//     `data.reviews`; an app with fewer such reviews returns them all.
+	//   - `app-store`: App Store app URLs (`apps.apple.com/us/app/…/id…`). Returns one
+	//     app in `data`: details, developer, ratings, price, version, and screenshots.
+	//     The country in the path sets the storefront (default `us`).
+	//   - `app-store-reviews`: Same URLs as `app-store`. Returns up to the 500 newest
+	//     reviews in `data.reviews`.
+	//   - `g2-reviews`: G2 product URLs (`g2.com/products/…`), following renamed
+	//     products. Returns the 25 most recently published reviews in `data.reviews`
+	//     (rating, title, likes, dislikes, `problems_solved`, reviewer role, company
+	//     size, and industry), plus `data.product`. Keeps star-rating filters from the
+	//     URL (`filters[nps_score][]=1` to `5`) and ignores other filters, sort orders,
+	//     and pages.
+	//   - `instagram-profile`: Public profile URLs (`instagram.com/{username}`). Returns
+	//     one profile in `data`: bio, links, follower and post counts, category,
+	//     business address, `similar_accounts`, and `latest_posts` (up to the 12 posts
+	//     at the top of the profile, newest first). Instagram lists pinned posts first,
+	//     so posts with `is_pinned: true` can be older. When Instagram shows only a
+	//     rounded post count (such as 32K), `post_count` is that rounded number and
+	//     `is_post_count_rounded` is `true`.
+	//   - `instagram-post`: Post and reel URLs (`/p/…`, `/reel/…`). Returns one post in
+	//     `data`: caption, hashtags, mentions, like, comment, and view counts
+	//     (`like_count` and `view_count` are `null` when the owner hides them), media
+	//     URLs, tagged users, collaborators, location, and about the top 14 comments in
+	//     `data.comments`.
+	//   - `instagram-feed`: Hashtag and keyword URLs (`/explore/tags/…`, `/popular/…`)
+	//     return the top posts; location URLs (`/explore/locations/{id}/…`) return
+	//     recent posts. Posts are in `data.posts`; keyword posts carry only the
+	//     shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
+	//     it. All three Instagram parsers read public data without signing in, so
+	//     private accounts return no posts and follower lists are unavailable.
+	//   - `tiktok-profile`: Public profile URLs (`tiktok.com/@{username}`). Returns one
+	//     profile in `data`: nickname, bio, bio link, follower, following, like, and
+	//     video counts, verified, private, and business flags, and business category.
+	//     Does not list videos.
+	//   - `tiktok-video`: Video and photo post URLs (`/@{username}/video/{id}`,
+	//     `/@{username}/photo/{id}`). Returns one post in `data`: caption, hashtags,
+	//     mentions, author, view, like, comment, share, save, and repost counts,
+	//     duration, thumbnail, a `video_url` that downloads without cookies,
+	//     `image_urls` for photo posts, music, location, and ad, paid-partnership, and
+	//     AI-generated flags.
+	//   - `tiktok-feed`: Returns videos in the `tiktok-video` shape in `data.videos`:
+	//     the latest 15 from a profile URL, the top 30 from a hashtag URL
+	//     (`/tag/{name}`), or the top 12 from a search URL (`/search?q={query}`).
+	//   - `tiktok-comments`: Video and photo post URLs. Returns the first 20 comments in
+	//     `data.comments`: text, `posted_at`, like and reply counts, whether the author
+	//     liked it, and the commenter.
+	//   - `tiktok-followers`, `tiktok-following`: Profile URLs. Return up to 30 accounts
+	//     in `data.users`, in the `tiktok-profile` shape.
+	//   - `tiktok-user-search`: User search URLs (`/search/user?q={query}`). Returns the
+	//     top 10 accounts in `data.users`: `id`, `username`, `nickname`, `biography`,
+	//     `avatar_url`, `sec_uid`, `follower_count`, `like_count`, and `is_verified`.
+	//     The TikTok parsers accept `tiktok.com`, `www.tiktok.com`, and `m.tiktok.com`
+	//     URLs, not short links (`vm.tiktok.com`, `vt.tiktok.com`, `tiktok.com/t/…`).
+	//   - `reddit-post`: Post URLs (`reddit.com/r/{subreddit}/comments/{id}`,
+	//     `reddit.com/comments/{id}`, `redd.it/{id}`). Returns the post in `data.post`:
+	//     title, body as Markdown, type (`text`, `link`, `image`, `gallery`, or
+	//     `video`), `link_url`, subreddit, author, flairs, score, `upvote_ratio`,
+	//     comment and crosspost counts, NSFW, spoiler, locked, stickied, and archived
+	//     flags, images (every gallery image in order), and video (an MP4 `url` plus an
+	//     `hls_url` that carries the audio). `data.comments` holds the comment tree;
+	//     each comment has `id`, `author`, `body` (Markdown), `score`, `posted_at`,
+	//     `depth`, `parent_id`, `url`, `is_submitter`, `is_deleted`, and its `replies`.
+	//     `limit` caps the total number of comments (default 100), filled shallowest
+	//     first so whole conversations are kept, and `data.has_more_comments` says
+	//     whether the thread has more. The `sort` in the URL (`best`, `top`, `new`,
+	//     `controversial`, `old`, `qa`) orders the comments.
+	//   - `reddit-search`: Search URLs (`reddit.com/search?q={query}`, or
+	//     `reddit.com/r/{subreddit}/search?q={query}` to search one subreddit). With
+	//     `type=link` or no `type`, returns posts in the `reddit-post` shape in
+	//     `data.posts`, ordered by the `sort` in the URL (`relevance`, `hot`, `top`,
+	//     `new`, `comments`) within its `t` time range (`hour`, `day`, `week`, `month`,
+	//     `year`, `all`). `type=sr` returns communities in `data.communities` (name,
+	//     title, description, sidebar, `subscriber_count`, `created_at`, type, NSFW and
+	//     quarantine flags, language, category, icon and banner URLs, and allowed post
+	//     types). `type=user` returns accounts in `data.users` (username,
+	//     `display_name`, bio, `created_at`, post and comment karma, avatar and banner
+	//     URLs, and verified, employee, moderator, premium, and NSFW flags). `limit`
+	//     caps the number of results (default 100), in the order Reddit returns them,
+	//     and `data.has_more` says whether Reddit has more.
+	//   - `reddit-subreddit`: Subreddit URLs (`reddit.com/r/{subreddit}`, optionally
+	//     followed by `/hot`, `/new`, `/top`, `/rising`, or `/controversial`, with `t`
+	//     setting the time range of `top` and `controversial`, default `day`). Returns
+	//     `data.subreddit` in the community shape of `reddit-search`, `data.rules`
+	//     (`name`, `description`, `applies_to`, `violation_reason`, `created_at`), and
+	//     `data.posts` in the `reddit-post` shape, ordered like the tab (default `hot`)
+	//     with stickied posts flagged. `r/all` and `r/popular` return posts with `null`
+	//     `subreddit` and `rules`. `limit` caps the posts (default 100) and
+	//     `data.has_more` says whether Reddit has more. Private and quarantined
+	//     subreddits return `WEBSITE_ACCESS_ERROR`.
+	//   - `reddit-user`: Profile URLs (`reddit.com/user/{username}` or
+	//     `reddit.com/u/{username}`, optionally followed by `/overview`, `/submitted`,
+	//     or `/comments`, with `sort` set to `new`, `hot`, `top`, or `controversial` and
+	//     `t` setting the time range of `top` and `controversial`, default `all`).
+	//     Returns `data.user` (`id`, `username`, `display_name`, bio, `created_at`,
+	//     total, post, comment, awardee, and awarder karma, avatar and banner URLs, and
+	//     verified, suspended, employee, moderator, premium, and NSFW flags),
+	//     `data.trophies` (`name`, `description`, `icon_url`, `granted_at`, `url`),
+	//     `data.moderated_communities` (`name`, `title`, `url`, `subscriber_count`,
+	//     `icon_url`, `is_nsfw`), `data.posts` in the `reddit-post` shape, and
+	//     `data.comments`, each with `id`, `author`, `body` (Markdown), `score`,
+	//     `posted_at`, `edited_at`, `url`, `subreddit`, `parent_id` (`null` for a
+	//     top-level comment), `is_submitter`, `is_stickied`, `distinguished`,
+	//     `award_count`, and the post it was left on (`id`, `title`, `url`, `author`,
+	//     `is_nsfw`). The overview tab returns both posts and comments; `submitted`
+	//     returns `null` comments and `comments` returns `null` posts. `limit` caps
+	//     posts and comments together (default 100) and `data.has_more` says whether
+	//     Reddit has more. Users who hide their activity return empty lists, and
+	//     suspended accounts return their profile with `null` posts and comments.
+	//   - `yelp-search`: Yelp search URLs with `find_desc` and `find_loc`; `start` sets
+	//     the result offset. Returns up to 20 ranked organic businesses in
+	//     `data.businesses`, with `total` and `pagination`.
+	//   - `yelp-reviews`: Yelp business URLs (`yelp.com/biz/{alias}`); optional `start`
+	//     sets the offset. Returns up to 20 of the latest public reviews, always newest
+	//     first, in `data.reviews`, with business details and `pagination.next_offset`.
+	//     Each review has rating, full text, `updated_at`, and author (`id` from the
+	//     reviewer profile URL, `url` linking to that profile, `name`, `location`, and
+	//     `review_count`); owner replies and photos are not included. Unsupported sort
+	//     and review filters are rejected; tracking parameters are ignored.
+	//   - `tripadvisor-reviews`: Tripadvisor hotel, restaurant, and attraction review
+	//     URLs (`tripadvisor.com/Hotel_Review-g{geo}-d{id}-Reviews-….html`, on any
+	//     Tripadvisor country domain); `-or{N}-` in the path sets the offset. Returns 20
+	//     reviews in `data.reviews` in the order Tripadvisor shows them, with
+	//     `data.location` (`id`, `name`, `type`, `url`, `review_count`) and
+	//     `pagination.next_offset`. Each review has `id`, `url`, `title`, full text,
+	//     `rating`, `language`, `published_at`, `visit_month`, `helpful_votes`,
+	//     `subratings`, `photo_urls`, `owner_response` (`text`, `published_at`,
+	//     `author_name`), and `author` (`id`, `username`, `name`, `url`,
+	//     `contribution_count`). An unknown location returns no reviews.
+	//   - `car-rental-availability`: avis.com and budget.com vehicle-availability search
+	//     URLs. Returns every vehicle with pay-now and pay-later prices in
+	//     `data.vehicles`.
+	//   - `car-rental-locations`: avis.com and budget.com `/locations?keyword=` URLs.
+	//     Returns rental branches with codes, addresses, coordinates, and hours in
+	//     `data.locations`.
+	//   - `emails`: Any page. Returns its email addresses in `data.emails`
+	//     (`[{ email }]`), read from `mailto:` links, Cloudflare-protected addresses,
+	//     and visible text.
+	//   - `phone-numbers`: Any page. Returns its valid phone numbers in E.164 format in
+	//     `data.phone_numbers` (`[{ phone }]`), read from `tel:` links and visible text.
+	//     Numbers without a country code are read for the country of the site TLD (US by
+	//     default).
+	//   - `links`: Any page. Returns its unique HTTP and HTTPS links as absolute URLs in
+	//     `data.links` (`[{ url, text }]`). `text` falls back to `aria-label` or image
+	//     alt text and is `null` when a link has none.
 	//
 	// Any of "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
@@ -5310,14 +5056,13 @@ type BatchSubmitParamsInputScrapeDataScrapeAnythingParseParamsPrebuiltParser str
 	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
 	// "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
-	// google-maps-reviews and reddit parsers only. Maximum number of reviews
-	// (google-maps-reviews, default 100), comments (reddit-post, default 100), or
-	// results (reddit-search, reddit-subreddit, and reddit-user, default 100) to
-	// return; maximum 1000.
+	// Maximum number of reviews (`google-maps-reviews`, default 100), comments
+	// (`reddit-post`, default 100), or results (`reddit-search`, `reddit-subreddit`,
+	// and `reddit-user`, default 100) to return. Only these parsers accept it.
 	Limit param.Opt[int64] `json:"limit,omitzero"`
-	// google-maps-reviews only. Order of data.reviews. newest, relevant, highest, and
-	// lowest follow Google; oldest returns the earliest reviews first, which Google
-	// itself does not offer.
+	// Order of `data.reviews` for `google-maps-reviews`. `newest`, `relevant`,
+	// `highest`, and `lowest` use the same orders as Google Maps; `oldest` returns the
+	// earliest reviews first.
 	//
 	// Any of "newest", "oldest", "relevant", "highest", "lowest".
 	Sort string `json:"sort,omitzero"`
@@ -5345,7 +5090,7 @@ func init() {
 	)
 }
 
-// Product options. Requires formats.product: true.
+// Options for the `product` output. Requires `formats.product: true`.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingProductParams struct {
 	// Drop visually duplicate product images, keeping the largest copy.
 	DedupeImages param.Opt[bool] `json:"dedupeImages,omitzero"`
@@ -5364,9 +5109,9 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingProductParams) UnmarshalJ
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Screenshot options. Requires formats.screenshot: true.
+// Options for the `screenshot` output. Requires `formats.screenshot: true`.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParams struct {
-	// What to capture: `viewport`, `fullPage`, one element, or a rectangle. Max 40
+	// What to capture: `viewport`, `fullPage`, one element, or a rectangle. Up to 40
 	// megapixels.
 	Area BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParamsAreaUnion `json:"area,omitzero"`
 	// Image format for the screenshot.
@@ -5430,7 +5175,7 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParamsAreaEleme
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pixels from the document origin.
+// Rectangle to capture, in pixels from the document origin.
 //
 // The properties Height, Width, X, Y are required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParamsAreaRectangle struct {
@@ -5455,47 +5200,51 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingScreenshotParamsAreaRecta
 
 // Browser and content settings shared by all outputs.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParams struct {
-	// Proxy country as a two-letter code, such as `US`. Case-insensitive.
+	// Country to fetch from, as an ISO 3166-1 alpha-2 code such as `US`.
+	// Case-insensitive.
 	Country param.Opt[string] `json:"country,omitzero"`
 	// Accept cookie banners before actions and capture.
 	DismissCookies param.Opt[bool] `json:"dismissCookies,omitzero"`
 	// Close other popups before actions and capture.
 	DismissPopups param.Opt[bool] `json:"dismissPopups,omitzero"`
-	// Keep only the main content. Doesn't affect `screenshot`, `bytes`, or `product`.
+	// Keep only the main content, without navigation, headers, footers, or sidebars.
+	// Does not affect `screenshot`, `bytes`, or `product`.
 	MainContentOnly param.Opt[bool] `json:"mainContentOnly,omitzero"`
 	// Wait for CSS animations to finish before capture. Defaults to `true` when
-	// `screenshot` is requested.
+	// `formats.screenshot` is `true`.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
-	// Browser steps run in order before capture. Requires a paid plan. Skips the
+	// Browser steps to run in order before capture. Requires a paid plan. Skips the
 	// cache.
 	Actions []BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionUnion `json:"actions,omitzero"`
 	// Remove elements matching these CSS selectors. Overrides `includeSelectors`.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
 	// HTTP headers to send to the target site. Requests with headers skip the cache.
 	Headers map[string]string `json:"headers,omitzero"`
-	// Which iframe contents to include in HTML and text outputs. Screenshots always
-	// show visible frames. `auto` (default) inlines only iframes that hold page
-	// content, such as same-site documents, framesets, job boards, forms and embedded
-	// documents, and skips ads and widgets. `true` inlines every iframe. `false`
-	// inlines none.
+	// Which iframes to inline in HTML and text outputs. Screenshots always show
+	// visible frames. `auto` inlines only iframes that hold page content, such as
+	// same-site documents, framesets, job boards, forms, and embedded documents, and
+	// skips ads and widgets. `true` inlines every iframe; `false` inlines none.
 	IncludeFrames BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesUnion `json:"includeFrames,omitzero"`
 	// Keep only elements matching these CSS selectors.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Document parsing options.
+	// Options for parsing documents such as PDFs.
 	Parsers BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsers `json:"parsers,omitzero"`
-	// Create or reuse an authenticated browser profile. Requires a paid plan and an
-	// HTTPS target. Profiles persist session state, bypass shared caches, and cannot
-	// be combined with ZDR, custom headers, raw bytes, or prebuilt parsers.
+	// Scrape as a signed-in user. Create a profile with `type: "new"` and your
+	// credentials, then reuse it with `type: "existing"`. Requires a paid plan and an
+	// HTTPS URL. Profiles keep their session between requests, skip the cache, and
+	// cannot be combined with ZDR, custom headers, `formats.bytes`, or prebuilt
+	// parsers other than `emails`, `phone-numbers`, and `links`.
 	Profile BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsProfileUnion `json:"profile,omitzero"`
 	// Emulate a light or dark color scheme.
 	//
 	// Any of "light", "dark".
 	Theme string `json:"theme,omitzero"`
-	// Browser size in pixels. Omit for 1920 × 1080. When provided, missing dimensions
-	// default to 1440 × 900.
+	// Browser viewport in pixels. Defaults to 1920 × 1080. If you pass `viewport`, a
+	// missing `width` defaults to 1440 and a missing `height` to 900.
 	Viewport BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsViewport `json:"viewport,omitzero"`
-	// Milliseconds, or a CSS selector to wait for, after actions. Defaults to 500
-	// (2000 with frames or XML).
+	// Time to wait after actions, in milliseconds, or a CSS selector to wait for.
+	// Defaults to 500 ms, or 2000 ms when `includeFrames` is `true` or the URL ends in
+	// `.xml`.
 	WaitFor BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsWaitForUnion `json:"waitFor,omitzero"`
 	paramObj
 }
@@ -5546,7 +5295,7 @@ func init() {
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionPerform struct {
 	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
-	// Use `perform` for a plain-language browser instruction.
+	// Follow a plain-language instruction.
 	//
 	// This field can be elided, and will marshal its zero value as "perform".
 	Type constant.Perform `json:"type" default:"perform"`
@@ -5565,15 +5314,16 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionPerform
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionScroll struct {
 	// Maximum number of scroll steps for this action.
 	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
-	// Scroll this container. Omit to scroll the page.
+	// CSS selector of the container to scroll. Omit to scroll the page.
 	Selector param.Opt[string] `json:"selector,omitzero"`
-	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
+	// Distance per scroll step: a number of pixels, one `viewport`, or `max` to reach
+	// the end.
 	Amount BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionScrollAmountUnion `json:"amount,omitzero"`
 	// Direction to scroll.
 	//
 	// Any of "down", "up", "left", "right".
 	Direction string `json:"direction,omitzero"`
-	// Use `scroll` to move through the page or a container.
+	// Scroll the page or a container.
 	//
 	// This field can be elided, and will marshal its zero value as "scroll".
 	Type constant.Scroll `json:"type" default:"scroll"`
@@ -5621,9 +5371,9 @@ const (
 
 // The properties Milliseconds, Type are required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionWait struct {
-	// Time to pause in milliseconds before the next action.
+	// How long to pause before the next action, in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// Use `wait` to pause for a fixed duration.
+	// Pause for a fixed time.
 	//
 	// This field can be elided, and will marshal its zero value as "wait".
 	Type constant.Wait `json:"type" default:"wait"`
@@ -5642,7 +5392,7 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionWait) U
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsActionWaitFor struct {
 	// CSS selector to wait for before continuing.
 	Selector string `json:"selector" api:"required"`
-	// Use `waitFor` to wait for a matching element.
+	// Wait for an element matching `selector`.
 	//
 	// This field can be elided, and will marshal its zero value as "waitFor".
 	Type constant.WaitFor `json:"type" default:"waitFor"`
@@ -5681,9 +5431,9 @@ const (
 	BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesStringAuto BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsIncludeFramesString = "auto"
 )
 
-// Document parsing options.
+// Options for parsing documents such as PDFs.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsers struct {
-	// PDF page range and OCR.
+	// Page range, OCR, and page markers for PDFs.
 	Pdf BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsersPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -5696,16 +5446,16 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsers) Unma
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// PDF page range and OCR.
+// Page range, OCR, and page markers for PDFs.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsParsersPdf struct {
-	// Last page to parse. Must be at least `startPage`.
+	// Last page to parse. Defaults to the last page. Must be at least `startPage`.
 	EndPage param.Opt[int64] `json:"endPage,omitzero"`
-	// Start each page in the Markdown with a `<!-- page N -->` line using its original
-	// 1-based page number; these responses are never served from cache.
+	// Start each PDF page in the Markdown with a `<!-- page N -->` line, where `N` is
+	// the original 1-based page number. These responses are never served from cache.
 	IncludeNumberedPages param.Opt[bool] `json:"includeNumberedPages,omitzero"`
 	// First page to parse, starting at 1.
 	StartPage param.Opt[int64] `json:"startPage,omitzero"`
-	// Set `auto` to read scanned pages with OCR.
+	// Set to `auto` to read scanned pages with OCR. Adds 1 credit per page read.
 	//
 	// Any of "off", "auto".
 	Ocr string `json:"ocr,omitzero"`
@@ -5752,7 +5502,7 @@ func init() {
 
 // The properties ProfileID, Type are required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsProfileExisting struct {
-	// The ID returned in profile.id by an earlier scrape.
+	// ID of the browser profile, from `profile.id` in an earlier scrape response.
 	ProfileID string `json:"profileId" api:"required"`
 	// Reuse a saved browser profile.
 	//
@@ -5771,13 +5521,13 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsProfileExisti
 
 // The properties Identifier, Password, Type are required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsProfileNew struct {
-	// Username or email for the target website.
+	// Username or email address for the website.
 	Identifier string `json:"identifier" api:"required"`
-	// Password used to sign in. It is never stored in the profile.
+	// Password for the website. Used to sign in and never stored.
 	Password string `json:"password" api:"required"`
-	// Optional label shown when listing profiles with `GET /org/browser/profiles`.
+	// Label for the profile, shown by `GET /org/browser/profiles`.
 	Description param.Opt[string] `json:"description,omitzero"`
-	// Sign in and create a browser profile.
+	// Sign in and save a new browser profile.
 	//
 	// This field can be elided, and will marshal its zero value as "new".
 	Type constant.New `json:"type" default:"new"`
@@ -5792,8 +5542,8 @@ func (r *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsProfileNew) U
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Browser size in pixels. Omit for 1920 × 1080. When provided, missing dimensions
-// default to 1440 × 900.
+// Browser viewport in pixels. Defaults to 1920 × 1080. If you pass `viewport`, a
+// missing `width` defaults to 1440 and a missing `height` to 900.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsViewport struct {
 	// Browser viewport height in pixels.
 	Height param.Opt[int64] `json:"height,omitzero"`
@@ -5826,18 +5576,18 @@ func (u *BatchSubmitParamsInputScrapeDataScrapeAnythingSharedParamsWaitForUnion)
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Deadline for each page, using the same behavior and defaults as POST
-// /web/scrape.
+// Time limit for each page, with the same behavior and defaults as in
+// `POST /web/scrape`.
 //
 // The property Milliseconds is required.
 type BatchSubmitParamsInputScrapeDataScrapeAnythingTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
-	// On POST /web/scrape, an output that is not ready in time fails with error_code
-	// REQUEST_TIMEOUT inside a 200 response under either behavior; 408 is returned
-	// only when the whole request cannot respond by the deadline.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial. `return-partial` requires at
+	// least 5000 ms. On `POST /web/scrape`, an output that is not ready in time fails
+	// with `REQUEST_TIMEOUT` inside a 200 response under either behavior; 408 means
+	// the whole request could not respond by the deadline.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -5858,599 +5608,61 @@ func init() {
 	)
 }
 
-// Crawl pages starting from a URL or from a domain's sitemap.
-//
-// The properties Data, Mode are required.
-type BatchSubmitParamsInputCrawl struct {
-	// Crawl source and output format.
-	Data BatchSubmitParamsInputCrawlDataUnion `json:"data,omitzero" api:"required"`
-	// Discover and scrape pages from `data.source`.
-	//
-	// This field can be elided, and will marshal its zero value as "crawl".
-	Mode constant.Crawl `json:"mode" default:"crawl"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawl) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawl
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawl) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataUnion struct {
-	OfMarkdown                *BatchSubmitParamsInputCrawlDataMarkdown                `json:",omitzero,inline"`
-	OfHTML                    *BatchSubmitParamsInputCrawlDataHTML                    `json:",omitzero,inline"`
-	OfCrawlWithScrapeAnything *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnything `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfMarkdown, u.OfHTML, u.OfCrawlWithScrapeAnything)
-}
-func (u *BatchSubmitParamsInputCrawlDataUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-// Crawl pages and return Markdown.
+// Scrape the listed pages as Markdown.
 //
 // Deprecated: deprecated
 //
-// The properties Format, Source are required.
-type BatchSubmitParamsInputCrawlDataMarkdown struct {
+// The properties Format, URLs are required.
+type BatchSubmitParamsInputScrapeDataMarkdown struct {
 	// Return page content as Markdown.
 	//
 	// Any of "markdown".
 	Format string `json:"format,omitzero" api:"required"`
-	// How to find pages to crawl.
-	Source BatchSubmitParamsInputCrawlDataMarkdownSourceUnion `json:"source,omitzero" api:"required"`
+	// Pages to scrape, up to 100,000.
+	URLs []BatchSubmitParamsInputScrapeDataMarkdownURL `json:"urls,omitzero" api:"required"`
 	// Options for Markdown output.
-	Options BatchSubmitParamsInputCrawlDataMarkdownOptions `json:"options,omitzero"`
+	Options BatchSubmitParamsInputScrapeDataMarkdownOptions `json:"options,omitzero"`
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataMarkdown) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdown
+func (r BatchSubmitParamsInputScrapeDataMarkdown) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdown
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataMarkdown) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataMarkdown) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataMarkdown](
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataMarkdown](
 		"format", "markdown",
 	)
 }
 
-// Only one field can be non-zero.
+// A page to scrape, with optional `itemId` and `meta` to match it to its result.
 //
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceUnion struct {
-	OfStartURL *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL `json:",omitzero,inline"`
-	OfSitemap  *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap  `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownSourceUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfStartURL, u.OfSitemap)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceUnion](
-		"type",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL]("start_url"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap]("sitemap"),
-	)
-}
-
-// Discover pages by following links from one URL.
-//
-// The properties Type, URL are required.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL struct {
-	// Page where crawling begins. A URL without a scheme is read as https://.
+// The property URL is required.
+type BatchSubmitParamsInputScrapeDataMarkdownURL struct {
+	// URL of the page.
 	URL string `json:"url" api:"required"`
-	// Limits and filters for page discovery.
-	Controls BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls `json:"controls,omitzero"`
-	// Start from one page.
-	//
-	// This field can be elided, and will marshal its zero value as "start_url".
-	Type constant.StartURL `json:"type" default:"start_url"`
+	// Your ID for this page, returned with its result. The same URL can use different
+	// IDs.
+	ItemID param.Opt[string] `json:"itemId,omitzero"`
+	// Custom JSON returned unchanged with this page's result.
+	Meta map[string]any `json:"meta,omitzero"`
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL
+func (r BatchSubmitParamsInputScrapeDataMarkdownURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdownURL
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Limits and filters for page discovery.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls struct {
-	// Follow links to subdomains.
-	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
-	// Maximum link depth. Source pages are depth 0. No limit when omitted.
-	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
-	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
-	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Pages to skip entirely, even when they match `follow` or `scrape`.
-	Exclude []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
-	// Links to follow from each page; every followed page is checked for links again.
-	// Follows all links when omitted.
-	Follow []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
-	// Only follow pages in these languages, or `same_as_start_url`; all languages when
-	// omitted.
-	Languages BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
-	// Pages to return in the results. Returns every fetched page when omitted.
-	Scrape []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct {
-	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct].
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion struct {
-	OfRegex      *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex      `json:",omitzero,inline"`
-	OfPagination *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination `json:",omitzero,inline"`
-	OfProduct    *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct    `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfPagination, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination]("pagination"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination {
-	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination{
-		Kind: "pagination",
-	}
-}
-
-// Further pages of a paginated list, such as page 2 of a catalog.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination].
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination struct {
-	// Match the further pages of a paginated list.
-	Kind constant.Pagination `json:"kind" default:"pagination"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct {
-	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct].
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion struct {
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString)
-	OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString         param.Opt[string] `json:",omitzero,inline"`
-	OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesArrayItemArray []string          `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString, u.OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesArrayItemArray)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString string
-
-const (
-	BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString = "same_as_start_url"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct {
-	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct].
-type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Scrape the pages listed in a domain's sitemap. Links on those pages are not
-// followed.
-//
-// The properties Domain, Type are required.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap struct {
-	// Domain whose sitemap lists the pages to scrape. A full URL is reduced to its
-	// domain.
-	Domain string `json:"domain" api:"required"`
-	// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
-	// URLs and never follows links off them, so there is no crawl depth here.
-	Controls BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls `json:"controls,omitzero"`
-	// Scrape the URLs in the domain's sitemap.
-	//
-	// This field can be elided, and will marshal its zero value as "sitemap".
-	Type constant.Sitemap `json:"type" default:"sitemap"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
-// URLs and never follows links off them, so there is no crawl depth here.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls struct {
-	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
-	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Sitemap pages to skip, even when they match `scrape`.
-	Exclude []BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
-	// Path fragments that skip a sitemap URL in a crawl. Works separately from
-	// `scrape` and `exclude`. Defaults to
-	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
-	// every listed URL.
-	ExcludePaths []string `json:"excludePaths,omitzero"`
-	// Sitemap pages to return in the results. Returns every listed page when omitted.
-	Scrape []BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct {
-	return BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct].
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct {
-	return BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct].
-type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataMarkdownURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 // Options for Markdown output.
-type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
+type BatchSubmitParamsInputScrapeDataMarkdownOptions struct {
 	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
 	// year (31536000000 ms). `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
@@ -6474,7 +5686,7 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
 	// Keep only elements matching these CSS selectors. Filtered pages ignore
 	// `maxAgeMs`.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch from this country (ISO 3166-1 alpha-2).
+	// Country to fetch from, as an ISO 3166-1 alpha-2 code.
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -6493,8 +5705,8 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-	Pdf BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf `json:"pdf,omitzero"`
+	// Whether to parse PDFs and which pages to read.
+	Pdf BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf `json:"pdf,omitzero"`
 	// Markdown sources in order of preference: `html-conversion` converts the page
 	// HTML, `markdown-direct` uses Markdown the site publishes.
 	//
@@ -6503,597 +5715,96 @@ type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataMarkdownOptions) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownOptions
+func (r BatchSubmitParamsInputScrapeDataMarkdownOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdownOptions
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataMarkdownOptions) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataMarkdownOptions) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataMarkdownOptions](
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataMarkdownOptions](
 		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
 	)
 }
 
-// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf struct {
-	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
-	// be >= start.
+// Whether to parse PDFs and which pages to read.
+type BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf struct {
+	// Last page to parse. Defaults to the last page. Must be at least `start`.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// Read scanned PDF pages with OCR; preserve pages that already have text.
+	// Read scanned PDF pages with OCR. Pages that already have text are kept as is.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse.
+	// First page to parse, starting at 1.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf
+func (r BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Crawl pages and return HTML.
+// Scrape the listed pages as HTML.
 //
 // Deprecated: deprecated
 //
-// The properties Format, Source are required.
-type BatchSubmitParamsInputCrawlDataHTML struct {
+// The properties Format, URLs are required.
+type BatchSubmitParamsInputScrapeDataHTML struct {
 	// Return page content as HTML.
 	//
 	// Any of "html".
 	Format string `json:"format,omitzero" api:"required"`
-	// How to find pages to crawl.
-	Source BatchSubmitParamsInputCrawlDataHTMLSourceUnion `json:"source,omitzero" api:"required"`
+	// Pages to scrape, up to 100,000.
+	URLs []BatchSubmitParamsInputScrapeDataHTMLURL `json:"urls,omitzero" api:"required"`
 	// Options for HTML output.
-	Options BatchSubmitParamsInputCrawlDataHTMLOptions `json:"options,omitzero"`
+	Options BatchSubmitParamsInputScrapeDataHTMLOptions `json:"options,omitzero"`
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataHTML) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTML
+func (r BatchSubmitParamsInputScrapeDataHTML) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTML
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataHTML) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataHTML) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataHTML](
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataHTML](
 		"format", "html",
 	)
 }
 
-// Only one field can be non-zero.
+// A page to scrape, with optional `itemId` and `meta` to match it to its result.
 //
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLSourceUnion struct {
-	OfStartURL *BatchSubmitParamsInputCrawlDataHTMLSourceStartURL `json:",omitzero,inline"`
-	OfSitemap  *BatchSubmitParamsInputCrawlDataHTMLSourceSitemap  `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLSourceUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfStartURL, u.OfSitemap)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLSourceUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceUnion](
-		"type",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURL]("start_url"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemap]("sitemap"),
-	)
-}
-
-// Discover pages by following links from one URL.
-//
-// The properties Type, URL are required.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURL struct {
-	// Page where crawling begins. A URL without a scheme is read as https://.
+// The property URL is required.
+type BatchSubmitParamsInputScrapeDataHTMLURL struct {
+	// URL of the page.
 	URL string `json:"url" api:"required"`
-	// Limits and filters for page discovery.
-	Controls BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls `json:"controls,omitzero"`
-	// Start from one page.
-	//
-	// This field can be elided, and will marshal its zero value as "start_url".
-	Type constant.StartURL `json:"type" default:"start_url"`
+	// Your ID for this page, returned with its result. The same URL can use different
+	// IDs.
+	ItemID param.Opt[string] `json:"itemId,omitzero"`
+	// Custom JSON returned unchanged with this page's result.
+	Meta map[string]any `json:"meta,omitzero"`
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURL) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURL
+func (r BatchSubmitParamsInputScrapeDataHTMLURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTMLURL
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURL) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Limits and filters for page discovery.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls struct {
-	// Follow links to subdomains.
-	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
-	// Maximum link depth. Source pages are depth 0. No limit when omitted.
-	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
-	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
-	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Pages to skip entirely, even when they match `follow` or `scrape`.
-	Exclude []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
-	// Links to follow from each page; every followed page is checked for links again.
-	// Follows all links when omitted.
-	Follow []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
-	// Only follow pages in these languages, or `same_as_start_url`; all languages when
-	// omitted.
-	Languages BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
-	// Pages to return in the results. Returns every fetched page when omitted.
-	Scrape []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct {
-	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct].
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion struct {
-	OfRegex      *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex      `json:",omitzero,inline"`
-	OfPagination *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination `json:",omitzero,inline"`
-	OfProduct    *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct    `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfPagination, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination]("pagination"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination {
-	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination{
-		Kind: "pagination",
-	}
-}
-
-// Further pages of a paginated list, such as page 2 of a catalog.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination].
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination struct {
-	// Match the further pages of a paginated list.
-	Kind constant.Pagination `json:"kind" default:"pagination"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct {
-	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct].
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion struct {
-	// Check if union is this variant with
-	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesString)
-	OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesString         param.Opt[string] `json:",omitzero,inline"`
-	OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesArrayItemArray []string          `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesString, u.OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesArrayItemArray)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesString string
-
-const (
-	BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesString = "same_as_start_url"
-)
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct {
-	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct].
-type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Scrape the pages listed in a domain's sitemap. Links on those pages are not
-// followed.
-//
-// The properties Domain, Type are required.
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemap struct {
-	// Domain whose sitemap lists the pages to scrape. A full URL is reduced to its
-	// domain.
-	Domain string `json:"domain" api:"required"`
-	// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
-	// URLs and never follows links off them, so there is no crawl depth here.
-	Controls BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls `json:"controls,omitzero"`
-	// Scrape the URLs in the domain's sitemap.
-	//
-	// This field can be elided, and will marshal its zero value as "sitemap".
-	Type constant.Sitemap `json:"type" default:"sitemap"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemap) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemap
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemap) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
-// URLs and never follows links off them, so there is no crawl depth here.
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls struct {
-	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
-	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
-	// Sitemap pages to skip, even when they match `scrape`.
-	Exclude []BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
-	// Path fragments that skip a sitemap URL in a crawl. Works separately from
-	// `scrape` and `exclude`. Defaults to
-	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
-	// every listed URL.
-	ExcludePaths []string `json:"excludePaths,omitzero"`
-	// Sitemap pages to return in the results. Returns every listed page when omitted.
-	Scrape []BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct {
-	return BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct].
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-// Only one field can be non-zero.
-//
-// Use [param.IsOmitted] to confirm if a field is set.
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion struct {
-	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex   `json:",omitzero,inline"`
-	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct `json:",omitzero,inline"`
-	paramUnion
-}
-
-func (u BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion) MarshalJSON() ([]byte, error) {
-	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
-}
-func (u *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, u)
-}
-
-func init() {
-	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion](
-		"kind",
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex]("regex"),
-		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct]("product"),
-	)
-}
-
-// Pages whose URL matches a regex pattern.
-//
-// The properties Kind, Pattern are required.
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex struct {
-	// Regex pattern for the page URL.
-	Pattern string `json:"pattern" api:"required"`
-	// Match pages by URL pattern.
-	//
-	// This field can be elided, and will marshal its zero value as "regex".
-	Kind constant.Regex `json:"kind" default:"regex"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-func NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct {
-	return BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct{
-		Kind: "product",
-	}
-}
-
-// Product detail pages.
-//
-// This struct has a constant value, construct it with
-// [NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct].
-type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct struct {
-	// Match product detail pages.
-	Kind constant.Product `json:"kind" default:"product"`
-	paramObj
-}
-
-func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataHTMLURL) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 // Options for HTML output.
-type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
+type BatchSubmitParamsInputScrapeDataHTMLOptions struct {
 	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
 	// year (31536000000 ms). `0` fetches fresh.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
@@ -7109,7 +5820,7 @@ type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
 	// Keep only elements matching these CSS selectors. Filtered pages ignore
 	// `maxAgeMs`.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Fetch from this country (ISO 3166-1 alpha-2).
+	// Country to fetch from, as an ISO 3166-1 alpha-2 code.
 	//
 	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
 	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
@@ -7128,49 +5839,86 @@ type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
 	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
 	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-	Pdf BatchSubmitParamsInputCrawlDataHTMLOptionsPdf `json:"pdf,omitzero"`
+	// Whether to parse PDFs and which pages to read.
+	Pdf BatchSubmitParamsInputScrapeDataHTMLOptionsPdf `json:"pdf,omitzero"`
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataHTMLOptions) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLOptions
+func (r BatchSubmitParamsInputScrapeDataHTMLOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTMLOptions
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataHTMLOptions) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataHTMLOptions) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
 func init() {
-	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataHTMLOptions](
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputScrapeDataHTMLOptions](
 		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
 	)
 }
 
-// PDF handling. `start`/`end` limit parsing to an inclusive, 1-based page range.
-type BatchSubmitParamsInputCrawlDataHTMLOptionsPdf struct {
-	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
-	// be >= start.
+// Whether to parse PDFs and which pages to read.
+type BatchSubmitParamsInputScrapeDataHTMLOptionsPdf struct {
+	// Last page to parse. Defaults to the last page. Must be at least `start`.
 	End param.Opt[int64] `json:"end,omitzero"`
-	// Read scanned PDF pages with OCR; preserve pages that already have text.
+	// Read scanned PDF pages with OCR. Pages that already have text are kept as is.
 	Ocr param.Opt[bool] `json:"ocr,omitzero"`
 	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
 	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
-	// First 1-based PDF page to parse.
+	// First page to parse, starting at 1.
 	Start param.Opt[int64] `json:"start,omitzero"`
 	paramObj
 }
 
-func (r BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) MarshalJSON() (data []byte, err error) {
-	type shadow BatchSubmitParamsInputCrawlDataHTMLOptionsPdf
+func (r BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputScrapeDataHTMLOptionsPdf
 	return param.MarshalObject(r, (*shadow)(&r))
 }
-func (r *BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
+func (r *BatchSubmitParamsInputScrapeDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Use the same formats and parameters as POST /web/scrape, replacing url with
-// source. Options apply to every page.
+// Crawl pages starting from a URL or from a domain's sitemap.
+//
+// The properties Data, Mode are required.
+type BatchSubmitParamsInputCrawl struct {
+	// Where to find pages, with the formats and options to apply to each page.
+	Data BatchSubmitParamsInputCrawlDataUnion `json:"data,omitzero" api:"required"`
+	// Discover and scrape pages from `data.source`.
+	//
+	// This field can be elided, and will marshal its zero value as "crawl".
+	Mode constant.Crawl `json:"mode" default:"crawl"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawl) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawl
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawl) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataUnion struct {
+	OfCrawlWithScrapeAnything *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnything `json:",omitzero,inline"`
+	OfMarkdown                *BatchSubmitParamsInputCrawlDataMarkdown                `json:",omitzero,inline"`
+	OfHTML                    *BatchSubmitParamsInputCrawlDataHTML                    `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfCrawlWithScrapeAnything, u.OfMarkdown, u.OfHTML)
+}
+func (u *BatchSubmitParamsInputCrawlDataUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+// The same formats and options as `POST /web/scrape`, with `source` in place of
+// `url`. Options apply to every page.
 //
 // The properties Formats, Source are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnything struct {
@@ -7178,32 +5926,36 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnything struct {
 	Formats BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingFormats `json:"formats,omitzero" api:"required"`
 	// How to find pages to crawl.
 	Source BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceUnion `json:"source,omitzero" api:"required"`
-	// Maximum age of a cached output, in milliseconds. `0` fetches fresh. Defaults to
-	// 3 days (259200000 ms). Maximum: 1 year (31536000000 ms).
+	// Maximum age of a cached result, in milliseconds. `0` always fetches fresh.
+	// Defaults to 3 days (259200000 ms). Maximum: 1 year (31536000000 ms).
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Requires `formats.highlights: true`; required when it is set.
+	// Query for the `highlights` output. Required when `formats.highlights` is `true`,
+	// and allowed only then.
 	HighlightsParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingHighlightsParams `json:"highlightsParams,omitzero"`
-	// Image options. Requires formats.images: true.
+	// Options for the `images` output. Requires `formats.images: true`.
 	ImageParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingImageParams `json:"imageParams,omitzero"`
-	// Requires `formats.json: true`; required when it is set.
+	// Schema and instructions for the `json` output. Required when `formats.json` is
+	// `true`, and allowed only then.
 	JsonParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingJsonParams `json:"jsonParams,omitzero"`
-	// Markdown options. Requires `formats.markdown`.
+	// Options for the `markdown` output. Requires `formats.markdown: true`.
 	MarkdownParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingMarkdownParams `json:"markdownParams,omitzero"`
-	// Requires `formats.parse: true`; required when it is set.
+	// Custom rules or a prebuilt parser for the `parsed` output. Required when
+	// `formats.parse` is `true`, and allowed only then.
 	ParseParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsUnion `json:"parseParams,omitzero"`
-	// Product options. Requires formats.product: true.
+	// Options for the `product` output. Requires `formats.product: true`.
 	ProductParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingProductParams `json:"productParams,omitzero"`
-	// Screenshot options. Requires formats.screenshot: true.
+	// Options for the `screenshot` output. Requires `formats.screenshot: true`.
 	ScreenshotParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingScreenshotParams `json:"screenshotParams,omitzero"`
 	// Browser and content settings shared by all outputs.
 	SharedParams BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParams `json:"sharedParams,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
-	// Deadline for each page, using the same behavior and defaults as POST
-	// /web/scrape.
+	// Time limit for each page, with the same behavior and defaults as in
+	// `POST /web/scrape`.
 	TimeoutOpts BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// Batches persist their results. Only disabled is supported; enabled returns
-	// ZDR_NOT_SUPPORTED.
+	// Zero data retention is not available for batches, because batches store their
+	// results. Sending `enabled` returns `ZDR_NOT_SUPPORTED`.
 	//
 	// Any of "disabled".
 	Zdr string `json:"zdr,omitzero"`
@@ -7226,24 +5978,24 @@ func init() {
 
 // Outputs to return. Set at least one to `true`.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingFormats struct {
-	// The original HTTP response body.
+	// Return the original HTTP response body.
 	Bytes param.Opt[bool] `json:"bytes,omitzero"`
-	// Markdown excerpts relevant to `highlightsParams.query`.
+	// Return Markdown excerpts relevant to `highlightsParams.query`.
 	Highlights param.Opt[bool] `json:"highlights,omitzero"`
-	// Rendered HTML.
+	// Return the rendered HTML.
 	HTML param.Opt[bool] `json:"html,omitzero"`
-	// Images found on the page.
+	// Return the images found on the page.
 	Images param.Opt[bool] `json:"images,omitzero"`
-	// An object matching `jsonParams.schema`, extracted from the page text and its
-	// embedded data (JSON-LD, meta tags, framework state).
+	// Return an object matching `jsonParams.schema`, extracted from the page text and
+	// embedded data such as JSON-LD, meta tags, and framework state.
 	Json param.Opt[bool] `json:"json,omitzero"`
-	// Page content or video transcript as Markdown.
+	// Return the page content, or a video transcript, as Markdown.
 	Markdown param.Opt[bool] `json:"markdown,omitzero"`
-	// Fields extracted with custom rules or a prebuilt parser, returned as `parsed`.
+	// Return fields extracted with custom rules or a prebuilt parser, as `parsed`.
 	Parse param.Opt[bool] `json:"parse,omitzero"`
-	// Product details such as name, price, and availability.
+	// Return product details such as name, price, and availability.
 	Product param.Opt[bool] `json:"product,omitzero"`
-	// A screenshot of the page.
+	// Return a screenshot of the page.
 	Screenshot param.Opt[bool] `json:"screenshot,omitzero"`
 	paramObj
 }
@@ -7284,11 +6036,11 @@ func init() {
 //
 // The properties Type, URL are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURL struct {
-	// Page where crawling begins. A URL without a scheme is read as https://.
+	// Page where crawling begins. A URL without a scheme is treated as `https://`.
 	URL string `json:"url" api:"required"`
 	// Limits and filters for page discovery.
 	Controls BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControls `json:"controls,omitzero"`
-	// Start from one page.
+	// Follow links from one URL.
 	//
 	// This field can be elided, and will marshal its zero value as "start_url".
 	Type constant.StartURL `json:"type" default:"start_url"`
@@ -7307,17 +6059,18 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURL) U
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControls struct {
 	// Follow links to subdomains.
 	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
-	// Maximum link depth. Source pages are depth 0. No limit when omitted.
+	// Maximum link depth, where the start page is depth `0`. No limit when omitted.
 	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
-	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
+	// Maximum number of pages to fetch, up to 100,000. Credits are reserved for this
+	// many pages and the unused part is refunded.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
 	// Pages to skip entirely, even when they match `follow` or `scrape`.
 	Exclude []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
 	// Links to follow from each page; every followed page is checked for links again.
 	// Follows all links when omitted.
 	Follow []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
-	// Only follow pages in these languages, or `same_as_start_url`; all languages when
-	// omitted.
+	// Only follow pages in these languages, or pass `same_as_start_url` to match the
+	// start page. Follows all languages when omitted.
 	Languages BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
 	// Pages to return in the results. Returns every fetched page when omitted.
 	Scrape []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
@@ -7360,7 +6113,7 @@ func init() {
 //
 // The properties Kind, Pattern are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsExcludeRegex struct {
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// Match pages by URL pattern.
 	//
@@ -7431,7 +6184,7 @@ func init() {
 //
 // The properties Kind, Pattern are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsFollowRegex struct {
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// Match pages by URL pattern.
 	//
@@ -7548,7 +6301,7 @@ func init() {
 //
 // The properties Kind, Pattern are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceStartURLControlsScrapeRegex struct {
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// Match pages by URL pattern.
 	//
@@ -7597,8 +6350,8 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemap struct 
 	// Domain whose sitemap lists the pages to scrape. A full URL is reduced to its
 	// domain.
 	Domain string `json:"domain" api:"required"`
-	// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
-	// URLs and never follows links off them, so there is no crawl depth here.
+	// Limits and filters for the sitemap URLs. Links on sitemap pages are never
+	// followed.
 	Controls BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControls `json:"controls,omitzero"`
 	// Scrape the URLs in the domain's sitemap.
 	//
@@ -7615,17 +6368,16 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemap) Un
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Limits and filters for the sitemap URLs. A sitemap batch scrapes exactly those
-// URLs and never follows links off them, so there is no crawl depth here.
+// Limits and filters for the sitemap URLs. Links on sitemap pages are never
+// followed.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControls struct {
-	// Maximum pages to fetch. Unused reserved credits are refunded. Maximum 100000.
+	// Maximum number of pages to fetch, up to 100,000. Credits are reserved for this
+	// many pages and the unused part is refunded.
 	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
 	// Sitemap pages to skip, even when they match `scrape`.
 	Exclude []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
-	// Path fragments that skip a sitemap URL in a crawl. Works separately from
-	// `scrape` and `exclude`. Defaults to
-	// ["/feed","/rss","/atom","/api/","/cdn-cgi/","/_next/","/__"]. Pass `[]` to keep
-	// every listed URL.
+	// Path fragments that exclude a sitemap URL. Applies in addition to `scrape` and
+	// `exclude`; pass `[]` to keep every listed URL.
 	ExcludePaths []string `json:"excludePaths,omitzero"`
 	// Sitemap pages to return in the results. Returns every listed page when omitted.
 	Scrape []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
@@ -7668,7 +6420,7 @@ func init() {
 //
 // The properties Kind, Pattern are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsExcludeRegex struct {
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// Match pages by URL pattern.
 	//
@@ -7737,7 +6489,7 @@ func init() {
 //
 // The properties Kind, Pattern are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapControlsScrapeRegex struct {
-	// Regex pattern for the page URL.
+	// Regular expression matched against the page URL.
 	Pattern string `json:"pattern" api:"required"`
 	// Match pages by URL pattern.
 	//
@@ -7778,13 +6530,14 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSourceSitemapCont
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Requires `formats.highlights: true`; required when it is set.
+// Query for the `highlights` output. Required when `formats.highlights` is `true`,
+// and allowed only then.
 //
 // The property Query is required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingHighlightsParams struct {
-	// The question or topic to find passages for.
+	// Question or topic to find relevant passages for.
 	Query string `json:"query" api:"required"`
-	// Maximum combined length of returned passages.
+	// Maximum combined length of the returned passages, in characters.
 	MaxCharacters param.Opt[int64] `json:"maxCharacters,omitzero"`
 	paramObj
 }
@@ -7797,13 +6550,14 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingHighlightsParams)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Image options. Requires formats.images: true.
+// Options for the `images` output. Requires `formats.images: true`.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingImageParams struct {
-	// Set `visual` to drop visual duplicates, keeping the largest copy.
+	// Set to `visual` to drop visually duplicate images, keeping the largest copy.
 	//
 	// Any of "none", "visual".
 	Dedupe string `json:"dedupe,omitzero"`
-	// Extra data per image: `dimensions`, `classification`, or a hosted `file` URL.
+	// Extra data to add to each image: `dimensions` adds `width` and `height`,
+	// `classification` adds `classification`, and `file` adds a hosted `fileUrl`.
 	//
 	// Any of "dimensions", "classification", "file".
 	Enrich []string `json:"enrich,omitzero"`
@@ -7824,12 +6578,14 @@ func init() {
 	)
 }
 
-// Requires `formats.json: true`; required when it is set.
+// Schema and instructions for the `json` output. Required when `formats.json` is
+// `true`, and allowed only then.
 //
 // The property Schema is required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingJsonParams struct {
-	// JSON Schema (not an example object) for a top-level object, up to 50 KB. Use
-	// optional or nullable fields for missing facts.
+	// JSON Schema for the object to extract, not an example object. Must describe a
+	// top-level object, up to 50 KB. Make fields optional or nullable when the page
+	// may not state them.
 	Schema map[string]any `json:"schema,omitzero" api:"required"`
 	// Extra guidance, such as which facts to prefer or how to read a field.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
@@ -7844,13 +6600,14 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingJsonParams) Unmar
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Markdown options. Requires `formats.markdown`.
+// Options for the `markdown` output. Requires `formats.markdown: true`.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingMarkdownParams struct {
-	// Include images in the Markdown (`html-conversion` only).
+	// Include image references in the Markdown (`html-conversion` only).
 	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
 	// Keep link URLs in the Markdown (`html-conversion` only).
 	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
-	// How base64 images appear when `includeImages` is set (`html-conversion` only).
+	// How to write base64 images when `includeImages` is `true`: `placeholder`
+	// shortens the data, `preserve` keeps it in full (`html-conversion` only).
 	//
 	// Any of "placeholder", "preserve".
 	InlineImages string `json:"inlineImages,omitzero"`
@@ -7894,10 +6651,10 @@ func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsUnion)
 
 // The property Rules is required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsCustomParser struct {
-	// Field names mapped to CSS selectors (`h1`, `a@href`) or rule objects. Max 100
-	// fields, 5 levels.
+	// Output field names mapped to a CSS selector (such as `h1` or `a@href`) or a rule
+	// object. Up to 100 fields, nested up to 5 levels.
 	Rules map[string]BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsCustomParserRuleUnion `json:"rules,omitzero" api:"required"`
-	// Extract fields using custom CSS rules. This is the default when type is omitted.
+	// Extract fields with custom CSS rules. The default when `type` is omitted.
 	//
 	// Any of "custom".
 	Type string `json:"type,omitzero"`
@@ -7938,8 +6695,8 @@ func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsCustom
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsCustomParserRuleObject struct {
 	// CSS selector to match within the current page or parent rule.
 	Selector string `json:"selector" api:"required"`
-	// Return text, HTML, an attribute such as `@href`, or nested field rules. Defaults
-	// to text.
+	// What to return: `text`, `html`, an attribute such as `@href`, or nested field
+	// rules. Defaults to `text`.
 	Output string `json:"output,omitzero"`
 	// Return the first match with `item` or all matches with `list`.
 	//
@@ -7964,150 +6721,178 @@ func init() {
 
 // The properties Parser, Type are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltParser struct {
-	// google-maps parses Google Maps business data into data.results. Accepts Maps
-	// place, search, and internal data URLs; a search page returns up to 200 places,
-	// ranked as Google ranks them. Uses an exit in the gl country of the URL (US when
-	// absent) and English labels regardless of hl or Accept-Language.
-	// google-maps-reviews returns the reviews of a place in data.reviews, in the same
-	// shape as the Serper reviews API (rating, date, isoDate, snippet,
-	// translatedSnippet, likes, user, media, response, link, id), plus language,
-	// guided ratings in details, and user.isLocalGuide; data also carries the place
-	// featureId, cid, and sort. sort and limit pick the order and count, and oldest is
-	// exact. It accepts Maps place, search, and ?cid= URLs, plus
-	// search.google.com/local/reviews URLs, so the google_maps_url and
-	// google_reviews_url fields of google-maps results work as input. An unknown place
-	// returns no reviews. google-play parses a Play Store app into data: details,
-	// developer contact, ratings, price, permissions, and data safety, plus the
-	// country storefront the record describes and is_available, whether the app is
-	// offered there. Ratings are counted per storefront, so rating, rating_count, and
-	// rating_histogram are null in a storefront where nobody rated the app.
-	// google-play-reviews returns up to the 200 newest reviews written in the hl
-	// language, with developer replies, in data.reviews; an app with fewer such
-	// reviews returns them all. Both Play parsers accept app details URLs
-	// (play.google.com/store/apps/details?id=…); hl and gl set the language and
-	// storefront, defaulting to en and us. Without gl, google-play reads an app that
-	// is not offered in the US from the country of its developer instead. app-store
-	// parses an App Store app into data: details, developer, ratings, price, version,
-	// and screenshots. app-store-reviews returns up to the 500 newest reviews in
-	// data.reviews. Both App Store parsers accept app URLs
-	// (apps.apple.com/us/app/…/id…); the country in the path sets the storefront,
-	// defaulting to us. g2-reviews returns the 25 most recently published reviews of a
-	// G2 product in data.reviews (rating, title, likes, dislikes, problems_solved,
-	// reviewer role, company size, and industry), plus data.product. It accepts G2
-	// product URLs (g2.com/products/…), follows renamed products, and keeps
-	// star-rating filters from the URL (filters[nps_score][]=1 to 5); other filters,
-	// sort orders, and pages are ignored. instagram-profile parses a public profile
-	// (instagram.com/{username}) into data: bio, links, follower and post counts,
-	// category, business address, similar_accounts, and latest_posts (up to the 12
-	// posts at the top of the profile, newest first). Instagram lists pinned posts
-	// there ahead of newer ones, so posts with is_pinned true can be older; when
-	// Instagram shows only a rounded post count (32K), post_count is that rounded
-	// number and is_post_count_rounded is true. instagram-post parses a post or reel
-	// (/p/…, /reel/…) into data: caption, hashtags, mentions, like, comment, and view
-	// counts (like_count and view_count are null when the owner hides them), media
-	// URLs, tagged users, collaborators, location, and the top ~14 comments in
-	// data.comments. instagram-feed returns the top posts for a hashtag or keyword
-	// (/explore/tags/…, /popular/…) or the recent posts at a location
-	// (/explore/locations/{id}/…) in data.posts; keyword posts carry only the
-	// shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
-	// it. All three Instagram parsers read public data without logging in, so private
-	// accounts return no posts and follower lists are unavailable. tiktok-profile
-	// parses a public profile (tiktok.com/@{username}) into data: nickname, bio, bio
-	// link, follower, following, like, and video counts, verified, private, and
-	// business flags, and business category; it does not list videos. tiktok-video
-	// parses a video or photo post (/@{username}/video/{id} or
-	// /@{username}/photo/{id}) into data: caption, hashtags, mentions, author, view,
-	// like, comment, share, save, and repost counts, duration, thumbnail, a video_url
-	// that downloads without cookies, image_urls for photo posts, music, location, and
-	// ad, paid-partnership, and AI-generated flags. tiktok-feed returns videos in the
-	// tiktok-video shape as data.videos: the latest 15 from a profile URL, the top 30
-	// from a hashtag URL (/tag/{name}), or the top 12 from a search URL
-	// (/search?q={query}). tiktok-comments returns the first 20 comments of a video or
-	// photo post as data.comments: text, posted_at, like and reply counts, whether the
-	// author liked it, and the commenter. tiktok-followers and tiktok-following return
-	// up to 30 accounts of a profile as data.users, in the tiktok-profile shape.
-	// tiktok-user-search returns the top 10 accounts for a user search URL
-	// (/search/user?q={query}) as data.users: id, username, nickname, biography,
-	// avatar_url, sec_uid, follower_count, like_count, and is_verified. The TikTok
-	// parsers accept tiktok.com, www.tiktok.com, and m.tiktok.com URLs but not short
-	// links (vm.tiktok.com, vt.tiktok.com, tiktok.com/t/…). reddit-post parses a post
-	// (reddit.com/r/{subreddit}/comments/{id}, reddit.com/comments/{id}, or
-	// redd.it/{id}) into data.post: title, body as Markdown, type (text, link, image,
-	// gallery, or video), link_url, subreddit, author, flairs, score, upvote_ratio,
-	// comment and crosspost counts, NSFW, spoiler, locked, stickied, and archived
-	// flags, images (every gallery image in order), and video (an MP4 url plus an
-	// hls_url that carries the audio). data.comments holds the comment tree, each
-	// comment with id, author, body as Markdown, score, posted_at, depth, parent_id,
-	// url, is_submitter, is_deleted, and its replies; limit caps the total number of
-	// comments (default 100), filled shallowest first so whole conversations are kept,
-	// and data.has_more_comments says whether the thread has more. The sort query of
-	// the URL (best, top, new, controversial, old, qa) orders the comments.
-	// reddit-search returns search results for a search URL
-	// (reddit.com/search?q={query}, or reddit.com/r/{subreddit}/search?q={query} to
-	// search one subreddit). With type=link or no type it returns posts in the
-	// reddit-post shape as data.posts, ordered by the sort (relevance, hot, top, new,
-	// comments) and limited to the t time range (hour, day, week, month, year, all) of
-	// the URL; type=sr returns communities as data.communities (name, title,
-	// description, sidebar, subscriber_count, created_at, type, NSFW and quarantine
-	// flags, language, category, icon and banner URLs, and allowed post types);
-	// type=user returns accounts as data.users (username, display_name, bio,
-	// created_at, post and comment karma, avatar and banner URLs, and verified,
-	// employee, moderator, premium, and NSFW flags). limit caps the number of results
-	// (default 100), in the order Reddit returns them, and data.has_more says whether
-	// Reddit has more. reddit-subreddit reads a subreddit URL
-	// (reddit.com/r/{subreddit}, optionally followed by /hot, /new, /top, /rising, or
-	// /controversial, with t setting the time range of top and controversial, default
-	// day) into data.subreddit in the community shape of reddit-search, data.rules
-	// (name, description, applies_to, violation_reason, created_at), and data.posts in
-	// the reddit-post shape, ordered like the tab (default hot) and with stickied
-	// posts flagged; r/all and r/popular return posts with a null subreddit and rules.
-	// limit caps the posts (default 100) and data.has_more says whether Reddit has
-	// more. Private and quarantined subreddits return WEBSITE_ACCESS_ERROR.
-	// reddit-user reads a profile URL (reddit.com/user/{username} or
-	// reddit.com/u/{username}, optionally followed by /overview, /submitted, or
-	// /comments, with sort set to new, hot, top, or controversial and t setting the
-	// time range of top and controversial, default all) into data.user (id, username,
-	// display_name, bio, created_at, total, post, comment, awardee, and awarder karma,
-	// avatar and banner URLs, and verified, suspended, employee, moderator, premium,
-	// and NSFW flags), data.trophies (name, description, icon_url, granted_at, url),
-	// data.moderated_communities (name, title, url, subscriber_count, icon_url,
-	// is_nsfw), data.posts in the reddit-post shape, and data.comments, each with id,
-	// author, body as Markdown, score, posted_at, edited_at, url, subreddit, parent_id
-	// (null for a top-level comment), is_submitter, is_stickied, distinguished,
-	// award_count, and the post it was left on (id, title, url, author, is_nsfw). The
-	// overview tab returns both posts and comments; submitted returns null comments
-	// and comments returns null posts. limit caps the posts and comments together
-	// (default 100) and data.has_more says whether Reddit has more. Users who hide
-	// their activity return empty lists, and suspended accounts return their profile
-	// with null posts and comments. yelp-search accepts Yelp search URLs with
-	// find_desc and find_loc, reads start as the result offset, and returns up to 20
-	// ranked organic businesses in data.businesses with total and pagination.
-	// yelp-reviews accepts a Yelp business URL (yelp.com/biz/{alias}), uses optional
-	// start for the offset, and always sorts newest first; unsupported sort and review
-	// filters are rejected, while tracking params are ignored. It returns up to 20
-	// latest public reviews in data.reviews with business details and
-	// pagination.next_offset. Each review has rating, full text, updated_at, and
-	// author (id is the Yelp user id from the reviewer profile URL, url links to that
-	// profile, plus name, location, and review_count); owner replies and photos are
-	// not included. tripadvisor-reviews accepts a Tripadvisor hotel, restaurant, or
-	// attraction review URL (tripadvisor.com/Hotel_Review-g{geo}-d{id}-Reviews-….html,
-	// on any Tripadvisor country domain), reads -or{N}- in the path as the offset, and
-	// returns 20 reviews in data.reviews in the order Tripadvisor shows them, with
-	// data.location (id, name, type, url, review_count) and pagination.next_offset.
-	// Each review has id, url, title, full text, rating, language, published_at,
-	// visit_month, helpful_votes, subratings, photo_urls, owner_response (text,
-	// published_at, author_name), and author (id, username, name, url,
-	// contribution_count); an unknown location returns no reviews. emails accepts any
-	// page and returns its email addresses as data.emails ([{ email }]), read from
-	// mailto links, Cloudflare-protected addresses, and visible text. phone-numbers
-	// accepts any page and returns its valid phone numbers in E.164 as
-	// data.phone_numbers ([{ phone }]), read from tel links and visible text; numbers
-	// without a country code are read for the country of the site TLD, defaulting to
-	// US. links accepts any page and returns its unique http(s) links as data.links
-	// ([{ url, text }]), with absolute URLs; text falls back to aria-label or image
-	// alt and is null when a link has none. The emails parser reads the rendered page
-	// and respects content filters; the other prebuilt parsers read their data
-	// independently of DOM filters.
+	// Prebuilt parser to run. Each one accepts specific URLs and returns its result in
+	// `parsed.data`. `emails`, `phone-numbers`, and `links` read the rendered page and
+	// respect content filters; the others read their source directly, independently of
+	// content filters and other outputs.
+	//
+	//   - `google-maps`: Google Maps place, search, and internal data URLs. Returns
+	//     businesses in `data.results`; a search URL returns up to 200 places. Results
+	//     use the country set in the URL, or the US when none is set, and come back with
+	//     English labels.
+	//   - `google-maps-reviews`: Google Maps place, search, and `?cid=` URLs, plus
+	//     `search.google.com/local/reviews` URLs, so the `google_maps_url` and
+	//     `google_reviews_url` fields of `google-maps` results work as input. Returns
+	//     the reviews of the place in `data.reviews` (`rating`, `date`, `isoDate`,
+	//     `snippet`, `translatedSnippet`, `likes`, `user`, `media`, `response`, `link`,
+	//     `id`, `language`, guided ratings in `details`, and `user.isLocalGuide`), plus
+	//     the place `featureId`, `cid`, and `sort` in `data`. `sort` and `limit` set the
+	//     order and count; `oldest` is exact. An unknown place returns no reviews.
+	//   - `google-play`: Play Store app details URLs
+	//     (`play.google.com/store/apps/details?id=…`). Returns one app in `data`:
+	//     details, developer contact, ratings, price, permissions, data safety, the
+	//     storefront country the record describes, and `is_available` (whether the app
+	//     is offered there). Ratings are counted per storefront, so `rating`,
+	//     `rating_count`, and `rating_histogram` are `null` where nobody rated the app.
+	//     The language and storefront country set in the URL apply (default English and
+	//     the US); without a storefront country, an app not offered in the US is read
+	//     from the country of its developer.
+	//   - `google-play-reviews`: Same URLs as `google-play`. Returns up to the 200
+	//     newest reviews in the language set in the URL, with developer replies, in
+	//     `data.reviews`; an app with fewer such reviews returns them all.
+	//   - `app-store`: App Store app URLs (`apps.apple.com/us/app/…/id…`). Returns one
+	//     app in `data`: details, developer, ratings, price, version, and screenshots.
+	//     The country in the path sets the storefront (default `us`).
+	//   - `app-store-reviews`: Same URLs as `app-store`. Returns up to the 500 newest
+	//     reviews in `data.reviews`.
+	//   - `g2-reviews`: G2 product URLs (`g2.com/products/…`), following renamed
+	//     products. Returns the 25 most recently published reviews in `data.reviews`
+	//     (rating, title, likes, dislikes, `problems_solved`, reviewer role, company
+	//     size, and industry), plus `data.product`. Keeps star-rating filters from the
+	//     URL (`filters[nps_score][]=1` to `5`) and ignores other filters, sort orders,
+	//     and pages.
+	//   - `instagram-profile`: Public profile URLs (`instagram.com/{username}`). Returns
+	//     one profile in `data`: bio, links, follower and post counts, category,
+	//     business address, `similar_accounts`, and `latest_posts` (up to the 12 posts
+	//     at the top of the profile, newest first). Instagram lists pinned posts first,
+	//     so posts with `is_pinned: true` can be older. When Instagram shows only a
+	//     rounded post count (such as 32K), `post_count` is that rounded number and
+	//     `is_post_count_rounded` is `true`.
+	//   - `instagram-post`: Post and reel URLs (`/p/…`, `/reel/…`). Returns one post in
+	//     `data`: caption, hashtags, mentions, like, comment, and view counts
+	//     (`like_count` and `view_count` are `null` when the owner hides them), media
+	//     URLs, tagged users, collaborators, location, and about the top 14 comments in
+	//     `data.comments`.
+	//   - `instagram-feed`: Hashtag and keyword URLs (`/explore/tags/…`, `/popular/…`)
+	//     return the top posts; location URLs (`/explore/locations/{id}/…`) return
+	//     recent posts. Posts are in `data.posts`; keyword posts carry only the
+	//     shortcode, owner, thumbnail, and views, plus the caption when Instagram shows
+	//     it. All three Instagram parsers read public data without signing in, so
+	//     private accounts return no posts and follower lists are unavailable.
+	//   - `tiktok-profile`: Public profile URLs (`tiktok.com/@{username}`). Returns one
+	//     profile in `data`: nickname, bio, bio link, follower, following, like, and
+	//     video counts, verified, private, and business flags, and business category.
+	//     Does not list videos.
+	//   - `tiktok-video`: Video and photo post URLs (`/@{username}/video/{id}`,
+	//     `/@{username}/photo/{id}`). Returns one post in `data`: caption, hashtags,
+	//     mentions, author, view, like, comment, share, save, and repost counts,
+	//     duration, thumbnail, a `video_url` that downloads without cookies,
+	//     `image_urls` for photo posts, music, location, and ad, paid-partnership, and
+	//     AI-generated flags.
+	//   - `tiktok-feed`: Returns videos in the `tiktok-video` shape in `data.videos`:
+	//     the latest 15 from a profile URL, the top 30 from a hashtag URL
+	//     (`/tag/{name}`), or the top 12 from a search URL (`/search?q={query}`).
+	//   - `tiktok-comments`: Video and photo post URLs. Returns the first 20 comments in
+	//     `data.comments`: text, `posted_at`, like and reply counts, whether the author
+	//     liked it, and the commenter.
+	//   - `tiktok-followers`, `tiktok-following`: Profile URLs. Return up to 30 accounts
+	//     in `data.users`, in the `tiktok-profile` shape.
+	//   - `tiktok-user-search`: User search URLs (`/search/user?q={query}`). Returns the
+	//     top 10 accounts in `data.users`: `id`, `username`, `nickname`, `biography`,
+	//     `avatar_url`, `sec_uid`, `follower_count`, `like_count`, and `is_verified`.
+	//     The TikTok parsers accept `tiktok.com`, `www.tiktok.com`, and `m.tiktok.com`
+	//     URLs, not short links (`vm.tiktok.com`, `vt.tiktok.com`, `tiktok.com/t/…`).
+	//   - `reddit-post`: Post URLs (`reddit.com/r/{subreddit}/comments/{id}`,
+	//     `reddit.com/comments/{id}`, `redd.it/{id}`). Returns the post in `data.post`:
+	//     title, body as Markdown, type (`text`, `link`, `image`, `gallery`, or
+	//     `video`), `link_url`, subreddit, author, flairs, score, `upvote_ratio`,
+	//     comment and crosspost counts, NSFW, spoiler, locked, stickied, and archived
+	//     flags, images (every gallery image in order), and video (an MP4 `url` plus an
+	//     `hls_url` that carries the audio). `data.comments` holds the comment tree;
+	//     each comment has `id`, `author`, `body` (Markdown), `score`, `posted_at`,
+	//     `depth`, `parent_id`, `url`, `is_submitter`, `is_deleted`, and its `replies`.
+	//     `limit` caps the total number of comments (default 100), filled shallowest
+	//     first so whole conversations are kept, and `data.has_more_comments` says
+	//     whether the thread has more. The `sort` in the URL (`best`, `top`, `new`,
+	//     `controversial`, `old`, `qa`) orders the comments.
+	//   - `reddit-search`: Search URLs (`reddit.com/search?q={query}`, or
+	//     `reddit.com/r/{subreddit}/search?q={query}` to search one subreddit). With
+	//     `type=link` or no `type`, returns posts in the `reddit-post` shape in
+	//     `data.posts`, ordered by the `sort` in the URL (`relevance`, `hot`, `top`,
+	//     `new`, `comments`) within its `t` time range (`hour`, `day`, `week`, `month`,
+	//     `year`, `all`). `type=sr` returns communities in `data.communities` (name,
+	//     title, description, sidebar, `subscriber_count`, `created_at`, type, NSFW and
+	//     quarantine flags, language, category, icon and banner URLs, and allowed post
+	//     types). `type=user` returns accounts in `data.users` (username,
+	//     `display_name`, bio, `created_at`, post and comment karma, avatar and banner
+	//     URLs, and verified, employee, moderator, premium, and NSFW flags). `limit`
+	//     caps the number of results (default 100), in the order Reddit returns them,
+	//     and `data.has_more` says whether Reddit has more.
+	//   - `reddit-subreddit`: Subreddit URLs (`reddit.com/r/{subreddit}`, optionally
+	//     followed by `/hot`, `/new`, `/top`, `/rising`, or `/controversial`, with `t`
+	//     setting the time range of `top` and `controversial`, default `day`). Returns
+	//     `data.subreddit` in the community shape of `reddit-search`, `data.rules`
+	//     (`name`, `description`, `applies_to`, `violation_reason`, `created_at`), and
+	//     `data.posts` in the `reddit-post` shape, ordered like the tab (default `hot`)
+	//     with stickied posts flagged. `r/all` and `r/popular` return posts with `null`
+	//     `subreddit` and `rules`. `limit` caps the posts (default 100) and
+	//     `data.has_more` says whether Reddit has more. Private and quarantined
+	//     subreddits return `WEBSITE_ACCESS_ERROR`.
+	//   - `reddit-user`: Profile URLs (`reddit.com/user/{username}` or
+	//     `reddit.com/u/{username}`, optionally followed by `/overview`, `/submitted`,
+	//     or `/comments`, with `sort` set to `new`, `hot`, `top`, or `controversial` and
+	//     `t` setting the time range of `top` and `controversial`, default `all`).
+	//     Returns `data.user` (`id`, `username`, `display_name`, bio, `created_at`,
+	//     total, post, comment, awardee, and awarder karma, avatar and banner URLs, and
+	//     verified, suspended, employee, moderator, premium, and NSFW flags),
+	//     `data.trophies` (`name`, `description`, `icon_url`, `granted_at`, `url`),
+	//     `data.moderated_communities` (`name`, `title`, `url`, `subscriber_count`,
+	//     `icon_url`, `is_nsfw`), `data.posts` in the `reddit-post` shape, and
+	//     `data.comments`, each with `id`, `author`, `body` (Markdown), `score`,
+	//     `posted_at`, `edited_at`, `url`, `subreddit`, `parent_id` (`null` for a
+	//     top-level comment), `is_submitter`, `is_stickied`, `distinguished`,
+	//     `award_count`, and the post it was left on (`id`, `title`, `url`, `author`,
+	//     `is_nsfw`). The overview tab returns both posts and comments; `submitted`
+	//     returns `null` comments and `comments` returns `null` posts. `limit` caps
+	//     posts and comments together (default 100) and `data.has_more` says whether
+	//     Reddit has more. Users who hide their activity return empty lists, and
+	//     suspended accounts return their profile with `null` posts and comments.
+	//   - `yelp-search`: Yelp search URLs with `find_desc` and `find_loc`; `start` sets
+	//     the result offset. Returns up to 20 ranked organic businesses in
+	//     `data.businesses`, with `total` and `pagination`.
+	//   - `yelp-reviews`: Yelp business URLs (`yelp.com/biz/{alias}`); optional `start`
+	//     sets the offset. Returns up to 20 of the latest public reviews, always newest
+	//     first, in `data.reviews`, with business details and `pagination.next_offset`.
+	//     Each review has rating, full text, `updated_at`, and author (`id` from the
+	//     reviewer profile URL, `url` linking to that profile, `name`, `location`, and
+	//     `review_count`); owner replies and photos are not included. Unsupported sort
+	//     and review filters are rejected; tracking parameters are ignored.
+	//   - `tripadvisor-reviews`: Tripadvisor hotel, restaurant, and attraction review
+	//     URLs (`tripadvisor.com/Hotel_Review-g{geo}-d{id}-Reviews-….html`, on any
+	//     Tripadvisor country domain); `-or{N}-` in the path sets the offset. Returns 20
+	//     reviews in `data.reviews` in the order Tripadvisor shows them, with
+	//     `data.location` (`id`, `name`, `type`, `url`, `review_count`) and
+	//     `pagination.next_offset`. Each review has `id`, `url`, `title`, full text,
+	//     `rating`, `language`, `published_at`, `visit_month`, `helpful_votes`,
+	//     `subratings`, `photo_urls`, `owner_response` (`text`, `published_at`,
+	//     `author_name`), and `author` (`id`, `username`, `name`, `url`,
+	//     `contribution_count`). An unknown location returns no reviews.
+	//   - `car-rental-availability`: avis.com and budget.com vehicle-availability search
+	//     URLs. Returns every vehicle with pay-now and pay-later prices in
+	//     `data.vehicles`.
+	//   - `car-rental-locations`: avis.com and budget.com `/locations?keyword=` URLs.
+	//     Returns rental branches with codes, addresses, coordinates, and hours in
+	//     `data.locations`.
+	//   - `emails`: Any page. Returns its email addresses in `data.emails`
+	//     (`[{ email }]`), read from `mailto:` links, Cloudflare-protected addresses,
+	//     and visible text.
+	//   - `phone-numbers`: Any page. Returns its valid phone numbers in E.164 format in
+	//     `data.phone_numbers` (`[{ phone }]`), read from `tel:` links and visible text.
+	//     Numbers without a country code are read for the country of the site TLD (US by
+	//     default).
+	//   - `links`: Any page. Returns its unique HTTP and HTTPS links as absolute URLs in
+	//     `data.links` (`[{ url, text }]`). `text` falls back to `aria-label` or image
+	//     alt text and is `null` when a link has none.
 	//
 	// Any of "google-maps", "google-maps-reviews", "google-play",
 	// "google-play-reviews", "app-store", "app-store-reviews", "g2-reviews",
@@ -8118,14 +6903,13 @@ type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingParseParamsPrebuiltPa
 	// "tripadvisor-reviews", "car-rental-availability", "car-rental-locations",
 	// "emails", "phone-numbers", "links".
 	Parser string `json:"parser,omitzero" api:"required"`
-	// google-maps-reviews and reddit parsers only. Maximum number of reviews
-	// (google-maps-reviews, default 100), comments (reddit-post, default 100), or
-	// results (reddit-search, reddit-subreddit, and reddit-user, default 100) to
-	// return; maximum 1000.
+	// Maximum number of reviews (`google-maps-reviews`, default 100), comments
+	// (`reddit-post`, default 100), or results (`reddit-search`, `reddit-subreddit`,
+	// and `reddit-user`, default 100) to return. Only these parsers accept it.
 	Limit param.Opt[int64] `json:"limit,omitzero"`
-	// google-maps-reviews only. Order of data.reviews. newest, relevant, highest, and
-	// lowest follow Google; oldest returns the earliest reviews first, which Google
-	// itself does not offer.
+	// Order of `data.reviews` for `google-maps-reviews`. `newest`, `relevant`,
+	// `highest`, and `lowest` use the same orders as Google Maps; `oldest` returns the
+	// earliest reviews first.
 	//
 	// Any of "newest", "oldest", "relevant", "highest", "lowest".
 	Sort string `json:"sort,omitzero"`
@@ -8153,7 +6937,7 @@ func init() {
 	)
 }
 
-// Product options. Requires formats.product: true.
+// Options for the `product` output. Requires `formats.product: true`.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingProductParams struct {
 	// Drop visually duplicate product images, keeping the largest copy.
 	DedupeImages param.Opt[bool] `json:"dedupeImages,omitzero"`
@@ -8172,9 +6956,9 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingProductParams) Un
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Screenshot options. Requires formats.screenshot: true.
+// Options for the `screenshot` output. Requires `formats.screenshot: true`.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingScreenshotParams struct {
-	// What to capture: `viewport`, `fullPage`, one element, or a rectangle. Max 40
+	// What to capture: `viewport`, `fullPage`, one element, or a rectangle. Up to 40
 	// megapixels.
 	Area BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingScreenshotParamsAreaUnion `json:"area,omitzero"`
 	// Image format for the screenshot.
@@ -8238,7 +7022,7 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingScreenshotParamsA
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pixels from the document origin.
+// Rectangle to capture, in pixels from the document origin.
 //
 // The properties Height, Width, X, Y are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingScreenshotParamsAreaRectangle struct {
@@ -8263,47 +7047,51 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingScreenshotParamsA
 
 // Browser and content settings shared by all outputs.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParams struct {
-	// Proxy country as a two-letter code, such as `US`. Case-insensitive.
+	// Country to fetch from, as an ISO 3166-1 alpha-2 code such as `US`.
+	// Case-insensitive.
 	Country param.Opt[string] `json:"country,omitzero"`
 	// Accept cookie banners before actions and capture.
 	DismissCookies param.Opt[bool] `json:"dismissCookies,omitzero"`
 	// Close other popups before actions and capture.
 	DismissPopups param.Opt[bool] `json:"dismissPopups,omitzero"`
-	// Keep only the main content. Doesn't affect `screenshot`, `bytes`, or `product`.
+	// Keep only the main content, without navigation, headers, footers, or sidebars.
+	// Does not affect `screenshot`, `bytes`, or `product`.
 	MainContentOnly param.Opt[bool] `json:"mainContentOnly,omitzero"`
 	// Wait for CSS animations to finish before capture. Defaults to `true` when
-	// `screenshot` is requested.
+	// `formats.screenshot` is `true`.
 	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
-	// Browser steps run in order before capture. Requires a paid plan. Skips the
+	// Browser steps to run in order before capture. Requires a paid plan. Skips the
 	// cache.
 	Actions []BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActionUnion `json:"actions,omitzero"`
 	// Remove elements matching these CSS selectors. Overrides `includeSelectors`.
 	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
 	// HTTP headers to send to the target site. Requests with headers skip the cache.
 	Headers map[string]string `json:"headers,omitzero"`
-	// Which iframe contents to include in HTML and text outputs. Screenshots always
-	// show visible frames. `auto` (default) inlines only iframes that hold page
-	// content, such as same-site documents, framesets, job boards, forms and embedded
-	// documents, and skips ads and widgets. `true` inlines every iframe. `false`
-	// inlines none.
+	// Which iframes to inline in HTML and text outputs. Screenshots always show
+	// visible frames. `auto` inlines only iframes that hold page content, such as
+	// same-site documents, framesets, job boards, forms, and embedded documents, and
+	// skips ads and widgets. `true` inlines every iframe; `false` inlines none.
 	IncludeFrames BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesUnion `json:"includeFrames,omitzero"`
 	// Keep only elements matching these CSS selectors.
 	IncludeSelectors []string `json:"includeSelectors,omitzero"`
-	// Document parsing options.
+	// Options for parsing documents such as PDFs.
 	Parsers BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsParsers `json:"parsers,omitzero"`
-	// Create or reuse an authenticated browser profile. Requires a paid plan and an
-	// HTTPS target. Profiles persist session state, bypass shared caches, and cannot
-	// be combined with ZDR, custom headers, raw bytes, or prebuilt parsers.
+	// Scrape as a signed-in user. Create a profile with `type: "new"` and your
+	// credentials, then reuse it with `type: "existing"`. Requires a paid plan and an
+	// HTTPS URL. Profiles keep their session between requests, skip the cache, and
+	// cannot be combined with ZDR, custom headers, `formats.bytes`, or prebuilt
+	// parsers other than `emails`, `phone-numbers`, and `links`.
 	Profile BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsProfileUnion `json:"profile,omitzero"`
 	// Emulate a light or dark color scheme.
 	//
 	// Any of "light", "dark".
 	Theme string `json:"theme,omitzero"`
-	// Browser size in pixels. Omit for 1920 × 1080. When provided, missing dimensions
-	// default to 1440 × 900.
+	// Browser viewport in pixels. Defaults to 1920 × 1080. If you pass `viewport`, a
+	// missing `width` defaults to 1440 and a missing `height` to 900.
 	Viewport BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsViewport `json:"viewport,omitzero"`
-	// Milliseconds, or a CSS selector to wait for, after actions. Defaults to 500
-	// (2000 with frames or XML).
+	// Time to wait after actions, in milliseconds, or a CSS selector to wait for.
+	// Defaults to 500 ms, or 2000 ms when `includeFrames` is `true` or the URL ends in
+	// `.xml`.
 	WaitFor BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsWaitForUnion `json:"waitFor,omitzero"`
 	paramObj
 }
@@ -8354,7 +7142,7 @@ func init() {
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActionPerform struct {
 	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
-	// Use `perform` for a plain-language browser instruction.
+	// Follow a plain-language instruction.
 	//
 	// This field can be elided, and will marshal its zero value as "perform".
 	Type constant.Perform `json:"type" default:"perform"`
@@ -8373,15 +7161,16 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActio
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActionScroll struct {
 	// Maximum number of scroll steps for this action.
 	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
-	// Scroll this container. Omit to scroll the page.
+	// CSS selector of the container to scroll. Omit to scroll the page.
 	Selector param.Opt[string] `json:"selector,omitzero"`
-	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
+	// Distance per scroll step: a number of pixels, one `viewport`, or `max` to reach
+	// the end.
 	Amount BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActionScrollAmountUnion `json:"amount,omitzero"`
 	// Direction to scroll.
 	//
 	// Any of "down", "up", "left", "right".
 	Direction string `json:"direction,omitzero"`
-	// Use `scroll` to move through the page or a container.
+	// Scroll the page or a container.
 	//
 	// This field can be elided, and will marshal its zero value as "scroll".
 	Type constant.Scroll `json:"type" default:"scroll"`
@@ -8429,9 +7218,9 @@ const (
 
 // The properties Milliseconds, Type are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActionWait struct {
-	// Time to pause in milliseconds before the next action.
+	// How long to pause before the next action, in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// Use `wait` to pause for a fixed duration.
+	// Pause for a fixed time.
 	//
 	// This field can be elided, and will marshal its zero value as "wait".
 	Type constant.Wait `json:"type" default:"wait"`
@@ -8450,7 +7239,7 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActio
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsActionWaitFor struct {
 	// CSS selector to wait for before continuing.
 	Selector string `json:"selector" api:"required"`
-	// Use `waitFor` to wait for a matching element.
+	// Wait for an element matching `selector`.
 	//
 	// This field can be elided, and will marshal its zero value as "waitFor".
 	Type constant.WaitFor `json:"type" default:"waitFor"`
@@ -8489,9 +7278,9 @@ const (
 	BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesStringAuto BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsIncludeFramesString = "auto"
 )
 
-// Document parsing options.
+// Options for parsing documents such as PDFs.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsParsers struct {
-	// PDF page range and OCR.
+	// Page range, OCR, and page markers for PDFs.
 	Pdf BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsParsersPdf `json:"pdf,omitzero"`
 	paramObj
 }
@@ -8504,16 +7293,16 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsParse
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// PDF page range and OCR.
+// Page range, OCR, and page markers for PDFs.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsParsersPdf struct {
-	// Last page to parse. Must be at least `startPage`.
+	// Last page to parse. Defaults to the last page. Must be at least `startPage`.
 	EndPage param.Opt[int64] `json:"endPage,omitzero"`
-	// Start each page in the Markdown with a `<!-- page N -->` line using its original
-	// 1-based page number; these responses are never served from cache.
+	// Start each PDF page in the Markdown with a `<!-- page N -->` line, where `N` is
+	// the original 1-based page number. These responses are never served from cache.
 	IncludeNumberedPages param.Opt[bool] `json:"includeNumberedPages,omitzero"`
 	// First page to parse, starting at 1.
 	StartPage param.Opt[int64] `json:"startPage,omitzero"`
-	// Set `auto` to read scanned pages with OCR.
+	// Set to `auto` to read scanned pages with OCR. Adds 1 credit per page read.
 	//
 	// Any of "off", "auto".
 	Ocr string `json:"ocr,omitzero"`
@@ -8560,7 +7349,7 @@ func init() {
 
 // The properties ProfileID, Type are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsProfileExisting struct {
-	// The ID returned in profile.id by an earlier scrape.
+	// ID of the browser profile, from `profile.id` in an earlier scrape response.
 	ProfileID string `json:"profileId" api:"required"`
 	// Reuse a saved browser profile.
 	//
@@ -8579,13 +7368,13 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsProfi
 
 // The properties Identifier, Password, Type are required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsProfileNew struct {
-	// Username or email for the target website.
+	// Username or email address for the website.
 	Identifier string `json:"identifier" api:"required"`
-	// Password used to sign in. It is never stored in the profile.
+	// Password for the website. Used to sign in and never stored.
 	Password string `json:"password" api:"required"`
-	// Optional label shown when listing profiles with `GET /org/browser/profiles`.
+	// Label for the profile, shown by `GET /org/browser/profiles`.
 	Description param.Opt[string] `json:"description,omitzero"`
-	// Sign in and create a browser profile.
+	// Sign in and save a new browser profile.
 	//
 	// This field can be elided, and will marshal its zero value as "new".
 	Type constant.New `json:"type" default:"new"`
@@ -8600,8 +7389,8 @@ func (r *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsProfi
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Browser size in pixels. Omit for 1920 × 1080. When provided, missing dimensions
-// default to 1440 × 900.
+// Browser viewport in pixels. Defaults to 1920 × 1080. If you pass `viewport`, a
+// missing `width` defaults to 1440 and a missing `height` to 900.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsViewport struct {
 	// Browser viewport height in pixels.
 	Height param.Opt[int64] `json:"height,omitzero"`
@@ -8634,18 +7423,18 @@ func (u *BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingSharedParamsWaitF
 	return apijson.UnmarshalRoot(data, u)
 }
 
-// Deadline for each page, using the same behavior and defaults as POST
-// /web/scrape.
+// Time limit for each page, with the same behavior and defaults as in
+// `POST /web/scrape`.
 //
 // The property Milliseconds is required.
 type BatchSubmitParamsInputCrawlDataCrawlWithScrapeAnythingTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag. "return-partial" requires at least 5000 ms.
-	// On POST /web/scrape, an output that is not ready in time fails with error_code
-	// REQUEST_TIMEOUT inside a 200 response under either behavior; 408 is returned
-	// only when the whole request cannot respond by the deadline.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial. `return-partial` requires at
+	// least 5000 ms. On `POST /web/scrape`, an output that is not ready in time fails
+	// with `REQUEST_TIMEOUT` inside a 200 response under either behavior; 408 means
+	// the whole request could not respond by the deadline.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -8666,15 +7455,1286 @@ func init() {
 	)
 }
 
-// Where to send the batch's final-status event. Omit `retry` for one attempt; `{}`
-// uses the default retry schedule.
+// Crawl pages and return Markdown.
+//
+// Deprecated: deprecated
+//
+// The properties Format, Source are required.
+type BatchSubmitParamsInputCrawlDataMarkdown struct {
+	// Return page content as Markdown.
+	//
+	// Any of "markdown".
+	Format string `json:"format,omitzero" api:"required"`
+	// How to find pages to crawl.
+	Source BatchSubmitParamsInputCrawlDataMarkdownSourceUnion `json:"source,omitzero" api:"required"`
+	// Options for Markdown output.
+	Options BatchSubmitParamsInputCrawlDataMarkdownOptions `json:"options,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdown) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdown
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdown) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataMarkdown](
+		"format", "markdown",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceUnion struct {
+	OfStartURL *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL `json:",omitzero,inline"`
+	OfSitemap  *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfStartURL, u.OfSitemap)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceUnion](
+		"type",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL]("start_url"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap]("sitemap"),
+	)
+}
+
+// Discover pages by following links from one URL.
+//
+// The properties Type, URL are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL struct {
+	// Page where crawling begins. A URL without a scheme is treated as `https://`.
+	URL string `json:"url" api:"required"`
+	// Limits and filters for page discovery.
+	Controls BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls `json:"controls,omitzero"`
+	// Follow links from one URL.
+	//
+	// This field can be elided, and will marshal its zero value as "start_url".
+	Type constant.StartURL `json:"type" default:"start_url"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURL) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for page discovery.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls struct {
+	// Follow links to subdomains.
+	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
+	// Maximum link depth, where the start page is depth `0`. No limit when omitted.
+	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
+	// Maximum number of pages to fetch, up to 100,000. Credits are reserved for this
+	// many pages and the unused part is refunded.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// Pages to skip entirely, even when they match `follow` or `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
+	// Links to follow from each page; every followed page is checked for links again.
+	// Follows all links when omitted.
+	Follow []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
+	// Only follow pages in these languages, or pass `same_as_start_url` to match the
+	// start page. Follows all languages when omitted.
+	Languages BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
+	// Pages to return in the results. Returns every fetched page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion struct {
+	OfRegex      *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex      `json:",omitzero,inline"`
+	OfPagination *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination `json:",omitzero,inline"`
+	OfProduct    *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct    `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfPagination, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination]("pagination"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination{
+		Kind: "pagination",
+	}
+}
+
+// Further pages of a paginated list, such as page 2 of a catalog.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination struct {
+	// Match the further pages of a paginated list.
+	Kind constant.Pagination `json:"kind" default:"pagination"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowPagination) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsFollowProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion struct {
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString)
+	OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString         param.Opt[string] `json:",omitzero,inline"`
+	OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesArrayItemArray []string          `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString, u.OfBatchSubmitsInputCrawlDataMarkdownSourceStartURLControlsLanguagesArrayItemArray)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString string
+
+const (
+	BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsLanguagesString = "same_as_start_url"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceStartURLControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scrape the pages listed in a domain's sitemap. Links on those pages are not
+// followed.
+//
+// The properties Domain, Type are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap struct {
+	// Domain whose sitemap lists the pages to scrape. A full URL is reduced to its
+	// domain.
+	Domain string `json:"domain" api:"required"`
+	// Limits and filters for the sitemap URLs. Links on sitemap pages are never
+	// followed.
+	Controls BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls `json:"controls,omitzero"`
+	// Scrape the URLs in the domain's sitemap.
+	//
+	// This field can be elided, and will marshal its zero value as "sitemap".
+	Type constant.Sitemap `json:"type" default:"sitemap"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemap) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for the sitemap URLs. Links on sitemap pages are never
+// followed.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls struct {
+	// Maximum number of pages to fetch, up to 100,000. Credits are reserved for this
+	// many pages and the unused part is refunded.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// Sitemap pages to skip, even when they match `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
+	// Path fragments that exclude a sitemap URL. Applies in addition to `scrape` and
+	// `exclude`; pass `[]` to keep every listed URL.
+	ExcludePaths []string `json:"excludePaths,omitzero"`
+	// Sitemap pages to return in the results. Returns every listed page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct() BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownSourceSitemapControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Options for Markdown output.
+type BatchSubmitParamsInputCrawlDataMarkdownOptions struct {
+	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
+	// year (31536000000 ms). `0` fetches fresh.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Also return each page's HTML in `html`.
+	IncludeHTML param.Opt[bool] `json:"includeHTML,omitzero"`
+	// Include image references in the Markdown (`html-conversion` only).
+	IncludeImages param.Opt[bool] `json:"includeImages,omitzero"`
+	// Include links in the Markdown (`html-conversion` only).
+	IncludeLinks param.Opt[bool] `json:"includeLinks,omitzero"`
+	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
+	// Shorten inline base64 image data (`html-conversion` only).
+	ShortenBase64Images param.Opt[bool] `json:"shortenBase64Images,omitzero"`
+	// Return the main content without navigation or footers.
+	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
+	// so an element matching both is removed.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Keep only elements matching these CSS selectors. Filtered pages ignore
+	// `maxAgeMs`.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
+	// Country to fetch from, as an ISO 3166-1 alpha-2 code.
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country string `json:"country,omitzero"`
+	// Whether to parse PDFs and which pages to read.
+	Pdf BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf `json:"pdf,omitzero"`
+	// Markdown sources in order of preference: `html-conversion` converts the page
+	// HTML, `markdown-direct` uses Markdown the site publishes.
+	//
+	// Any of "html-conversion", "markdown-direct".
+	SourcePreference []string `json:"sourcePreference,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataMarkdownOptions](
+		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
+	)
+}
+
+// Whether to parse PDFs and which pages to read.
+type BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf struct {
+	// Last page to parse. Defaults to the last page. Must be at least `start`.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// Read scanned PDF pages with OCR. Pages that already have text are kept as is.
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
+	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First page to parse, starting at 1.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataMarkdownOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Crawl pages and return HTML.
+//
+// Deprecated: deprecated
+//
+// The properties Format, Source are required.
+type BatchSubmitParamsInputCrawlDataHTML struct {
+	// Return page content as HTML.
+	//
+	// Any of "html".
+	Format string `json:"format,omitzero" api:"required"`
+	// How to find pages to crawl.
+	Source BatchSubmitParamsInputCrawlDataHTMLSourceUnion `json:"source,omitzero" api:"required"`
+	// Options for HTML output.
+	Options BatchSubmitParamsInputCrawlDataHTMLOptions `json:"options,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTML) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTML
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTML) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataHTML](
+		"format", "html",
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceUnion struct {
+	OfStartURL *BatchSubmitParamsInputCrawlDataHTMLSourceStartURL `json:",omitzero,inline"`
+	OfSitemap  *BatchSubmitParamsInputCrawlDataHTMLSourceSitemap  `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfStartURL, u.OfSitemap)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceUnion](
+		"type",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURL]("start_url"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemap]("sitemap"),
+	)
+}
+
+// Discover pages by following links from one URL.
+//
+// The properties Type, URL are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURL struct {
+	// Page where crawling begins. A URL without a scheme is treated as `https://`.
+	URL string `json:"url" api:"required"`
+	// Limits and filters for page discovery.
+	Controls BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls `json:"controls,omitzero"`
+	// Follow links from one URL.
+	//
+	// This field can be elided, and will marshal its zero value as "start_url".
+	Type constant.StartURL `json:"type" default:"start_url"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURL) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURL
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURL) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for page discovery.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls struct {
+	// Follow links to subdomains.
+	FollowSubdomains param.Opt[bool] `json:"followSubdomains,omitzero"`
+	// Maximum link depth, where the start page is depth `0`. No limit when omitted.
+	MaxDepth param.Opt[int64] `json:"maxDepth,omitzero"`
+	// Maximum number of pages to fetch, up to 100,000. Credits are reserved for this
+	// many pages and the unused part is refunded.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// Pages to skip entirely, even when they match `follow` or `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion `json:"exclude,omitzero"`
+	// Links to follow from each page; every followed page is checked for links again.
+	// Follows all links when omitted.
+	Follow []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion `json:"follow,omitzero"`
+	// Only follow pages in these languages, or pass `same_as_start_url` to match the
+	// start page. Follows all languages when omitted.
+	Languages BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion `json:"languages,omitzero"`
+	// Pages to return in the results. Returns every fetched page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion `json:"scrape,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion struct {
+	OfRegex      *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex      `json:",omitzero,inline"`
+	OfPagination *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination `json:",omitzero,inline"`
+	OfProduct    *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct    `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfPagination, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination]("pagination"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination{
+		Kind: "pagination",
+	}
+}
+
+// Further pages of a paginated list, such as page 2 of a catalog.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination struct {
+	// Match the further pages of a paginated list.
+	Kind constant.Pagination `json:"kind" default:"pagination"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowPagination) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsFollowProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion struct {
+	// Check if union is this variant with
+	// !param.IsOmitted(union.OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesString)
+	OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesString         param.Opt[string] `json:",omitzero,inline"`
+	OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesArrayItemArray []string          `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesString, u.OfBatchSubmitsInputCrawlDataHTMLSourceStartURLControlsLanguagesArrayItemArray)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesString string
+
+const (
+	BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesStringSameAsStartURL BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsLanguagesString = "same_as_start_url"
+)
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceStartURLControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Scrape the pages listed in a domain's sitemap. Links on those pages are not
+// followed.
+//
+// The properties Domain, Type are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemap struct {
+	// Domain whose sitemap lists the pages to scrape. A full URL is reduced to its
+	// domain.
+	Domain string `json:"domain" api:"required"`
+	// Limits and filters for the sitemap URLs. Links on sitemap pages are never
+	// followed.
+	Controls BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls `json:"controls,omitzero"`
+	// Scrape the URLs in the domain's sitemap.
+	//
+	// This field can be elided, and will marshal its zero value as "sitemap".
+	Type constant.Sitemap `json:"type" default:"sitemap"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemap) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemap
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemap) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Limits and filters for the sitemap URLs. Links on sitemap pages are never
+// followed.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls struct {
+	// Maximum number of pages to fetch, up to 100,000. Credits are reserved for this
+	// many pages and the unused part is refunded.
+	MaxURLs param.Opt[int64] `json:"maxUrls,omitzero"`
+	// Sitemap pages to skip, even when they match `scrape`.
+	Exclude []BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion `json:"exclude,omitzero"`
+	// Path fragments that exclude a sitemap URL. Applies in addition to `scrape` and
+	// `exclude`; pass `[]` to keep every listed URL.
+	ExcludePaths []string `json:"excludePaths,omitzero"`
+	// Sitemap pages to return in the results. Returns every listed page when omitted.
+	Scrape []BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion `json:"scrape,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControls) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsExcludeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion struct {
+	OfRegex   *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex   `json:",omitzero,inline"`
+	OfProduct *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfRegex, u.OfProduct)
+}
+func (u *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func init() {
+	apijson.RegisterUnion[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeUnion](
+		"kind",
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex]("regex"),
+		apijson.Discriminator[BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct]("product"),
+	)
+}
+
+// Pages whose URL matches a regex pattern.
+//
+// The properties Kind, Pattern are required.
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex struct {
+	// Regular expression matched against the page URL.
+	Pattern string `json:"pattern" api:"required"`
+	// Match pages by URL pattern.
+	//
+	// This field can be elided, and will marshal its zero value as "regex".
+	Kind constant.Regex `json:"kind" default:"regex"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeRegex) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct() BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct {
+	return BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct{
+		Kind: "product",
+	}
+}
+
+// Product detail pages.
+//
+// This struct has a constant value, construct it with
+// [NewBatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct].
+type BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct struct {
+	// Match product detail pages.
+	Kind constant.Product `json:"kind" default:"product"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLSourceSitemapControlsScrapeProduct) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Options for HTML output.
+type BatchSubmitParamsInputCrawlDataHTMLOptions struct {
+	// Maximum cache age in milliseconds. Defaults to 3 days (259200000 ms). Maximum: 1
+	// year (31536000000 ms). `0` fetches fresh.
+	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
+	// Wait for CSS animations to finish before extracting, on browser-rendered pages.
+	SettleAnimations param.Opt[bool] `json:"settleAnimations,omitzero"`
+	// Return the main content without navigation or footers.
+	UseMainContentOnly param.Opt[bool] `json:"useMainContentOnly,omitzero"`
+	// How long to wait after initial page load, in milliseconds. `0` waits 500 ms.
+	WaitForMs param.Opt[int64] `json:"waitForMs,omitzero"`
+	// Remove elements matching these CSS selectors. Applied after `includeSelectors`,
+	// so an element matching both is removed.
+	ExcludeSelectors []string `json:"excludeSelectors,omitzero"`
+	// Keep only elements matching these CSS selectors. Filtered pages ignore
+	// `maxAgeMs`.
+	IncludeSelectors []string `json:"includeSelectors,omitzero"`
+	// Country to fetch from, as an ISO 3166-1 alpha-2 code.
+	//
+	// Any of "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw",
+	// "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo",
+	// "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl",
+	// "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do",
+	// "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge",
+	// "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk",
+	// "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it",
+	// "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la",
+	// "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me",
+	// "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw",
+	// "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om",
+	// "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re",
+	// "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+	// "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th",
+	// "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+	// "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw".
+	Country string `json:"country,omitzero"`
+	// Whether to parse PDFs and which pages to read.
+	Pdf BatchSubmitParamsInputCrawlDataHTMLOptionsPdf `json:"pdf,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLOptions) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLOptions
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLOptions) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BatchSubmitParamsInputCrawlDataHTMLOptions](
+		"country", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "aw", "az", "ba", "bb", "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bw", "by", "bz", "ca", "cd", "cf", "cg", "ch", "ci", "cl", "cm", "cn", "co", "cr", "cv", "cw", "cy", "cz", "de", "dj", "dk", "dm", "do", "dz", "ec", "ee", "eg", "es", "et", "fi", "fj", "fr", "ga", "gb", "gd", "ge", "gf", "gg", "gh", "gm", "gn", "gp", "gq", "gr", "gt", "gu", "gw", "gy", "hk", "hn", "hr", "ht", "hu", "id", "ie", "il", "im", "in", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw", "ky", "kz", "la", "lb", "lc", "lk", "lr", "ls", "lt", "lu", "lv", "ly", "ma", "mc", "md", "me", "mf", "mg", "mk", "ml", "mm", "mn", "mo", "mq", "mr", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na", "nc", "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe", "pf", "pg", "ph", "pk", "pl", "pr", "ps", "pt", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "sv", "sx", "sy", "sz", "tc", "td", "tg", "th", "tj", "tl", "tm", "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz", "vc", "ve", "vg", "vi", "vn", "ye", "yt", "za", "zm", "zw",
+	)
+}
+
+// Whether to parse PDFs and which pages to read.
+type BatchSubmitParamsInputCrawlDataHTMLOptionsPdf struct {
+	// Last page to parse. Defaults to the last page. Must be at least `start`.
+	End param.Opt[int64] `json:"end,omitzero"`
+	// Read scanned PDF pages with OCR. Pages that already have text are kept as is.
+	Ocr param.Opt[bool] `json:"ocr,omitzero"`
+	// Parse PDF URLs. When false, PDFs fail with `PDF_SKIPPED`.
+	ShouldParse param.Opt[bool] `json:"shouldParse,omitzero"`
+	// First page to parse, starting at 1.
+	Start param.Opt[int64] `json:"start,omitzero"`
+	paramObj
+}
+
+func (r BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) MarshalJSON() (data []byte, err error) {
+	type shadow BatchSubmitParamsInputCrawlDataHTMLOptionsPdf
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BatchSubmitParamsInputCrawlDataHTMLOptionsPdf) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Webhook to notify when the batch finishes. Omit `retry` for a single attempt, or
+// pass `retry: {}` for the default retry schedule.
 //
 // The property URL is required.
 type BatchSubmitParamsWebhook struct {
-	// Public HTTP(S) URL that receives batch completion, failure, or cancellation
-	// events.
+	// Public HTTP or HTTPS URL that receives the `batch.completed`, `batch.failed`, or
+	// `batch.cancelled` event.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfigParam `json:"retry,omitzero"`
 	paramObj
 }

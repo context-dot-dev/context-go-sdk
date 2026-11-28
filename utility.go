@@ -14,6 +14,8 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
+// Prefetch brand and styleguide data so later lookups return sooner.
+//
 // UtilityService contains methods and other services that help with interacting
 // with the context.dev API.
 //
@@ -33,7 +35,8 @@ func NewUtilityService(opts ...option.RequestOption) (r UtilityService) {
 	return
 }
 
-// Queue brand or styleguide data so a later lookup can return sooner.
+// Start fetching a domain's brand or styleguide data in the background so a later
+// lookup returns faster. Accepts a domain or a work email.
 func (r *UtilityService) Prefetch(ctx context.Context, body UtilityPrefetchParams, opts ...option.RequestOption) (res *UtilityPrefetchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "utility/prefetch"
@@ -45,15 +48,15 @@ type UtilityPrefetchResponse struct {
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// The domain that was queued for prefetching
+	// Domain queued for prefetching.
 	Domain string `json:"domain"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata UtilityPrefetchResponseKeyMetadata `json:"key_metadata"`
-	// Success message
+	// Human-readable confirmation.
 	Message string `json:"message"`
 	// Always `ok` on success.
 	Status string `json:"status"`
-	// The type of prefetch that was queued, echoed from the request
+	// Data type that was queued, from the request.
 	//
 	// Any of "brand", "styleguide".
 	Type UtilityPrefetchResponseType `json:"type"`
@@ -80,7 +83,7 @@ func (r *UtilityPrefetchResponse) UnmarshalJSON(data []byte) error {
 type UtilityPrefetchResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -97,7 +100,7 @@ func (r *UtilityPrefetchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The type of prefetch that was queued, echoed from the request
+// Data type that was queued, from the request.
 type UtilityPrefetchResponseType string
 
 const (
@@ -106,19 +109,20 @@ const (
 )
 
 type UtilityPrefetchParams struct {
-	// Identifier of the target to prefetch. Provide exactly one of domain or email.
+	// Domain or work email to prefetch. Provide exactly one.
 	Identifier UtilityPrefetchParamsIdentifierUnion `json:"identifier,omitzero" api:"required"`
 	// Data to prefetch.
 	//
 	// Any of "brand", "styleguide".
 	Type UtilityPrefetchParamsType `json:"type,omitzero" api:"required"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
-	// Request deadline and what to return when it passes.
+	// Request deadline. The request fails with 408 when it passes.
 	TimeoutOpts UtilityPrefetchParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
 	paramObj
 }
@@ -151,7 +155,7 @@ func (u *UtilityPrefetchParamsIdentifierUnion) UnmarshalJSON(data []byte) error 
 //
 // The property Domain is required.
 type UtilityPrefetchParamsIdentifierByDomain struct {
-	// Domain, e.g. `stripe.com`.
+	// Domain to prefetch, such as `stripe.com`.
 	Domain string `json:"domain" api:"required"`
 	paramObj
 }
@@ -164,13 +168,12 @@ func (r *UtilityPrefetchParamsIdentifierByDomain) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Prefetch by email. The domain will be extracted and validated.
+// Prefetch by work email. Context.dev uses the email's domain.
 //
 // The property Email is required.
 type UtilityPrefetchParamsIdentifierByEmail struct {
-	// Email address to prefetch data for. The domain will be extracted from the email.
-	// Free email providers (gmail.com, yahoo.com, etc.) and disposable email addresses
-	// are not allowed.
+	// Work email whose domain to prefetch. Free email providers such as `gmail.com`
+	// and disposable addresses are rejected with 422.
 	Email string `json:"email" api:"required" format:"email"`
 	paramObj
 }
@@ -191,13 +194,13 @@ const (
 	UtilityPrefetchParamsTypeStyleguide UtilityPrefetchParamsType = "styleguide"
 )
 
-// Request deadline and what to return when it passes.
+// Request deadline. The request fails with 408 when it passes.
 //
 // The property Milliseconds is required.
 type UtilityPrefetchParamsTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// Only "fail" is supported: return 408 at the deadline.
+	// Only `fail` is supported: the request returns 408 at the deadline.
 	//
 	// Any of "fail".
 	Behavior string `json:"behavior,omitzero"`

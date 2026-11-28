@@ -20,6 +20,8 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
+// Convert uploaded files, such as PDFs and Office documents, into Markdown.
+//
 // ParseService contains methods and other services that help with interacting with
 // the context.dev API.
 //
@@ -39,10 +41,9 @@ func NewParseService(opts ...option.RequestOption) (r ParseService) {
 	return
 }
 
-// Convert uploaded file bytes into Markdown and optional HTML. WARC and WARC.GZ
-// archives combine HTTP response, resource, and conversion records in archive
-// order. Revisit and segmented records are skipped. Decoded WARC content is
-// limited to 50 MiB.
+// Convert a file to Markdown. Handles PDF, Word, Excel, PowerPoint, HTML, XML,
+// CSV, JSON, YAML, source code, subtitles, images, and WARC archives. Send the raw
+// bytes as the request body; set `ocr=true` to read scanned pages and images.
 func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseHandleParams, opts ...option.RequestOption) (res *ParseHandleResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	opts = append([]option.RequestOption{option.WithRequestBody("application/octet-stream", body)}, opts...)
@@ -52,16 +53,16 @@ func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseH
 }
 
 type ParseHandleResponse struct {
-	// Input bytes converted to GitHub Flavored Markdown
+	// The file content as GitHub Flavored Markdown.
 	Markdown string `json:"markdown" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Indicates success
+	// Always `true` for a successful parse.
 	//
 	// Any of true.
 	Success bool `json:"success" api:"required"`
-	// Detected content type used for parsing
+	// File type the input was parsed as.
 	//
 	// Any of "warc", "html", "xml", "json", "jsonl", "text", "csv", "tsv", "markdown",
 	// "yaml", "python", "java", "javascript", "php", "shell", "ruby", "typescript",
@@ -89,7 +90,7 @@ func (r *ParseHandleResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detected content type used for parsing
+// File type the input was parsed as.
 type ParseHandleResponseType string
 
 const (
@@ -141,7 +142,7 @@ const (
 type ParseHandleResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -159,23 +160,26 @@ func (r *ParseHandleResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type ParseHandleParams struct {
-	// Optional client identifier used for usage attribution.
+	// Client identifier for usage attribution.
 	Client param.Opt[string] `query:"client,omitzero" json:"-"`
-	// Include image references in Markdown output
+	// Include image references in the Markdown.
 	IncludeImages param.Opt[bool] `query:"includeImages,omitzero" json:"-"`
-	// Preserve hyperlinks in Markdown output
+	// Keep link URLs in the Markdown.
 	IncludeLinks param.Opt[bool] `query:"includeLinks,omitzero" json:"-"`
-	// Start each PDF page in the Markdown with a `<!-- page N -->` line, where N is
+	// Start each PDF page in the Markdown with a `<!-- page N -->` line, where `N` is
 	// the original 1-based page number.
 	IncludeNumberedPages param.Opt[bool] `query:"includeNumberedPages,omitzero" json:"-"`
-	// Read text from images and scanned PDF pages. PDF page ranges still apply.
+	// Read text from images and scanned PDF pages with OCR, within the `pdf` page
+	// range. Adds 1 credit per page read.
 	Ocr param.Opt[bool] `query:"ocr,omitzero" json:"-"`
-	// Shorten base64-encoded image data in the Markdown output
+	// Shorten inline base64 image data.
 	ShortenBase64Images param.Opt[bool] `query:"shortenBase64Images,omitzero" json:"-"`
-	// Extract only the main content from HTML-like inputs
+	// Keep only the main content, without navigation, headers, footers, or sidebars.
+	// Applies to HTML-like inputs.
 	UseMainContentOnly param.Opt[bool] `query:"useMainContentOnly,omitzero" json:"-"`
-	// Optional file extension hint, such as pdf, docx, xlsx, pptx, html, json, csv,
-	// md, py, rtf, jpg, png, txt, warc, or warc.gz.
+	// File type hint, such as `pdf`, `docx`, `xlsx`, `pptx`, `html`, `json`, `csv`,
+	// `md`, `py`, `rtf`, `jpg`, `png`, `txt`, `warc`, or `warc.gz`. Use it when the
+	// `Content-Type` header is missing or generic.
 	//
 	// Any of "warc", "warc.gz", "txt", "text", "md", "markdown", "html", "htm",
 	// "xhtml", "xml", "rss", "atom", "csv", "tsv", "yaml", "yml", "py", "java", "js",
@@ -186,9 +190,10 @@ type ParseHandleParams struct {
 	// "jpeg", "jpe", "png", "gif", "bmp", "tiff", "tif", "webp", "ppm", "pbm", "pgm",
 	// "pnm".
 	Extension ParseHandleParamsExtension `query:"extension,omitzero" json:"-"`
-	// PDF page-range options as a JSON object, e.g. {"start": 2, "end": 5}.
+	// PDF page range as a JSON object, such as `{"start": 2, "end": 5}`.
 	Pdf ParseHandleParamsPdf `query:"pdf,omitzero" json:"-"`
-	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
+	// Comma-separated labels for this request, such as `production,team-alpha`. Filter
+	// usage and request logs by them.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
 	// your organization has ZDR.
@@ -224,8 +229,9 @@ func (r ParseHandleParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Optional file extension hint, such as pdf, docx, xlsx, pptx, html, json, csv,
-// md, py, rtf, jpg, png, txt, warc, or warc.gz.
+// File type hint, such as `pdf`, `docx`, `xlsx`, `pptx`, `html`, `json`, `csv`,
+// `md`, `py`, `rtf`, `jpg`, `png`, `txt`, `warc`, or `warc.gz`. Use it when the
+// `Content-Type` header is missing or generic.
 type ParseHandleParamsExtension string
 
 const (
@@ -303,12 +309,11 @@ const (
 	ParseHandleParamsExtensionPnm      ParseHandleParamsExtension = "pnm"
 )
 
-// PDF page-range options as a JSON object, e.g. {"start": 2, "end": 5}.
+// PDF page range as a JSON object, such as `{"start": 2, "end": 5}`.
 type ParseHandleParamsPdf struct {
-	// Last PDF page to parse (1-based, inclusive). Defaults to the final page. Must
-	// be >= start.
+	// Last page to parse. Defaults to the last page. Must be at least `start`.
 	End param.Opt[int64] `query:"end,omitzero" json:"-"`
-	// First 1-based PDF page to parse.
+	// First page to parse, starting at 1.
 	Start param.Opt[int64] `query:"start,omitzero" json:"-"`
 	paramObj
 }

@@ -16,6 +16,9 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
+// Enrich a person from identity clues, or find people with a natural-language
+// query.
+//
 // PersonService contains methods and other services that help with interacting
 // with the context.dev API.
 //
@@ -35,8 +38,10 @@ func NewPersonService(opts ...option.RequestOption) (r PersonService) {
 	return
 }
 
-// Find a person from identity clues and return their profile with a match score.
-// Available on all plans; free or disposable email addresses return 422.
+// Match a person from a work email, a profile URL, or a name with company,
+// education, or location context, and get their profile with an identity-match
+// score from 0 to 100. The best candidate is returned even when the match is weak,
+// so set a score threshold for your workflow. `not_found` results are free.
 func (r *PersonService) Enrich(ctx context.Context, body PersonEnrichParams, opts ...option.RequestOption) (res *PersonEnrichResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "people/enrich"
@@ -44,7 +49,10 @@ func (r *PersonService) Enrich(ctx context.Context, body PersonEnrichParams, opt
 	return res, err
 }
 
-// Find people with a natural-language query.
+// Find people from a plain-language description, such as
+// `VPs of sales at solar companies in California`. Each result includes the
+// current role and employer, location, years of experience, skills, schools, and
+// public profile URLs. Pages with no matches are free.
 func (r *PersonService) Search(ctx context.Context, body PersonSearchParams, opts ...option.RequestOption) (res *PersonSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "people/search"
@@ -53,15 +61,15 @@ func (r *PersonService) Search(ctx context.Context, body PersonSearchParams, opt
 }
 
 type PersonEnrichResponse struct {
-	// The highest-scoring person candidate.
+	// The best-matching person, with an identity-match score.
 	Match PersonEnrichResponseMatchUnion `json:"match" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata PersonEnrichResponseKeyMetadata `json:"key_metadata"`
-	// True when the timeout ended processing and this response contains the usable
-	// data completed so far. Unfinished fields are omitted.
+	// `true` when the `timeoutOpts` deadline ended processing early. The response
+	// holds the data completed so far; unfinished fields are omitted.
 	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -235,11 +243,15 @@ func (r *PersonEnrichResponseMatchUnionScore) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The highest-scoring person candidate.
+// The best-matching person, with an identity-match score.
 type PersonEnrichResponseMatchCandidate struct {
+	// Profile of the matched person.
 	Person PersonEnrichResponseMatchCandidatePerson `json:"person" api:"required"`
-	Score  int64                                    `json:"score" api:"required"`
-	Status constant.Candidate                       `json:"status" default:"candidate"`
+	// Identity-match score from 0 to 100. Higher is a stronger match; weak candidates
+	// are still returned.
+	Score int64 `json:"score" api:"required"`
+	// Always `candidate` for a match.
+	Status constant.Candidate `json:"status" default:"candidate"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Person      respjson.Field
@@ -256,30 +268,43 @@ func (r *PersonEnrichResponseMatchCandidate) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Profile of the matched person.
 type PersonEnrichResponseMatchCandidatePerson struct {
-	// Whether the person's current role is known. `present` — current_role is
-	// populated. `none` — the work history explicitly shows every role has ended.
-	// `unknown` — our data sources could not confirm either way; treat a missing
-	// current_role as unverified rather than vacant.
+	// Whether the person's current role is known. `present` means `current_role` is
+	// filled in; `none` means the work history shows every role has ended; `unknown`
+	// means it could not be confirmed either way, so treat a missing `current_role` as
+	// unverified, not vacant.
 	//
 	// Any of "present", "none", "unknown".
-	CurrentRoleStatus string                                               `json:"current_role_status" api:"required"`
-	Education         []PersonEnrichResponseMatchCandidatePersonEducation  `json:"education" api:"required"`
-	Experience        []PersonEnrichResponseMatchCandidatePersonExperience `json:"experience" api:"required"`
-	Skills            []string                                             `json:"skills" api:"required"`
-	SocialURLs        []string                                             `json:"social_urls" api:"required" format:"uri"`
-	WebsiteURLs       []string                                             `json:"website_urls" api:"required" format:"uri"`
-	AvatarURL         string                                               `json:"avatar_url"`
-	Bio               string                                               `json:"bio"`
-	// When we last refreshed this profile from our data sources (ISO 8601).
-	CheckedAt   string                                              `json:"checked_at"`
+	CurrentRoleStatus string `json:"current_role_status" api:"required"`
+	// Education history.
+	Education []PersonEnrichResponseMatchCandidatePersonEducation `json:"education" api:"required"`
+	// Work history. Each entry has the same fields as `current_role`.
+	Experience []PersonEnrichResponseMatchCandidatePersonExperience `json:"experience" api:"required"`
+	// Professional skills.
+	Skills []string `json:"skills" api:"required"`
+	// Public profile URLs for the person.
+	SocialURLs []string `json:"social_urls" api:"required" format:"uri"`
+	// Other websites associated with the person.
+	WebsiteURLs []string `json:"website_urls" api:"required" format:"uri"`
+	// URL of the hosted profile picture. Omitted with zero data retention.
+	AvatarURL string `json:"avatar_url"`
+	// Short bio from the person's profile.
+	Bio string `json:"bio"`
+	// When Context.dev last refreshed the profile from its sources, as an ISO 8601
+	// timestamp.
+	CheckedAt string `json:"checked_at"`
+	// The person's current job. See `current_role_status` when it is missing.
 	CurrentRole PersonEnrichResponseMatchCandidatePersonCurrentRole `json:"current_role"`
-	Email       string                                              `json:"email" format:"email"`
-	// When the underlying profile data last changed in our data sources (ISO 8601).
+	// Email address of the person.
+	Email string `json:"email" format:"email"`
+	// When the profile data last changed at its sources, as an ISO 8601 timestamp.
 	// Omitted when unknown.
-	LastUpdated string                                           `json:"last_updated"`
-	Location    PersonEnrichResponseMatchCandidatePersonLocation `json:"location"`
-	Name        PersonEnrichResponseMatchCandidatePersonName     `json:"name"`
+	LastUpdated string `json:"last_updated"`
+	// Where the person is based.
+	Location PersonEnrichResponseMatchCandidatePersonLocation `json:"location"`
+	// Name of the person.
+	Name PersonEnrichResponseMatchCandidatePersonName `json:"name"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		CurrentRoleStatus respjson.Field
@@ -308,12 +333,18 @@ func (r *PersonEnrichResponseMatchCandidatePerson) UnmarshalJSON(data []byte) er
 }
 
 type PersonEnrichResponseMatchCandidatePersonEducation struct {
-	Institution  PersonEnrichResponseMatchCandidatePersonEducationInstitution `json:"institution" api:"required"`
-	Degree       string                                                       `json:"degree"`
-	Description  string                                                       `json:"description"`
-	EndDate      PersonEnrichResponseMatchCandidatePersonEducationEndDate     `json:"end_date"`
-	FieldOfStudy string                                                       `json:"field_of_study"`
-	StartDate    PersonEnrichResponseMatchCandidatePersonEducationStartDate   `json:"start_date"`
+	// School or university.
+	Institution PersonEnrichResponseMatchCandidatePersonEducationInstitution `json:"institution" api:"required"`
+	// Degree or qualification.
+	Degree string `json:"degree"`
+	// Description of the studies.
+	Description string `json:"description"`
+	// When the studies ended.
+	EndDate PersonEnrichResponseMatchCandidatePersonEducationEndDate `json:"end_date"`
+	// Subject or major studied.
+	FieldOfStudy string `json:"field_of_study"`
+	// When the studies started.
+	StartDate PersonEnrichResponseMatchCandidatePersonEducationStartDate `json:"start_date"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Institution  respjson.Field
@@ -333,8 +364,11 @@ func (r *PersonEnrichResponseMatchCandidatePersonEducation) UnmarshalJSON(data [
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// School or university.
 type PersonEnrichResponseMatchCandidatePersonEducationInstitution struct {
-	Name   string `json:"name" api:"required"`
+	// Name of the organization.
+	Name string `json:"name" api:"required"`
+	// Website domain of the organization. Omitted when unknown.
 	Domain string `json:"domain"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -353,9 +387,13 @@ func (r *PersonEnrichResponseMatchCandidatePersonEducationInstitution) Unmarshal
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// When the studies ended.
 type PersonEnrichResponseMatchCandidatePersonEducationEndDate struct {
-	Year  int64 `json:"year" api:"required"`
-	Day   int64 `json:"day"`
+	// Four-digit year.
+	Year int64 `json:"year" api:"required"`
+	// Day of the month. Omitted when unknown.
+	Day int64 `json:"day"`
+	// Month. Omitted when unknown.
 	Month int64 `json:"month"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -373,9 +411,13 @@ func (r *PersonEnrichResponseMatchCandidatePersonEducationEndDate) UnmarshalJSON
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// When the studies started.
 type PersonEnrichResponseMatchCandidatePersonEducationStartDate struct {
-	Year  int64 `json:"year" api:"required"`
-	Day   int64 `json:"day"`
+	// Four-digit year.
+	Year int64 `json:"year" api:"required"`
+	// Day of the month. Omitted when unknown.
+	Day int64 `json:"day"`
+	// Month. Omitted when unknown.
 	Month int64 `json:"month"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -396,13 +438,20 @@ func (r *PersonEnrichResponseMatchCandidatePersonEducationStartDate) UnmarshalJS
 }
 
 type PersonEnrichResponseMatchCandidatePersonExperience struct {
+	// Employer for this role.
 	Organization PersonEnrichResponseMatchCandidatePersonExperienceOrganization `json:"organization" api:"required"`
-	Title        string                                                         `json:"title" api:"required"`
-	Description  string                                                         `json:"description"`
-	EndDate      PersonEnrichResponseMatchCandidatePersonExperienceEndDate      `json:"end_date"`
-	IsCurrent    bool                                                           `json:"is_current"`
-	Location     string                                                         `json:"location"`
-	StartDate    PersonEnrichResponseMatchCandidatePersonExperienceStartDate    `json:"start_date"`
+	// Job title.
+	Title string `json:"title" api:"required"`
+	// Description of the role.
+	Description string `json:"description"`
+	// When the role ended.
+	EndDate PersonEnrichResponseMatchCandidatePersonExperienceEndDate `json:"end_date"`
+	// Whether the person still holds this role.
+	IsCurrent bool `json:"is_current"`
+	// Where the role is based.
+	Location string `json:"location"`
+	// When the role started.
+	StartDate PersonEnrichResponseMatchCandidatePersonExperienceStartDate `json:"start_date"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Organization respjson.Field
@@ -423,8 +472,11 @@ func (r *PersonEnrichResponseMatchCandidatePersonExperience) UnmarshalJSON(data 
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Employer for this role.
 type PersonEnrichResponseMatchCandidatePersonExperienceOrganization struct {
-	Name   string `json:"name" api:"required"`
+	// Name of the organization.
+	Name string `json:"name" api:"required"`
+	// Website domain of the organization. Omitted when unknown.
 	Domain string `json:"domain"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -443,9 +495,13 @@ func (r *PersonEnrichResponseMatchCandidatePersonExperienceOrganization) Unmarsh
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// When the role ended.
 type PersonEnrichResponseMatchCandidatePersonExperienceEndDate struct {
-	Year  int64 `json:"year" api:"required"`
-	Day   int64 `json:"day"`
+	// Four-digit year.
+	Year int64 `json:"year" api:"required"`
+	// Day of the month. Omitted when unknown.
+	Day int64 `json:"day"`
+	// Month. Omitted when unknown.
 	Month int64 `json:"month"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -465,9 +521,13 @@ func (r *PersonEnrichResponseMatchCandidatePersonExperienceEndDate) UnmarshalJSO
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// When the role started.
 type PersonEnrichResponseMatchCandidatePersonExperienceStartDate struct {
-	Year  int64 `json:"year" api:"required"`
-	Day   int64 `json:"day"`
+	// Four-digit year.
+	Year int64 `json:"year" api:"required"`
+	// Day of the month. Omitted when unknown.
+	Day int64 `json:"day"`
+	// Month. Omitted when unknown.
 	Month int64 `json:"month"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -487,14 +547,22 @@ func (r *PersonEnrichResponseMatchCandidatePersonExperienceStartDate) UnmarshalJ
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// The person's current job. See `current_role_status` when it is missing.
 type PersonEnrichResponseMatchCandidatePersonCurrentRole struct {
+	// Employer for this role.
 	Organization PersonEnrichResponseMatchCandidatePersonCurrentRoleOrganization `json:"organization" api:"required"`
-	Title        string                                                          `json:"title" api:"required"`
-	Description  string                                                          `json:"description"`
-	EndDate      PersonEnrichResponseMatchCandidatePersonCurrentRoleEndDate      `json:"end_date"`
-	IsCurrent    bool                                                            `json:"is_current"`
-	Location     string                                                          `json:"location"`
-	StartDate    PersonEnrichResponseMatchCandidatePersonCurrentRoleStartDate    `json:"start_date"`
+	// Job title.
+	Title string `json:"title" api:"required"`
+	// Description of the role.
+	Description string `json:"description"`
+	// When the role ended.
+	EndDate PersonEnrichResponseMatchCandidatePersonCurrentRoleEndDate `json:"end_date"`
+	// Whether the person still holds this role.
+	IsCurrent bool `json:"is_current"`
+	// Where the role is based.
+	Location string `json:"location"`
+	// When the role started.
+	StartDate PersonEnrichResponseMatchCandidatePersonCurrentRoleStartDate `json:"start_date"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Organization respjson.Field
@@ -515,8 +583,11 @@ func (r *PersonEnrichResponseMatchCandidatePersonCurrentRole) UnmarshalJSON(data
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Employer for this role.
 type PersonEnrichResponseMatchCandidatePersonCurrentRoleOrganization struct {
-	Name   string `json:"name" api:"required"`
+	// Name of the organization.
+	Name string `json:"name" api:"required"`
+	// Website domain of the organization. Omitted when unknown.
 	Domain string `json:"domain"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -535,9 +606,13 @@ func (r *PersonEnrichResponseMatchCandidatePersonCurrentRoleOrganization) Unmars
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// When the role ended.
 type PersonEnrichResponseMatchCandidatePersonCurrentRoleEndDate struct {
-	Year  int64 `json:"year" api:"required"`
-	Day   int64 `json:"day"`
+	// Four-digit year.
+	Year int64 `json:"year" api:"required"`
+	// Day of the month. Omitted when unknown.
+	Day int64 `json:"day"`
+	// Month. Omitted when unknown.
 	Month int64 `json:"month"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -557,9 +632,13 @@ func (r *PersonEnrichResponseMatchCandidatePersonCurrentRoleEndDate) UnmarshalJS
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// When the role started.
 type PersonEnrichResponseMatchCandidatePersonCurrentRoleStartDate struct {
-	Year  int64 `json:"year" api:"required"`
-	Day   int64 `json:"day"`
+	// Four-digit year.
+	Year int64 `json:"year" api:"required"`
+	// Day of the month. Omitted when unknown.
+	Day int64 `json:"day"`
+	// Month. Omitted when unknown.
 	Month int64 `json:"month"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -579,12 +658,18 @@ func (r *PersonEnrichResponseMatchCandidatePersonCurrentRoleStartDate) Unmarshal
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Where the person is based.
 type PersonEnrichResponseMatchCandidatePersonLocation struct {
-	City        string `json:"city"`
-	Country     string `json:"country"`
+	// City.
+	City string `json:"city"`
+	// Country name.
+	Country string `json:"country"`
+	// ISO 3166-1 alpha-2 country code.
 	CountryCode string `json:"country_code"`
-	Display     string `json:"display"`
-	Region      string `json:"region"`
+	// Location as a single display string.
+	Display string `json:"display"`
+	// State, province, or region.
+	Region string `json:"region"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		City        respjson.Field
@@ -603,10 +688,14 @@ func (r *PersonEnrichResponseMatchCandidatePersonLocation) UnmarshalJSON(data []
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Name of the person.
 type PersonEnrichResponseMatchCandidatePersonName struct {
+	// First or given name.
 	First string `json:"first"`
-	Full  string `json:"full"`
-	Last  string `json:"last"`
+	// Full name.
+	Full string `json:"full"`
+	// Last or family name.
+	Last string `json:"last"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		First       respjson.Field
@@ -623,10 +712,13 @@ func (r *PersonEnrichResponseMatchCandidatePersonName) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// No usable person candidate was found.
+// No usable candidate was found.
 type PersonEnrichResponseMatchNotFound struct {
-	Person any               `json:"person" api:"required"`
-	Score  any               `json:"score" api:"required"`
+	// Always `null`.
+	Person any `json:"person" api:"required"`
+	// Always `null`.
+	Score any `json:"score" api:"required"`
+	// Always `not_found` when no candidate exists.
 	Status constant.NotFound `json:"status" default:"not_found"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -648,7 +740,7 @@ func (r *PersonEnrichResponseMatchNotFound) UnmarshalJSON(data []byte) error {
 type PersonEnrichResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -673,7 +765,7 @@ type PersonSearchResponse struct {
 	Results []PersonSearchResponseResult `json:"results" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata PersonSearchResponseKeyMetadata `json:"key_metadata"`
-	// Pass as cursor to fetch the next page; null when there are no more results.
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
 	NextCursor string `json:"next_cursor" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -692,27 +784,28 @@ func (r *PersonSearchResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// A person matching your search; unavailable details are null or empty lists.
+// A person who matches your search. Unknown details are `null` or empty lists.
 type PersonSearchResponseResult struct {
 	// What the person does.
 	Description string `json:"description" api:"required"`
-	// Whether the person is currently a founder or co-founder.
+	// Whether the person is currently a founder or co-founder. `null` when unknown.
 	IsFounder bool `json:"is_founder" api:"required"`
 	// Where the person lives.
 	Location PersonSearchResponseResultLocation `json:"location" api:"required"`
 	// Full name.
 	Name string `json:"name" api:"required"`
-	// Public professional profile URLs.
+	// Public professional profile URLs. Send one to `POST /people/enrich` as
+	// `social_urls` for the full profile.
 	Profiles []string `json:"profiles" api:"required"`
-	// The person’s current role.
+	// The person's current role.
 	Role PersonSearchResponseResultRole `json:"role" api:"required"`
 	// Schools attended.
 	Schools []string `json:"schools" api:"required"`
 	// Professional skills.
 	Skills []string `json:"skills" api:"required"`
-	// Years of professional experience.
+	// Years of professional experience. `null` when unknown.
 	YearsOfExperience int64 `json:"years_of_experience" api:"required"`
-	// How well the person matches the query. Only returned in `ultra` mode.
+	// How well the person matches the query. Returned only in `ultra` mode.
 	Match PersonSearchResponseResultMatch `json:"match"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -741,7 +834,7 @@ func (r *PersonSearchResponseResult) UnmarshalJSON(data []byte) error {
 type PersonSearchResponseResultLocation struct {
 	// City.
 	City string `json:"city" api:"required"`
-	// Country as a two-letter code, such as US or GB.
+	// ISO 3166-1 alpha-2 country code, such as `US`.
 	CountryCode string `json:"country_code" api:"required"`
 	// State or region.
 	Region string `json:"region" api:"required"`
@@ -761,15 +854,15 @@ func (r *PersonSearchResponseResultLocation) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The person’s current role.
+// The person's current role.
 type PersonSearchResponseResultRole struct {
-	// Current employer, when known.
+	// Current employer. `null` when unknown.
 	Company PersonSearchResponseResultRoleCompany `json:"company" api:"required"`
-	// Areas of responsibility.
+	// Areas of responsibility, such as `sales`.
 	Functions []string `json:"functions" api:"required"`
-	// Seniority level.
+	// Seniority level, such as `executive`.
 	Seniority string `json:"seniority" api:"required"`
-	// Role start date (YYYY-MM-DD).
+	// When the role started, as `YYYY-MM-DD`.
 	StartedOn string `json:"started_on" api:"required"`
 	// Job title.
 	Title string `json:"title" api:"required"`
@@ -791,9 +884,9 @@ func (r *PersonSearchResponseResultRole) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current employer, when known.
+// Current employer. `null` when unknown.
 type PersonSearchResponseResultRoleCompany struct {
-	// The company’s website domain.
+	// Website domain of the company.
 	Domain string `json:"domain" api:"required"`
 	// Company name.
 	Name string `json:"name" api:"required"`
@@ -812,7 +905,7 @@ func (r *PersonSearchResponseResultRoleCompany) UnmarshalJSON(data []byte) error
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How well the person matches the query. Only returned in `ultra` mode.
+// How well the person matches the query. Returned only in `ultra` mode.
 type PersonSearchResponseResultMatch struct {
 	// How well the person matches the query, from 0 to 1.
 	Confidence float64 `json:"confidence" api:"required"`
@@ -834,7 +927,7 @@ func (r *PersonSearchResponseResultMatch) UnmarshalJSON(data []byte) error {
 type PersonSearchResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -852,22 +945,24 @@ func (r *PersonSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type PersonEnrichParams struct {
-	// Email address of the person to find.
+	// Work email address of the person. Free and disposable email providers
+	// return 422.
 	Email param.Opt[string] `json:"email,omitzero" format:"email"`
-	// Company context to help identify the person. Provide a name or domain.
+	// Company associated with the person. Send a `name`, a `domain`, or both.
 	Company PersonEnrichParamsCompany `json:"company,omitzero"`
 	// Education history to help distinguish people with similar names.
 	Education []PersonEnrichParamsEducation `json:"education,omitzero"`
-	// Location context to help identify the person. Provide a city, region, or
-	// country.
+	// Location associated with the person. Send at least one of `city`, `region`, or
+	// `country`.
 	Location PersonEnrichParamsLocation `json:"location,omitzero"`
-	// Person name. Without an email or person-profile URL, provide both first and last
-	// name plus company, education, or location.
+	// Name of the person. Without an email or profile URL, send both `first` and
+	// `last` plus `company`, `education`, or `location`.
 	Name PersonEnrichParamsName `json:"name,omitzero"`
-	// Public profile URLs for the person. A person-profile URL can identify the person
-	// without a name.
+	// Public profile URLs for the person. A person-profile URL is enough to identify
+	// them without a name.
 	SocialURLs []string `json:"social_urls,omitzero" format:"uri"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts PersonEnrichParamsTimeoutOpts `json:"timeoutOpts,omitzero"`
@@ -887,7 +982,7 @@ func (r *PersonEnrichParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Company context to help identify the person. Provide a name or domain.
+// Company associated with the person. Send a `name`, a `domain`, or both.
 type PersonEnrichParamsCompany struct {
 	// Website domain of a company associated with the person.
 	Domain param.Opt[string] `json:"domain,omitzero"`
@@ -941,8 +1036,8 @@ func (r *PersonEnrichParamsEducationInstitution) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Location context to help identify the person. Provide a city, region, or
-// country.
+// Location associated with the person. Send at least one of `city`, `region`, or
+// `country`.
 type PersonEnrichParamsLocation struct {
 	// City associated with the person.
 	City param.Opt[string] `json:"city,omitzero"`
@@ -961,8 +1056,8 @@ func (r *PersonEnrichParamsLocation) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Person name. Without an email or person-profile URL, provide both first and last
-// name plus company, education, or location.
+// Name of the person. Without an email or profile URL, send both `first` and
+// `last` plus `company`, `education`, or `location`.
 type PersonEnrichParamsName struct {
 	// First or given name.
 	First param.Opt[string] `json:"first,omitzero"`
@@ -985,8 +1080,8 @@ func (r *PersonEnrichParamsName) UnmarshalJSON(data []byte) error {
 type PersonEnrichParamsTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1017,21 +1112,23 @@ const (
 )
 
 type PersonSearchParams struct {
-	// Describe the people to find. Up to 500 characters in `fast` mode and 5000 in
-	// `ultra` mode.
+	// Plain-language description of the people to find. Up to 500 characters in `fast`
+	// mode and 5000 in `ultra` mode.
 	Query string `json:"query" api:"required"`
-	// Use next_cursor with the same query, mode and filters to fetch the next page.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page. Send the
+	// same `query`, `mode`, and `filters` with it.
 	Cursor param.Opt[string] `json:"cursor,omitzero"`
-	// Additional constraints every result must match.
+	// Constraints every result must match, in addition to `query`.
 	Filters PersonSearchParamsFilters `json:"filters,omitzero"`
-	// `fast` matches people on basic criteria (e.g. their role, location or
-	// background); `ultra` plans a deeper search, judges each candidate against every
-	// criterion in the query. Complex `ultra` searches can take up to 30 seconds to
-	// complete, so allow for that in your client timeout.
+	// `fast` matches people on basic criteria such as role, location, or background;
+	// `ultra` runs a deeper search, checks every candidate against each criterion in
+	// your query, and adds a `match` score. Complex `ultra` searches can take up to 30
+	// seconds, so set your client timeout to match.
 	//
 	// Any of "fast", "ultra".
 	Mode PersonSearchParamsMode `json:"mode,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	// `enabled` turns on zero data retention. Returns 403 `ZDR_NOT_ENABLED` unless
 	// your organization has ZDR.
@@ -1049,13 +1146,14 @@ func (r *PersonSearchParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Additional constraints every result must match.
+// Constraints every result must match, in addition to `query`.
 type PersonSearchParamsFilters struct {
 	// Maximum years of professional experience.
 	YearsOfExperienceMax param.Opt[int64] `json:"years_of_experience_max,omitzero"`
 	// Minimum years of professional experience.
 	YearsOfExperienceMin param.Opt[int64] `json:"years_of_experience_min,omitzero"`
-	// Countries people live in as two-letter codes, such as US or GB.
+	// Only return people who live in these countries, as ISO 3166-1 alpha-2 codes such
+	// as `US`.
 	Countries []string `json:"countries,omitzero"`
 	paramObj
 }
@@ -1068,10 +1166,10 @@ func (r *PersonSearchParamsFilters) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// `fast` matches people on basic criteria (e.g. their role, location or
-// background); `ultra` plans a deeper search, judges each candidate against every
-// criterion in the query. Complex `ultra` searches can take up to 30 seconds to
-// complete, so allow for that in your client timeout.
+// `fast` matches people on basic criteria such as role, location, or background;
+// `ultra` runs a deeper search, checks every candidate against each criterion in
+// your query, and adds a `match` score. Complex `ultra` searches can take up to 30
+// seconds, so set your client timeout to match.
 type PersonSearchParamsMode string
 
 const (

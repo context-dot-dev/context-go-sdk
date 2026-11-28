@@ -36,8 +36,9 @@ func NewScholarService(opts ...option.RequestOption) (r ScholarService) {
 	return
 }
 
-// Search full-text papers from arXiv and Europe PMC. Returns up to 250 relevant
-// papers with matching passages and full-text links.
+// Search the full text of papers from arXiv and Europe PMC by topic or question.
+// Each result includes the matching passage and a direct link to the full text.
+// Page through up to 250 matches, ranked by relevance or newest first.
 func (r *ScholarService) Search(ctx context.Context, body ScholarSearchParams, opts ...option.RequestOption) (res *ScholarSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "scholar/search"
@@ -46,13 +47,13 @@ func (r *ScholarService) Search(ctx context.Context, body ScholarSearchParams, o
 }
 
 type ScholarSearchResponse struct {
-	// Matching papers in the requested order.
+	// Papers on this page, in the requested order.
 	Data []ScholarSearchResponseData `json:"data" api:"required"`
-	// Whether another page is available.
+	// Whether more results are available after this page.
 	HasMore bool `json:"has_more" api:"required"`
-	// Page summary.
+	// Summary of this page.
 	Meta ScholarSearchResponseMeta `json:"meta" api:"required"`
-	// Cursor for the next page, or null on the last page.
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
 	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
@@ -79,21 +80,22 @@ func (r *ScholarSearchResponse) UnmarshalJSON(data []byte) error {
 }
 
 type ScholarSearchResponseData struct {
-	// Stable paper identifier.
+	// Unique ID of the paper.
 	ID string `json:"id" api:"required"`
-	// Format of the linked full text. jats is XML.
+	// Format of the full text at `full_text_url`. `jats` is JATS XML.
 	//
 	// Any of "pdf", "html", "jats".
 	FullTextFormat string `json:"full_text_format" api:"required"`
-	// Direct link to the full text.
+	// Direct URL of the full text.
 	FullTextURL string `json:"full_text_url" api:"required" format:"uri"`
-	// Publication time in ISO 8601, or null when unknown.
+	// When the paper was published. `null` when unknown.
 	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
-	// Matching passage, or opening passage for an ID-only query.
+	// Passage that matches the query, or the opening passage when the query is only a
+	// paper ID.
 	Snippet string `json:"snippet" api:"required"`
-	// Paper title.
+	// Title of the paper.
 	Title string `json:"title" api:"required"`
-	// Paper landing page.
+	// URL of the paper's landing page.
 	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -115,9 +117,9 @@ func (r *ScholarSearchResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Page summary.
+// Summary of this page.
 type ScholarSearchResponseMeta struct {
-	// Papers in this page.
+	// Number of papers on this page.
 	Count int64 `json:"count" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -137,7 +139,7 @@ func (r *ScholarSearchResponseMeta) UnmarshalJSON(data []byte) error {
 type ScholarSearchResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -155,21 +157,23 @@ func (r *ScholarSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type ScholarSearchParams struct {
-	// A topic or question. Append one arxiv:, pmcid:, pmid:, or doi: ID to search
-	// within an indexed paper.
+	// Topic or question to search for. Append one `arxiv:`, `pmcid:`, `pmid:`, or
+	// `doi:` ID to search within that paper, such as `protein folding pmid:34265844`,
+	// or send the ID on its own.
 	Query string `json:"query" api:"required"`
-	// Use next_cursor to fetch the next page.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `json:"cursor,omitzero"`
-	// Papers per page.
+	// Maximum number of papers to return per page.
 	Limit param.Opt[int64] `json:"limit,omitzero"`
 	// Filter by publication date.
 	FilterBy ScholarSearchParamsFilterBy `json:"filterBy,omitzero"`
-	// Order the top 250 matches. date_desc puts newest first, with undated papers
-	// last.
+	// `relevance` puts the closest matches first; `date_desc` puts the newest papers
+	// first, with undated papers last. Both orders apply to the top 250 matches.
 	//
 	// Any of "relevance", "date_desc".
 	Sort ScholarSearchParamsSort `json:"sort,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -214,8 +218,8 @@ func (r *ScholarSearchParamsFilterByDate) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Order the top 250 matches. date_desc puts newest first, with undated papers
-// last.
+// `relevance` puts the closest matches first; `date_desc` puts the newest papers
+// first, with undated papers last. Both orders apply to the top 250 matches.
 type ScholarSearchParamsSort string
 
 const (

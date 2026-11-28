@@ -16,6 +16,8 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
+// Extract structured data, competitors, styleguides, and fonts from any website.
+//
 // IndustryService contains methods and other services that help with interacting
 // with the context.dev API.
 //
@@ -121,7 +123,7 @@ func (r *IndustryGetNaicsResponseCode) UnmarshalJSON(data []byte) error {
 type IndustryGetNaicsResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -231,7 +233,7 @@ func (r *IndustryGetSicResponseCode) UnmarshalJSON(data []byte) error {
 type IndustryGetSicResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -258,7 +260,8 @@ type IndustryGetNaicsParams struct {
 	MaxResults param.Opt[int64] `query:"maxResults,omitzero" json:"-"`
 	// Minimum number of NAICS codes to return. Must be at least 1. Defaults to 1.
 	MinResults param.Opt[int64] `query:"minResults,omitzero" json:"-"`
-	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
+	// Comma-separated labels for this request, such as `production,team-alpha`. Filter
+	// usage and request logs by them.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts IndustryGetNaicsParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
@@ -284,8 +287,8 @@ func (r IndustryGetNaicsParams) URLQuery() (v url.Values, err error) {
 type IndustryGetNaicsParamsTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`
@@ -319,7 +322,8 @@ type IndustryGetSicParams struct {
 	MaxResults param.Opt[int64] `query:"maxResults,omitzero" json:"-"`
 	// Minimum number of SIC codes to return. Must be at least 1. Defaults to 1.
 	MinResults param.Opt[int64] `query:"minResults,omitzero" json:"-"`
-	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
+	// Comma-separated labels for this request, such as `production,team-alpha`. Filter
+	// usage and request logs by them.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts IndustryGetSicParamsTimeoutOpts `query:"timeoutOpts,omitzero" json:"-"`
@@ -349,8 +353,8 @@ func (r IndustryGetSicParams) URLQuery() (v url.Values, err error) {
 type IndustryGetSicParamsTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `query:"milliseconds" api:"required" json:"-"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `query:"behavior,omitzero" json:"-"`

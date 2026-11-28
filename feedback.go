@@ -14,7 +14,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
-// Report API issues and documentation mismatches.
+// Report bugs, wrong results, and docs mismatches to the Context.dev team.
 //
 // FeedbackService contains methods and other services that help with interacting
 // with the context.dev API.
@@ -35,8 +35,9 @@ func NewFeedbackService(opts ...option.RequestOption) (r FeedbackService) {
 	return
 }
 
-// Report an API issue or documentation mismatch, including request IDs when
-// available.
+// Report a bug, docs mismatch, or wrong result to the Context.dev team. Send
+// `request_id`, `url`, or both. Any API key can submit, and a repeat report for
+// the same `request_id` returns the original feedback.
 func (r *FeedbackService) Submit(ctx context.Context, body FeedbackSubmitParams, opts ...option.RequestOption) (res *FeedbackSubmitResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "feedback"
@@ -45,10 +46,10 @@ func (r *FeedbackService) Submit(ctx context.Context, body FeedbackSubmitParams,
 }
 
 type FeedbackSubmitResponse struct {
-	// True when feedback for this request_id was already recorded; the original
-	// feedback_id is returned.
+	// `true` when feedback for this `request_id` was already recorded. `feedback_id`
+	// is then the original ID.
 	AlreadySubmitted bool `json:"already_submitted" api:"required"`
-	// ID of the stored feedback.
+	// Unique ID of the feedback.
 	FeedbackID string `json:"feedback_id" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
@@ -76,7 +77,7 @@ func (r *FeedbackSubmitResponse) UnmarshalJSON(data []byte) error {
 type FeedbackSubmitResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -94,19 +95,23 @@ func (r *FeedbackSubmitResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type FeedbackSubmitParams struct {
-	// Kind of issue.
+	// Kind of issue. Use `quality_degradation` for wrong or incomplete results and
+	// `bad_brand` for wrong or outdated brand data, such as a logo or colors.
 	//
 	// Any of "bug", "docs_mismatch", "friction", "feature_gap", "quality_degradation",
 	// "bad_brand", "other".
 	Category FeedbackSubmitParamsCategory `json:"category,omitzero" api:"required"`
-	// What went wrong and what you expected instead.
+	// What went wrong and what you expected instead. Leave out API keys and personal
+	// data.
 	Note string `json:"note" api:"required"`
-	// The request_id of the API call the feedback is about, from its response body or
-	// X-Request-Id header.
+	// ID of the API call the feedback is about, from its `request_id` or
+	// `X-Request-Id` header. Send this, `url`, or both.
 	RequestID param.Opt[string] `json:"request_id,omitzero" format:"uuid"`
-	// The page the feedback is about, such as one page of a crawl or a docs page.
+	// URL the feedback is about, such as one page of a crawl or a docs page. Send
+	// this, `request_id`, or both.
 	URL param.Opt[string] `json:"url,omitzero" format:"uri"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -119,7 +124,8 @@ func (r *FeedbackSubmitParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Kind of issue.
+// Kind of issue. Use `quality_degradation` for wrong or incomplete results and
+// `bad_brand` for wrong or outdated brand data, such as a logo or colors.
 type FeedbackSubmitParamsCategory string
 
 const (

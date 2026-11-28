@@ -17,26 +17,34 @@ import (
 // interacting with the context.dev API. You should not instantiate this client
 // directly, and instead use the [NewClient] method instead.
 type Client struct {
-	options  []option.RequestOption
-	Parse    ParseService
-	Web      WebService
-	Brand    BrandService
+	options []option.RequestOption
+	// Convert uploaded files, such as PDFs and Office documents, into Markdown.
+	Parse ParseService
+	Web   WebService
+	// Retrieve a brand's logos, colors, company details, and social links, or find
+	// brands by name or domain.
+	Brand BrandService
+	// Extract structured data, competitors, styleguides, and fonts from any website.
 	Industry IndustryService
-	Utility  UtilityService
-	// Watch websites for exact or meaningful changes.
+	// Prefetch brand and styleguide data so later lookups return sooner.
+	Utility UtilityService
+	// Watch websites on a schedule for exact or meaningful changes.
 	Monitors MonitorService
-	// Scrape many pages or crawl a site asynchronously.
+	// Scrape up to 100,000 URLs or crawl a site asynchronously.
 	Batch    BatchService
 	Webhooks WebhookService
-	People   PersonService
-	// Search live and historical news about a company.
+	// Enrich a person from identity clues, or find people with a natural-language
+	// query.
+	People PersonService
+	// Search live and historical news by company or with a natural-language query.
 	News NewsService
 	// Search full-text academic papers from arXiv and Europe PMC.
 	Scholar ScholarService
-	// Read your organization's API request logs.
+	// Inspect your organization's API requests, including retained inputs and
+	// responses.
 	Logs    LogService
 	Browser BrowserService
-	// Report API issues and documentation mismatches.
+	// Report bugs, wrong results, and docs mismatches to the Context.dev team.
 	Feedback FeedbackService
 }
 

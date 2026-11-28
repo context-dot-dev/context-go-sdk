@@ -21,7 +21,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
-// Watch websites for exact or meaningful changes.
+// Watch websites on a schedule for exact or meaningful changes.
 //
 // MonitorService contains methods and other services that help with interacting
 // with the context.dev API.
@@ -42,8 +42,9 @@ func NewMonitorService(opts ...option.RequestOption) (r MonitorService) {
 	return
 }
 
-// Watch a page, URL inventory, or extracted website data on a schedule. A run
-// starts immediately to capture the baseline.
+// Watch a web page, a sitemap, data extracted from a site, or web search results
+// on a schedule, and get a webhook when something changes. Creating a monitor
+// queues its baseline run right away.
 func (r *MonitorService) New(ctx context.Context, body MonitorNewParams, opts ...option.RequestOption) (res *MonitorNewResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "monitors"
@@ -51,7 +52,7 @@ func (r *MonitorService) New(ctx context.Context, body MonitorNewParams, opts ..
 	return res, err
 }
 
-// Retrieve a monitor’s configuration and current state.
+// Retrieve a monitor's configuration, status, and current baseline.
 func (r *MonitorService) Get(ctx context.Context, monitorID string, opts ...option.RequestOption) (res *MonitorGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if monitorID == "" {
@@ -63,8 +64,8 @@ func (r *MonitorService) Get(ctx context.Context, monitorID string, opts ...opti
 	return res, err
 }
 
-// Update a monitor. Changing its target or change detection replaces the baseline
-// and queues a new baseline run.
+// Change a monitor's settings, or pause and resume it. Changing the target or
+// change detection replaces the baseline and queues a new baseline run.
 func (r *MonitorService) Update(ctx context.Context, monitorID string, body MonitorUpdateParams, opts ...option.RequestOption) (res *MonitorUpdateResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if monitorID == "" {
@@ -76,7 +77,8 @@ func (r *MonitorService) Update(ctx context.Context, monitorID string, body Moni
 	return res, err
 }
 
-// List your monitors with optional search and filters.
+// List your monitors, newest first. Search by name, URL, or instructions, and
+// filter by status, target type, detection type, or tags.
 func (r *MonitorService) List(ctx context.Context, query MonitorListParams, opts ...option.RequestOption) (res *MonitorListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "monitors"
@@ -84,7 +86,8 @@ func (r *MonitorService) List(ctx context.Context, query MonitorListParams, opts
 	return res, err
 }
 
-// Delete a monitor and stop future runs and webhook retries.
+// Delete a monitor along with its runs, changes, and baseline. Future runs and
+// pending webhook retries stop.
 func (r *MonitorService) Delete(ctx context.Context, monitorID string, opts ...option.RequestOption) (res *MonitorDeleteResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if monitorID == "" {
@@ -96,9 +99,9 @@ func (r *MonitorService) Delete(ctx context.Context, monitorID string, opts ...o
 	return res, err
 }
 
-// Return usage per monitor, highest first, for up to the 10,000 most recent runs
-// in the requested window. Pass `tag` to report only the monitors that carry that
-// tag, such as one customer’s monitors.
+// List credits charged per monitor, highest first, from up to the 10,000 most
+// recent runs in the time window. Pass `tag` to report on one group of monitors,
+// such as a single customer's.
 func (r *MonitorService) GetCreditUsage(ctx context.Context, query MonitorGetCreditUsageParams, opts ...option.RequestOption) (res *MonitorGetCreditUsageResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "monitors/credit-usage"
@@ -106,7 +109,7 @@ func (r *MonitorService) GetCreditUsage(ctx context.Context, query MonitorGetCre
 	return res, err
 }
 
-// Retrieve your organization’s monitor allowance and usage.
+// Retrieve how many monitors your organization has and how many your plan allows.
 func (r *MonitorService) GetLimits(ctx context.Context, opts ...option.RequestOption) (res *MonitorGetLimitsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "monitors/limits"
@@ -114,7 +117,8 @@ func (r *MonitorService) GetLimits(ctx context.Context, opts ...option.RequestOp
 	return res, err
 }
 
-// List full change records across your monitors, newest first.
+// List detected changes across all your monitors, newest first. Filter by monitor,
+// target type, detection type, tag, or time range.
 func (r *MonitorService) ListAccountChanges(ctx context.Context, query MonitorListAccountChangesParams, opts ...option.RequestOption) (res *MonitorListAccountChangesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "monitors/changes"
@@ -122,7 +126,7 @@ func (r *MonitorService) ListAccountChanges(ctx context.Context, query MonitorLi
 	return res, err
 }
 
-// List runs across your monitors, newest first.
+// List runs across all your monitors, newest first.
 func (r *MonitorService) ListAccountRuns(ctx context.Context, query MonitorListAccountRunsParams, opts ...option.RequestOption) (res *MonitorListAccountRunsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "monitors/runs"
@@ -130,7 +134,8 @@ func (r *MonitorService) ListAccountRuns(ctx context.Context, query MonitorListA
 	return res, err
 }
 
-// List full change records for a monitor, newest first.
+// List a monitor's detected changes, newest first. Each change includes its full
+// diff and evidence.
 func (r *MonitorService) ListChanges(ctx context.Context, monitorID string, query MonitorListChangesParams, opts ...option.RequestOption) (res *MonitorListChangesResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if monitorID == "" {
@@ -142,7 +147,7 @@ func (r *MonitorService) ListChanges(ctx context.Context, monitorID string, quer
 	return res, err
 }
 
-// List a monitor’s runs, newest first.
+// List a monitor's runs, newest first.
 func (r *MonitorService) ListRuns(ctx context.Context, monitorID string, query MonitorListRunsParams, opts ...option.RequestOption) (res *MonitorListRunsResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if monitorID == "" {
@@ -154,7 +159,7 @@ func (r *MonitorService) ListRuns(ctx context.Context, monitorID string, query M
 	return res, err
 }
 
-// Retrieve a detected change, including its diff and available evidence.
+// Retrieve a detected change with its summary, diff, URLs, and evidence.
 func (r *MonitorService) GetChange(ctx context.Context, changeID string, opts ...option.RequestOption) (res *MonitorGetChangeResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if changeID == "" {
@@ -166,7 +171,8 @@ func (r *MonitorService) GetChange(ctx context.Context, changeID string, opts ..
 	return res, err
 }
 
-// Retrieve the status, timing, and results of one monitor run.
+// Retrieve a run's status, timing, credit charge, and webhook deliveries. If the
+// run found a change, `change_id` points to it.
 func (r *MonitorService) GetRun(ctx context.Context, runID string, query MonitorGetRunParams, opts ...option.RequestOption) (res *MonitorGetRunResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if query.MonitorID == "" {
@@ -182,8 +188,8 @@ func (r *MonitorService) GetRun(ctx context.Context, runID string, query Monitor
 	return res, err
 }
 
-// Generate and return a new signing secret. It takes effect immediately for all
-// subsequent delivery attempts.
+// Replace the monitor's webhook signing secret. The new secret signs every
+// delivery attempt from now on, including retries.
 func (r *MonitorService) RotateWebhookSecret(ctx context.Context, monitorID string, opts ...option.RequestOption) (res *MonitorRotateWebhookSecretResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if monitorID == "" {
@@ -195,7 +201,8 @@ func (r *MonitorService) RotateWebhookSecret(ctx context.Context, monitorID stri
 	return res, err
 }
 
-// Queue a run without changing the regular schedule. Paused monitors return 409.
+// Queue a run now without changing the monitor's schedule. Returns the run ID to
+// poll. Paused monitors return `409`.
 func (r *MonitorService) Run(ctx context.Context, monitorID string, opts ...option.RequestOption) (res *MonitorRunResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if monitorID == "" {
@@ -208,23 +215,24 @@ func (r *MonitorService) Run(ctx context.Context, monitorID string, opts ...opti
 }
 
 type WebhookDelivery struct {
+	// When the delivery was attempted.
 	AttemptedAt time.Time            `json:"attempted_at" api:"required" format:"date-time"`
 	Error       WebhookDeliveryError `json:"error" api:"required"`
-	// The event this delivery carried. Deliveries recorded before event selection
-	// existed report change.detected.
+	// Event this delivery carried.
 	//
 	// Any of "change.detected", "run.completed".
 	Event WebhookDeliveryEvent `json:"event" api:"required"`
-	// Identifier sent in the X-Context-Id header.
+	// Event ID, sent in the `X-Context-Id` header.
 	EventID string `json:"event_id" api:"required"`
-	// The endpoint's final HTTP response status, or null when no response was
-	// received.
+	// Final HTTP status from your endpoint. `null` when no response was received.
 	HTTPStatus int64 `json:"http_status" api:"required"`
-	// Outcome of the delivery attempt. Any 2xx response counts as delivered.
+	// Outcome of the delivery: `delivered` (2xx response), `rejected` (non-2xx
+	// response), `failed` (no response), or `skipped_unsafe_url` (the URL isn't a safe
+	// public endpoint).
 	//
 	// Any of "delivered", "rejected", "failed", "skipped_unsafe_url".
 	Status WebhookDeliveryStatus `json:"status" api:"required"`
-	// Delivery ID for status checks and retries, when available.
+	// ID for looking up or retrying this delivery, when available.
 	DeliveryID string `json:"delivery_id"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -247,7 +255,9 @@ func (r *WebhookDelivery) UnmarshalJSON(data []byte) error {
 }
 
 type WebhookDeliveryError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -264,8 +274,7 @@ func (r *WebhookDeliveryError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The event this delivery carried. Deliveries recorded before event selection
-// existed report change.detected.
+// Event this delivery carried.
 type WebhookDeliveryEvent string
 
 const (
@@ -273,7 +282,9 @@ const (
 	WebhookDeliveryEventRunCompleted   WebhookDeliveryEvent = "run.completed"
 )
 
-// Outcome of the delivery attempt. Any 2xx response counts as delivered.
+// Outcome of the delivery: `delivered` (2xx response), `rejected` (non-2xx
+// response), `failed` (no response), or `skipped_unsafe_url` (the URL isn't a safe
+// public endpoint).
 type WebhookDeliveryStatus string
 
 const (
@@ -284,55 +295,64 @@ const (
 )
 
 type MonitorNewResponse struct {
+	// Unique ID of the monitor.
 	ID string `json:"id" api:"required"`
 	// How changes are judged. Defaults to `semantic` for extract and search targets
-	// and page targets with `instructions`, otherwise `exact`.
+	// and for page targets with `instructions`; otherwise `exact`. Sitemap targets
+	// support only `exact`, and extract targets only `semantic`.
 	ChangeDetection MonitorNewResponseChangeDetectionUnion `json:"change_detection" api:"required"`
-	CreatedAt       time.Time                              `json:"created_at" api:"required" format:"date-time"`
-	// ID of the baseline run queued at creation; null if it will start on the next
-	// scheduled tick.
+	// When the monitor was created.
+	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
+	// ID of the baseline run queued at creation. `null` if the baseline runs at the
+	// next scheduled time instead.
 	InitialRunID string `json:"initial_run_id" api:"required"`
-	// Always `web`. Optional.
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
 	Mode MonitorNewResponseMode `json:"mode" api:"required"`
-	Name string                 `json:"name" api:"required"`
+	// Display name of the monitor.
+	Name string `json:"name" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Current state. Failed monitors keep running; paused monitors must be resumed
-	// with `status: "active"`.
+	// `active` monitors run on schedule. `failed` monitors keep running after a failed
+	// run and return to `active` on the next success. `paused` monitors don't run
+	// until you set `status` to `active`; Context.dev also pauses monitors after
+	// repeated failures or credit shortfalls.
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorNewResponseStatus `json:"status" api:"required"`
 	// What to watch: a page, a sitemap, data extracted from a site, or web search
 	// results.
-	Target    MonitorNewResponseTargetUnion `json:"target" api:"required"`
-	UpdatedAt time.Time                     `json:"updated_at" api:"required" format:"date-time"`
-	// Comparison baseline, included on Retrieve. Null until capture completes or after
-	// target changes.
+	Target MonitorNewResponseTargetUnion `json:"target" api:"required"`
+	// When the monitor was last updated.
+	UpdatedAt time.Time `json:"updated_at" api:"required" format:"date-time"`
+	// What the next run compares against. Returned only by
+	// `GET /monitors/{monitor_id}`; `null` until the first capture finishes or after
+	// the target changes.
 	Baseline MonitorNewResponseBaselineUnion `json:"baseline" api:"nullable"`
 	// Credits this request used and your remaining balance.
-	KeyMetadata  MonitorNewResponseKeyMetadata `json:"key_metadata"`
-	LastChangeAt time.Time                     `json:"last_change_at" api:"nullable" format:"date-time"`
-	// Error from the most recent failed run; null when the last run succeeded.
+	KeyMetadata MonitorNewResponseKeyMetadata `json:"key_metadata"`
+	// When the monitor last detected a change. `null` until it detects one.
+	LastChangeAt time.Time `json:"last_change_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run. `null` when the last run succeeded.
 	LastError MonitorNewResponseLastError `json:"last_error" api:"nullable"`
-	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
-	// When the next scheduled run is due; null while paused.
+	// When the most recent run ended. `null` until the first run ends.
+	LastRunAt time.Time `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due. `null` while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// Access policy IDs applied to every run.
 	Policies []string `json:"policies"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
+	// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+	// interval must be between 10 minutes and 1 year.
 	Schedule MonitorNewResponseSchedule `json:"schedule"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Labels for grouping monitors. Filter monitors, changes, and credit usage by tag.
 	Tags []string `json:"tags"`
-	// Webhook destination and delivery settings. Null means no webhook is configured.
+	// Webhook that receives monitor events. `null` when no webhook is configured.
 	Webhook MonitorNewResponseWebhook `json:"webhook" api:"nullable"`
-	// Present while webhook deliveries are failing consecutively; null when deliveries
-	// are healthy or no webhook is configured. Cleared on the next successful delivery
-	// and when the webhook URL changes.
+	// Details of failing webhook deliveries. `null` when deliveries succeed or no
+	// webhook is configured; cleared by the next successful delivery or a new webhook
+	// URL.
 	WebhookFailure MonitorNewResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -433,9 +453,8 @@ func (r *MonitorNewResponseChangeDetectionUnion) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals. For search targets, this
-// means every new result.
+// Report every change: visible-text diffs for pages, added or removed URLs for
+// sitemaps, and every new result for searches.
 type MonitorNewResponseChangeDetectionExact struct {
 	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
@@ -453,12 +472,13 @@ func (r *MonitorNewResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaningful content changes using the target’s instructions and optional
-// schema.
+// Report only changes that matter, judged against the target's `instructions` and,
+// for extract targets, its `schema`.
 type MonitorNewResponseChangeDetectionSemantic struct {
-	// Use `semantic` to judge changes against the target instructions.
+	// Use `semantic` to report only changes that match the target's `instructions`.
 	Type constant.Semantic `json:"type" default:"semantic"`
-	// Minimum confidence required to report a meaningful change, from 0 to 1.
+	// Minimum confidence a change needs to be reported. Higher values mean fewer, more
+	// certain alerts.
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -475,15 +495,17 @@ func (r *MonitorNewResponseChangeDetectionSemantic) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Always `web`. Optional.
+// Monitor category. Always `web`.
 type MonitorNewResponseMode string
 
 const (
 	MonitorNewResponseModeWeb MonitorNewResponseMode = "web"
 )
 
-// Current state. Failed monitors keep running; paused monitors must be resumed
-// with `status: "active"`.
+// `active` monitors run on schedule. `failed` monitors keep running after a failed
+// run and return to `active` on the next success. `paused` monitors don't run
+// until you set `status` to `active`; Context.dev also pauses monitors after
+// repeated failures or credit shortfalls.
 type MonitorNewResponseStatus string
 
 const (
@@ -611,26 +633,27 @@ func (r *MonitorNewResponseTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page. Exact detection reports visible-text diffs; semantic
-// detection judges confirmed stable diffs against `instructions`.
+// Watch one web page. `exact` detection reports any change to the visible text;
+// `semantic` detection reports only confirmed changes that match `instructions`.
 type MonitorNewResponseTargetPage struct {
 	// Use `page` to watch one web page.
 	Type constant.Page `json:"type" default:"page"`
-	// Public HTTP(S) page URL to monitor.
+	// Public HTTP(S) URL of the page to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Optional browser actions executed in array order after the page loads, before
-	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
-	// Changes create a new baseline.
+	// Browser actions to run in order after the page loads and before each capture.
+	// Requires a paid plan. Changing it resets the baseline.
 	Actions []MonitorNewResponseTargetPageActionUnion `json:"actions" api:"nullable"`
-	// Remove matching regions after inclusions. Changes create a new baseline.
+	// CSS selectors for regions to ignore, applied after `include_selectors`. Changing
+	// it resets the baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
-	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
-	// create a new baseline.
+	// CSS selectors for the regions to watch. Omit or leave empty to watch the main
+	// content. Changing it resets the baseline.
 	IncludeSelectors []string `json:"include_selectors"`
-	// Plain-language goal describing which page changes matter. When provided without
-	// change_detection, semantic detection is inferred.
+	// Plain-language description of the changes that matter. Requires `semantic`
+	// detection, which is selected when `change_detection` is omitted.
 	Instructions string `json:"instructions"`
-	// Normalize whitespace before comparing or analyzing text.
+	// Collapse whitespace before comparing text, so spacing-only edits are not
+	// reported.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -742,7 +765,7 @@ func (r *MonitorNewResponseTargetPageActionUnion) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pause for a fixed number of milliseconds before continuing to the next action.
+// Pause for a fixed time before the next action.
 type MonitorNewResponseTargetPageActionWait struct {
 	// Use `wait` to pause for a fixed duration.
 	Do constant.Wait `json:"do" default:"wait"`
@@ -763,7 +786,7 @@ func (r *MonitorNewResponseTargetPageActionWait) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolve and perform one natural-language browser action.
+// Perform one browser instruction written in plain language.
 type MonitorNewResponseTargetPageActionPerform struct {
 	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
@@ -784,22 +807,20 @@ func (r *MonitorNewResponseTargetPageActionPerform) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Scroll the page or a selected scrollable container, waiting adaptively for
-// content and dimensions to settle after each iteration.
+// Scroll the page or a scrollable container. Waits for new content to settle after
+// each scroll.
 type MonitorNewResponseTargetPageActionScroll struct {
 	// Use `scroll` to move through the page or a container.
 	Do constant.Scroll `json:"do" default:"scroll"`
-	// Pixels per scroll, one visible viewport, or the current scroll boundary.
-	// Defaults to viewport.
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
 	Amount MonitorNewResponseTargetPageActionScrollAmountUnion `json:"amount"`
-	// CSS selector for the first matching scroll container. Defaults to the page.
+	// Scroll the first container matching this CSS selector. Omit to scroll the page.
 	Container string `json:"container"`
-	// Direction to scroll. Defaults to down.
+	// Direction to scroll.
 	//
 	// Any of "up", "down", "left", "right".
 	Direction string `json:"direction"`
-	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
-	// changing. Defaults to 1.
+	// Maximum number of scroll steps. Stops early when the page stops changing.
 	MaxScrolls int64 `json:"maxScrolls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -862,17 +883,17 @@ const (
 	MonitorNewResponseTargetPageActionScrollAmountStringMax      MonitorNewResponseTargetPageActionScrollAmountString = "max"
 )
 
-// Watch a site’s URL inventory for confirmed additions and removals.
+// Watch a sitemap and report URLs that are added or removed.
 type MonitorNewResponseTargetSitemap struct {
 	// Use `sitemap` to watch a site for added or removed URLs.
 	Type constant.Sitemap `json:"type" default:"sitemap"`
-	// Sitemap URL to monitor.
+	// Public HTTP(S) URL of the sitemap to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude (max 50).
+	// Path patterns of URLs to ignore, such as `/legal/*`.
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include (max 50).
+	// Path patterns of URLs to track, such as `/blog/*`.
 	Include []string `json:"include"`
-	// Maximum number of sitemap URLs to track (capped at 10,000).
+	// Maximum number of URLs to track.
 	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -892,24 +913,25 @@ func (r *MonitorNewResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Track relevant pages selected by `schema` and `instructions`; refresh the page
-// set periodically.
+// Extract structured data from the most relevant pages of a site and report
+// meaningful changes. Pages are chosen from `schema` and `instructions`, and the
+// page set is refreshed periodically.
 type MonitorNewResponseTargetExtract struct {
-	// Natural-language instructions guiding which pages and facts to track and which
-	// changes to report.
+	// Plain-language description of the pages and facts to track and the changes to
+	// report.
 	Instructions string `json:"instructions" api:"required"`
 	// Use `extract` to watch structured data across selected pages.
 	Type constant.Extract `json:"type" default:"extract"`
-	// Root URL to extract structured data from.
+	// Public HTTP(S) URL where page discovery starts, usually the site home page.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Allow page discovery on subdomains of the target site.
+	// Also discover pages on subdomains of the site.
 	FollowSubdomains bool `json:"follow_subdomains"`
-	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// Maximum link depth from `url`. `0` tracks only the starting page.
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema for page selection and the baseline snapshot. Changes return diffs
-	// and evidence.
+	// JSON Schema for the data to extract, up to 20,000 characters; it also guides
+	// which pages are tracked. Defaults to a `summary` string and a `key_points` list.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -932,16 +954,17 @@ func (r *MonitorNewResponseTargetExtract) UnmarshalJSON(data []byte) error {
 }
 
 // Search the web on every run and report results not seen before, listed in the
-// change’s `matched_urls` and `evidence`. Semantic detection reports only results
-// describing a new development that matches `instructions`; exact detection
+// change's `matched_urls` and `evidence`. `semantic` detection reports only
+// results about a new development that matches `instructions`; `exact` detection
 // reports every new result.
 type MonitorNewResponseTargetSearch struct {
-	// Web search query to run on every check. Supports operators such as `site:`,
-	// `-site:`, and quoted phrases.
+	// Web search query to run on every check. Supports `site:`, `-site:`, and quoted
+	// phrases.
 	Query string `json:"query" api:"required"`
-	// Use `search` to watch the whole web for new results about a topic.
+	// Use `search` to watch the web for new results about a topic.
 	Type constant.Search `json:"type" default:"search"`
-	// Plain-language description of which new results matter. Defaults to the query.
+	// Plain-language description of the new results that matter. Defaults to `query`.
+	// Not allowed with `exact` detection.
 	Instructions string `json:"instructions"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1019,11 +1042,11 @@ func (r *MonitorNewResponseBaselineUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `page` monitor: the visible page text as last observed.
+// Baseline for a `page` target: the page's visible text from the last capture.
 type MonitorNewResponseBaselinePageBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// The page's visible text as last observed.
+	// Visible page text from the last capture.
 	Text string `json:"text" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1040,14 +1063,14 @@ func (r *MonitorNewResponseBaselinePageBaseline) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `sitemap` monitor: the normalized URL set as last
-// observed.
+// Baseline for a `sitemap` target: the normalized set of URLs from the last
+// capture.
 type MonitorNewResponseBaselineSitemapBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// Number of URLs in the baseline.
 	URLCount int64 `json:"url_count" api:"required"`
-	// The sitemap URLs as last observed (sorted, normalized).
+	// Normalized sitemap URLs from the last capture, sorted.
 	URLs []string `json:"urls" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1065,15 +1088,15 @@ func (r *MonitorNewResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the pages it tracks and the structured
-// data as last extracted.
+// Baseline for an `extract` target: the tracked pages and the data last extracted
+// from them.
 type MonitorNewResponseBaselineExtractBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Latest structured snapshot matching the extraction schema, refreshed at most
-	// daily; `null` before capture.
+	// Latest extracted data, matching the target's `schema`. Refreshed at most once a
+	// day; `null` before the first capture.
 	Data any `json:"data" api:"required"`
-	// The page URLs the monitor tracks and analyzes for changes.
+	// Pages the monitor tracks for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1091,11 +1114,11 @@ func (r *MonitorNewResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `search` monitor: the search results as last observed.
+// Baseline for a `search` target: the results from the last capture.
 type MonitorNewResponseBaselineSearchBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Search results as last observed.
+	// Search results from the last capture.
 	Results []MonitorNewResponseBaselineSearchBaselineResult `json:"results" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1115,10 +1138,12 @@ func (r *MonitorNewResponseBaselineSearchBaseline) UnmarshalJSON(data []byte) er
 type MonitorNewResponseBaselineSearchBaselineResult struct {
 	// Result snippet.
 	Description string `json:"description" api:"required"`
-	// When the result was published, when known.
+	// When the result was published. `null` when unknown.
 	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
-	Title       string    `json:"title" api:"required"`
-	URL         string    `json:"url" api:"required" format:"uri"`
+	// Title of the result.
+	Title string `json:"title" api:"required"`
+	// URL of the result.
+	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description respjson.Field
@@ -1140,7 +1165,7 @@ func (r *MonitorNewResponseBaselineSearchBaselineResult) UnmarshalJSON(data []by
 type MonitorNewResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1157,9 +1182,11 @@ func (r *MonitorNewResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Error from the most recent failed run; null when the last run succeeded.
+// Error from the most recent failed run. `null` when the last run succeeded.
 type MonitorNewResponseLastError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1176,19 +1203,17 @@ func (r *MonitorNewResponseLastError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
+// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+// interval must be between 10 minutes and 1 year.
 type MonitorNewResponseSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
+	// Number of `unit` periods between runs. The interval must be between 10 minutes
+	// and 1 year, so at least `10` with `minutes` and at most `365` with `days`.
 	Frequency int64 `json:"frequency" api:"required"`
 	// Use `interval` to run on a repeating schedule.
 	//
 	// Any of "interval".
 	Type string `json:"type" api:"required"`
-	// Time unit used with `frequency` to set the run interval.
+	// Time unit for `frequency`.
 	//
 	// Any of "minutes", "hours", "days".
 	Unit string `json:"unit" api:"required"`
@@ -1208,20 +1233,20 @@ func (r *MonitorNewResponseSchedule) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Webhook destination and delivery settings. Null means no webhook is configured.
+// Webhook that receives monitor events. `null` when no webhook is configured.
 type MonitorNewResponseWebhook struct {
-	// Public HTTP(S) URL that receives events. Slack and GovSlack URLs get formatted
-	// messages.
+	// Public HTTP(S) URL that receives events. Slack and GovSlack webhook URLs get
+	// formatted messages.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Events to deliver. Defaults to `change.detected`; `run.completed` also includes
-	// unchanged runs.
+	// Events to send. Defaults to `change.detected`. Add `run.completed` to get a
+	// delivery after every completed run, including runs with no change.
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfig `json:"retry"`
-	// API-generated signing secret. Visible only with full access or `monitors:write`
-	// permission.
+	// Signing secret for verifying deliveries, generated by Context.dev. Returned only
+	// to API keys with full access or the `monitors:write` permission.
 	Secret string `json:"secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1240,18 +1265,19 @@ func (r *MonitorNewResponseWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Present while webhook deliveries are failing consecutively; null when deliveries
-// are healthy or no webhook is configured. Cleared on the next successful delivery
-// and when the webhook URL changes.
+// Details of failing webhook deliveries. `null` when deliveries succeed or no
+// webhook is configured; cleared by the next successful delivery or a new webhook
+// URL.
 type MonitorNewResponseWebhookFailure struct {
-	// Number of consecutive delivery attempts that did not succeed.
-	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
-	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
-	// Human-readable description of the most recent failure.
+	// Number of failed delivery attempts in a row.
+	ConsecutiveFailures int64 `json:"consecutive_failures" api:"required"`
+	// When the most recent delivery failed.
+	LastFailedAt time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable explanation of the most recent failure.
 	LastMessage string `json:"last_message" api:"required"`
-	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
-	// failed means no HTTP response was received; skipped_unsafe_url means the URL
-	// failed the public-endpoint safety check.
+	// Outcome of the most recent failed delivery: `rejected` (non-2xx response),
+	// `failed` (no response), or `skipped_unsafe_url` (the URL isn't a safe public
+	// endpoint).
 	//
 	// Any of "rejected", "failed", "skipped_unsafe_url".
 	LastStatus string `json:"last_status" api:"required"`
@@ -1273,52 +1299,61 @@ func (r *MonitorNewResponseWebhookFailure) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorGetResponse struct {
+	// Unique ID of the monitor.
 	ID string `json:"id" api:"required"`
 	// How changes are judged. Defaults to `semantic` for extract and search targets
-	// and page targets with `instructions`, otherwise `exact`.
+	// and for page targets with `instructions`; otherwise `exact`. Sitemap targets
+	// support only `exact`, and extract targets only `semantic`.
 	ChangeDetection MonitorGetResponseChangeDetectionUnion `json:"change_detection" api:"required"`
-	CreatedAt       time.Time                              `json:"created_at" api:"required" format:"date-time"`
-	// Always `web`. Optional.
+	// When the monitor was created.
+	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
 	Mode MonitorGetResponseMode `json:"mode" api:"required"`
-	Name string                 `json:"name" api:"required"`
+	// Display name of the monitor.
+	Name string `json:"name" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Current state. Failed monitors keep running; paused monitors must be resumed
-	// with `status: "active"`.
+	// `active` monitors run on schedule. `failed` monitors keep running after a failed
+	// run and return to `active` on the next success. `paused` monitors don't run
+	// until you set `status` to `active`; Context.dev also pauses monitors after
+	// repeated failures or credit shortfalls.
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorGetResponseStatus `json:"status" api:"required"`
 	// What to watch: a page, a sitemap, data extracted from a site, or web search
 	// results.
-	Target    MonitorGetResponseTargetUnion `json:"target" api:"required"`
-	UpdatedAt time.Time                     `json:"updated_at" api:"required" format:"date-time"`
-	// Comparison baseline, included on Retrieve. Null until capture completes or after
-	// target changes.
+	Target MonitorGetResponseTargetUnion `json:"target" api:"required"`
+	// When the monitor was last updated.
+	UpdatedAt time.Time `json:"updated_at" api:"required" format:"date-time"`
+	// What the next run compares against. Returned only by
+	// `GET /monitors/{monitor_id}`; `null` until the first capture finishes or after
+	// the target changes.
 	Baseline MonitorGetResponseBaselineUnion `json:"baseline" api:"nullable"`
 	// Credits this request used and your remaining balance.
-	KeyMetadata  MonitorGetResponseKeyMetadata `json:"key_metadata"`
-	LastChangeAt time.Time                     `json:"last_change_at" api:"nullable" format:"date-time"`
-	// Error from the most recent failed run; null when the last run succeeded.
+	KeyMetadata MonitorGetResponseKeyMetadata `json:"key_metadata"`
+	// When the monitor last detected a change. `null` until it detects one.
+	LastChangeAt time.Time `json:"last_change_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run. `null` when the last run succeeded.
 	LastError MonitorGetResponseLastError `json:"last_error" api:"nullable"`
-	LastRunAt time.Time                   `json:"last_run_at" api:"nullable" format:"date-time"`
-	// When the next scheduled run is due; null while paused.
+	// When the most recent run ended. `null` until the first run ends.
+	LastRunAt time.Time `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due. `null` while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// Access policy IDs applied to every run.
 	Policies []string `json:"policies"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
+	// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+	// interval must be between 10 minutes and 1 year.
 	Schedule MonitorGetResponseSchedule `json:"schedule"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Labels for grouping monitors. Filter monitors, changes, and credit usage by tag.
 	Tags []string `json:"tags"`
-	// Webhook destination and delivery settings. Null means no webhook is configured.
+	// Webhook that receives monitor events. `null` when no webhook is configured.
 	Webhook MonitorGetResponseWebhook `json:"webhook" api:"nullable"`
-	// Present while webhook deliveries are failing consecutively; null when deliveries
-	// are healthy or no webhook is configured. Cleared on the next successful delivery
-	// and when the webhook URL changes.
+	// Details of failing webhook deliveries. `null` when deliveries succeed or no
+	// webhook is configured; cleared by the next successful delivery or a new webhook
+	// URL.
 	WebhookFailure MonitorGetResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1418,9 +1453,8 @@ func (r *MonitorGetResponseChangeDetectionUnion) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals. For search targets, this
-// means every new result.
+// Report every change: visible-text diffs for pages, added or removed URLs for
+// sitemaps, and every new result for searches.
 type MonitorGetResponseChangeDetectionExact struct {
 	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
@@ -1438,12 +1472,13 @@ func (r *MonitorGetResponseChangeDetectionExact) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaningful content changes using the target’s instructions and optional
-// schema.
+// Report only changes that matter, judged against the target's `instructions` and,
+// for extract targets, its `schema`.
 type MonitorGetResponseChangeDetectionSemantic struct {
-	// Use `semantic` to judge changes against the target instructions.
+	// Use `semantic` to report only changes that match the target's `instructions`.
 	Type constant.Semantic `json:"type" default:"semantic"`
-	// Minimum confidence required to report a meaningful change, from 0 to 1.
+	// Minimum confidence a change needs to be reported. Higher values mean fewer, more
+	// certain alerts.
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1460,15 +1495,17 @@ func (r *MonitorGetResponseChangeDetectionSemantic) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Always `web`. Optional.
+// Monitor category. Always `web`.
 type MonitorGetResponseMode string
 
 const (
 	MonitorGetResponseModeWeb MonitorGetResponseMode = "web"
 )
 
-// Current state. Failed monitors keep running; paused monitors must be resumed
-// with `status: "active"`.
+// `active` monitors run on schedule. `failed` monitors keep running after a failed
+// run and return to `active` on the next success. `paused` monitors don't run
+// until you set `status` to `active`; Context.dev also pauses monitors after
+// repeated failures or credit shortfalls.
 type MonitorGetResponseStatus string
 
 const (
@@ -1596,26 +1633,27 @@ func (r *MonitorGetResponseTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page. Exact detection reports visible-text diffs; semantic
-// detection judges confirmed stable diffs against `instructions`.
+// Watch one web page. `exact` detection reports any change to the visible text;
+// `semantic` detection reports only confirmed changes that match `instructions`.
 type MonitorGetResponseTargetPage struct {
 	// Use `page` to watch one web page.
 	Type constant.Page `json:"type" default:"page"`
-	// Public HTTP(S) page URL to monitor.
+	// Public HTTP(S) URL of the page to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Optional browser actions executed in array order after the page loads, before
-	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
-	// Changes create a new baseline.
+	// Browser actions to run in order after the page loads and before each capture.
+	// Requires a paid plan. Changing it resets the baseline.
 	Actions []MonitorGetResponseTargetPageActionUnion `json:"actions" api:"nullable"`
-	// Remove matching regions after inclusions. Changes create a new baseline.
+	// CSS selectors for regions to ignore, applied after `include_selectors`. Changing
+	// it resets the baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
-	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
-	// create a new baseline.
+	// CSS selectors for the regions to watch. Omit or leave empty to watch the main
+	// content. Changing it resets the baseline.
 	IncludeSelectors []string `json:"include_selectors"`
-	// Plain-language goal describing which page changes matter. When provided without
-	// change_detection, semantic detection is inferred.
+	// Plain-language description of the changes that matter. Requires `semantic`
+	// detection, which is selected when `change_detection` is omitted.
 	Instructions string `json:"instructions"`
-	// Normalize whitespace before comparing or analyzing text.
+	// Collapse whitespace before comparing text, so spacing-only edits are not
+	// reported.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1727,7 +1765,7 @@ func (r *MonitorGetResponseTargetPageActionUnion) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pause for a fixed number of milliseconds before continuing to the next action.
+// Pause for a fixed time before the next action.
 type MonitorGetResponseTargetPageActionWait struct {
 	// Use `wait` to pause for a fixed duration.
 	Do constant.Wait `json:"do" default:"wait"`
@@ -1748,7 +1786,7 @@ func (r *MonitorGetResponseTargetPageActionWait) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolve and perform one natural-language browser action.
+// Perform one browser instruction written in plain language.
 type MonitorGetResponseTargetPageActionPerform struct {
 	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
@@ -1769,22 +1807,20 @@ func (r *MonitorGetResponseTargetPageActionPerform) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Scroll the page or a selected scrollable container, waiting adaptively for
-// content and dimensions to settle after each iteration.
+// Scroll the page or a scrollable container. Waits for new content to settle after
+// each scroll.
 type MonitorGetResponseTargetPageActionScroll struct {
 	// Use `scroll` to move through the page or a container.
 	Do constant.Scroll `json:"do" default:"scroll"`
-	// Pixels per scroll, one visible viewport, or the current scroll boundary.
-	// Defaults to viewport.
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
 	Amount MonitorGetResponseTargetPageActionScrollAmountUnion `json:"amount"`
-	// CSS selector for the first matching scroll container. Defaults to the page.
+	// Scroll the first container matching this CSS selector. Omit to scroll the page.
 	Container string `json:"container"`
-	// Direction to scroll. Defaults to down.
+	// Direction to scroll.
 	//
 	// Any of "up", "down", "left", "right".
 	Direction string `json:"direction"`
-	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
-	// changing. Defaults to 1.
+	// Maximum number of scroll steps. Stops early when the page stops changing.
 	MaxScrolls int64 `json:"maxScrolls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1847,17 +1883,17 @@ const (
 	MonitorGetResponseTargetPageActionScrollAmountStringMax      MonitorGetResponseTargetPageActionScrollAmountString = "max"
 )
 
-// Watch a site’s URL inventory for confirmed additions and removals.
+// Watch a sitemap and report URLs that are added or removed.
 type MonitorGetResponseTargetSitemap struct {
 	// Use `sitemap` to watch a site for added or removed URLs.
 	Type constant.Sitemap `json:"type" default:"sitemap"`
-	// Sitemap URL to monitor.
+	// Public HTTP(S) URL of the sitemap to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude (max 50).
+	// Path patterns of URLs to ignore, such as `/legal/*`.
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include (max 50).
+	// Path patterns of URLs to track, such as `/blog/*`.
 	Include []string `json:"include"`
-	// Maximum number of sitemap URLs to track (capped at 10,000).
+	// Maximum number of URLs to track.
 	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1877,24 +1913,25 @@ func (r *MonitorGetResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Track relevant pages selected by `schema` and `instructions`; refresh the page
-// set periodically.
+// Extract structured data from the most relevant pages of a site and report
+// meaningful changes. Pages are chosen from `schema` and `instructions`, and the
+// page set is refreshed periodically.
 type MonitorGetResponseTargetExtract struct {
-	// Natural-language instructions guiding which pages and facts to track and which
-	// changes to report.
+	// Plain-language description of the pages and facts to track and the changes to
+	// report.
 	Instructions string `json:"instructions" api:"required"`
 	// Use `extract` to watch structured data across selected pages.
 	Type constant.Extract `json:"type" default:"extract"`
-	// Root URL to extract structured data from.
+	// Public HTTP(S) URL where page discovery starts, usually the site home page.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Allow page discovery on subdomains of the target site.
+	// Also discover pages on subdomains of the site.
 	FollowSubdomains bool `json:"follow_subdomains"`
-	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// Maximum link depth from `url`. `0` tracks only the starting page.
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema for page selection and the baseline snapshot. Changes return diffs
-	// and evidence.
+	// JSON Schema for the data to extract, up to 20,000 characters; it also guides
+	// which pages are tracked. Defaults to a `summary` string and a `key_points` list.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -1917,16 +1954,17 @@ func (r *MonitorGetResponseTargetExtract) UnmarshalJSON(data []byte) error {
 }
 
 // Search the web on every run and report results not seen before, listed in the
-// change’s `matched_urls` and `evidence`. Semantic detection reports only results
-// describing a new development that matches `instructions`; exact detection
+// change's `matched_urls` and `evidence`. `semantic` detection reports only
+// results about a new development that matches `instructions`; `exact` detection
 // reports every new result.
 type MonitorGetResponseTargetSearch struct {
-	// Web search query to run on every check. Supports operators such as `site:`,
-	// `-site:`, and quoted phrases.
+	// Web search query to run on every check. Supports `site:`, `-site:`, and quoted
+	// phrases.
 	Query string `json:"query" api:"required"`
-	// Use `search` to watch the whole web for new results about a topic.
+	// Use `search` to watch the web for new results about a topic.
 	Type constant.Search `json:"type" default:"search"`
-	// Plain-language description of which new results matter. Defaults to the query.
+	// Plain-language description of the new results that matter. Defaults to `query`.
+	// Not allowed with `exact` detection.
 	Instructions string `json:"instructions"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2004,11 +2042,11 @@ func (r *MonitorGetResponseBaselineUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `page` monitor: the visible page text as last observed.
+// Baseline for a `page` target: the page's visible text from the last capture.
 type MonitorGetResponseBaselinePageBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// The page's visible text as last observed.
+	// Visible page text from the last capture.
 	Text string `json:"text" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2025,14 +2063,14 @@ func (r *MonitorGetResponseBaselinePageBaseline) UnmarshalJSON(data []byte) erro
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `sitemap` monitor: the normalized URL set as last
-// observed.
+// Baseline for a `sitemap` target: the normalized set of URLs from the last
+// capture.
 type MonitorGetResponseBaselineSitemapBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// Number of URLs in the baseline.
 	URLCount int64 `json:"url_count" api:"required"`
-	// The sitemap URLs as last observed (sorted, normalized).
+	// Normalized sitemap URLs from the last capture, sorted.
 	URLs []string `json:"urls" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2050,15 +2088,15 @@ func (r *MonitorGetResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the pages it tracks and the structured
-// data as last extracted.
+// Baseline for an `extract` target: the tracked pages and the data last extracted
+// from them.
 type MonitorGetResponseBaselineExtractBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Latest structured snapshot matching the extraction schema, refreshed at most
-	// daily; `null` before capture.
+	// Latest extracted data, matching the target's `schema`. Refreshed at most once a
+	// day; `null` before the first capture.
 	Data any `json:"data" api:"required"`
-	// The page URLs the monitor tracks and analyzes for changes.
+	// Pages the monitor tracks for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2076,11 +2114,11 @@ func (r *MonitorGetResponseBaselineExtractBaseline) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `search` monitor: the search results as last observed.
+// Baseline for a `search` target: the results from the last capture.
 type MonitorGetResponseBaselineSearchBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Search results as last observed.
+	// Search results from the last capture.
 	Results []MonitorGetResponseBaselineSearchBaselineResult `json:"results" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2100,10 +2138,12 @@ func (r *MonitorGetResponseBaselineSearchBaseline) UnmarshalJSON(data []byte) er
 type MonitorGetResponseBaselineSearchBaselineResult struct {
 	// Result snippet.
 	Description string `json:"description" api:"required"`
-	// When the result was published, when known.
+	// When the result was published. `null` when unknown.
 	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
-	Title       string    `json:"title" api:"required"`
-	URL         string    `json:"url" api:"required" format:"uri"`
+	// Title of the result.
+	Title string `json:"title" api:"required"`
+	// URL of the result.
+	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description respjson.Field
@@ -2125,7 +2165,7 @@ func (r *MonitorGetResponseBaselineSearchBaselineResult) UnmarshalJSON(data []by
 type MonitorGetResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2142,9 +2182,11 @@ func (r *MonitorGetResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Error from the most recent failed run; null when the last run succeeded.
+// Error from the most recent failed run. `null` when the last run succeeded.
 type MonitorGetResponseLastError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2161,19 +2203,17 @@ func (r *MonitorGetResponseLastError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
+// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+// interval must be between 10 minutes and 1 year.
 type MonitorGetResponseSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
+	// Number of `unit` periods between runs. The interval must be between 10 minutes
+	// and 1 year, so at least `10` with `minutes` and at most `365` with `days`.
 	Frequency int64 `json:"frequency" api:"required"`
 	// Use `interval` to run on a repeating schedule.
 	//
 	// Any of "interval".
 	Type string `json:"type" api:"required"`
-	// Time unit used with `frequency` to set the run interval.
+	// Time unit for `frequency`.
 	//
 	// Any of "minutes", "hours", "days".
 	Unit string `json:"unit" api:"required"`
@@ -2193,20 +2233,20 @@ func (r *MonitorGetResponseSchedule) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Webhook destination and delivery settings. Null means no webhook is configured.
+// Webhook that receives monitor events. `null` when no webhook is configured.
 type MonitorGetResponseWebhook struct {
-	// Public HTTP(S) URL that receives events. Slack and GovSlack URLs get formatted
-	// messages.
+	// Public HTTP(S) URL that receives events. Slack and GovSlack webhook URLs get
+	// formatted messages.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Events to deliver. Defaults to `change.detected`; `run.completed` also includes
-	// unchanged runs.
+	// Events to send. Defaults to `change.detected`. Add `run.completed` to get a
+	// delivery after every completed run, including runs with no change.
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfig `json:"retry"`
-	// API-generated signing secret. Visible only with full access or `monitors:write`
-	// permission.
+	// Signing secret for verifying deliveries, generated by Context.dev. Returned only
+	// to API keys with full access or the `monitors:write` permission.
 	Secret string `json:"secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2225,18 +2265,19 @@ func (r *MonitorGetResponseWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Present while webhook deliveries are failing consecutively; null when deliveries
-// are healthy or no webhook is configured. Cleared on the next successful delivery
-// and when the webhook URL changes.
+// Details of failing webhook deliveries. `null` when deliveries succeed or no
+// webhook is configured; cleared by the next successful delivery or a new webhook
+// URL.
 type MonitorGetResponseWebhookFailure struct {
-	// Number of consecutive delivery attempts that did not succeed.
-	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
-	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
-	// Human-readable description of the most recent failure.
+	// Number of failed delivery attempts in a row.
+	ConsecutiveFailures int64 `json:"consecutive_failures" api:"required"`
+	// When the most recent delivery failed.
+	LastFailedAt time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable explanation of the most recent failure.
 	LastMessage string `json:"last_message" api:"required"`
-	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
-	// failed means no HTTP response was received; skipped_unsafe_url means the URL
-	// failed the public-endpoint safety check.
+	// Outcome of the most recent failed delivery: `rejected` (non-2xx response),
+	// `failed` (no response), or `skipped_unsafe_url` (the URL isn't a safe public
+	// endpoint).
 	//
 	// Any of "rejected", "failed", "skipped_unsafe_url".
 	LastStatus string `json:"last_status" api:"required"`
@@ -2258,52 +2299,61 @@ func (r *MonitorGetResponseWebhookFailure) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorUpdateResponse struct {
+	// Unique ID of the monitor.
 	ID string `json:"id" api:"required"`
 	// How changes are judged. Defaults to `semantic` for extract and search targets
-	// and page targets with `instructions`, otherwise `exact`.
+	// and for page targets with `instructions`; otherwise `exact`. Sitemap targets
+	// support only `exact`, and extract targets only `semantic`.
 	ChangeDetection MonitorUpdateResponseChangeDetectionUnion `json:"change_detection" api:"required"`
-	CreatedAt       time.Time                                 `json:"created_at" api:"required" format:"date-time"`
-	// Always `web`. Optional.
+	// When the monitor was created.
+	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
 	Mode MonitorUpdateResponseMode `json:"mode" api:"required"`
-	Name string                    `json:"name" api:"required"`
+	// Display name of the monitor.
+	Name string `json:"name" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Current state. Failed monitors keep running; paused monitors must be resumed
-	// with `status: "active"`.
+	// `active` monitors run on schedule. `failed` monitors keep running after a failed
+	// run and return to `active` on the next success. `paused` monitors don't run
+	// until you set `status` to `active`; Context.dev also pauses monitors after
+	// repeated failures or credit shortfalls.
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorUpdateResponseStatus `json:"status" api:"required"`
 	// What to watch: a page, a sitemap, data extracted from a site, or web search
 	// results.
-	Target    MonitorUpdateResponseTargetUnion `json:"target" api:"required"`
-	UpdatedAt time.Time                        `json:"updated_at" api:"required" format:"date-time"`
-	// Comparison baseline, included on Retrieve. Null until capture completes or after
-	// target changes.
+	Target MonitorUpdateResponseTargetUnion `json:"target" api:"required"`
+	// When the monitor was last updated.
+	UpdatedAt time.Time `json:"updated_at" api:"required" format:"date-time"`
+	// What the next run compares against. Returned only by
+	// `GET /monitors/{monitor_id}`; `null` until the first capture finishes or after
+	// the target changes.
 	Baseline MonitorUpdateResponseBaselineUnion `json:"baseline" api:"nullable"`
 	// Credits this request used and your remaining balance.
-	KeyMetadata  MonitorUpdateResponseKeyMetadata `json:"key_metadata"`
-	LastChangeAt time.Time                        `json:"last_change_at" api:"nullable" format:"date-time"`
-	// Error from the most recent failed run; null when the last run succeeded.
+	KeyMetadata MonitorUpdateResponseKeyMetadata `json:"key_metadata"`
+	// When the monitor last detected a change. `null` until it detects one.
+	LastChangeAt time.Time `json:"last_change_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run. `null` when the last run succeeded.
 	LastError MonitorUpdateResponseLastError `json:"last_error" api:"nullable"`
-	LastRunAt time.Time                      `json:"last_run_at" api:"nullable" format:"date-time"`
-	// When the next scheduled run is due; null while paused.
+	// When the most recent run ended. `null` until the first run ends.
+	LastRunAt time.Time `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due. `null` while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// Access policy IDs applied to every run.
 	Policies []string `json:"policies"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
+	// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+	// interval must be between 10 minutes and 1 year.
 	Schedule MonitorUpdateResponseSchedule `json:"schedule"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Labels for grouping monitors. Filter monitors, changes, and credit usage by tag.
 	Tags []string `json:"tags"`
-	// Webhook destination and delivery settings. Null means no webhook is configured.
+	// Webhook that receives monitor events. `null` when no webhook is configured.
 	Webhook MonitorUpdateResponseWebhook `json:"webhook" api:"nullable"`
-	// Present while webhook deliveries are failing consecutively; null when deliveries
-	// are healthy or no webhook is configured. Cleared on the next successful delivery
-	// and when the webhook URL changes.
+	// Details of failing webhook deliveries. `null` when deliveries succeed or no
+	// webhook is configured; cleared by the next successful delivery or a new webhook
+	// URL.
 	WebhookFailure MonitorUpdateResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2403,9 +2453,8 @@ func (r *MonitorUpdateResponseChangeDetectionUnion) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals. For search targets, this
-// means every new result.
+// Report every change: visible-text diffs for pages, added or removed URLs for
+// sitemaps, and every new result for searches.
 type MonitorUpdateResponseChangeDetectionExact struct {
 	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
@@ -2423,12 +2472,13 @@ func (r *MonitorUpdateResponseChangeDetectionExact) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaningful content changes using the target’s instructions and optional
-// schema.
+// Report only changes that matter, judged against the target's `instructions` and,
+// for extract targets, its `schema`.
 type MonitorUpdateResponseChangeDetectionSemantic struct {
-	// Use `semantic` to judge changes against the target instructions.
+	// Use `semantic` to report only changes that match the target's `instructions`.
 	Type constant.Semantic `json:"type" default:"semantic"`
-	// Minimum confidence required to report a meaningful change, from 0 to 1.
+	// Minimum confidence a change needs to be reported. Higher values mean fewer, more
+	// certain alerts.
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2445,15 +2495,17 @@ func (r *MonitorUpdateResponseChangeDetectionSemantic) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Always `web`. Optional.
+// Monitor category. Always `web`.
 type MonitorUpdateResponseMode string
 
 const (
 	MonitorUpdateResponseModeWeb MonitorUpdateResponseMode = "web"
 )
 
-// Current state. Failed monitors keep running; paused monitors must be resumed
-// with `status: "active"`.
+// `active` monitors run on schedule. `failed` monitors keep running after a failed
+// run and return to `active` on the next success. `paused` monitors don't run
+// until you set `status` to `active`; Context.dev also pauses monitors after
+// repeated failures or credit shortfalls.
 type MonitorUpdateResponseStatus string
 
 const (
@@ -2582,26 +2634,27 @@ func (r *MonitorUpdateResponseTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page. Exact detection reports visible-text diffs; semantic
-// detection judges confirmed stable diffs against `instructions`.
+// Watch one web page. `exact` detection reports any change to the visible text;
+// `semantic` detection reports only confirmed changes that match `instructions`.
 type MonitorUpdateResponseTargetPage struct {
 	// Use `page` to watch one web page.
 	Type constant.Page `json:"type" default:"page"`
-	// Public HTTP(S) page URL to monitor.
+	// Public HTTP(S) URL of the page to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Optional browser actions executed in array order after the page loads, before
-	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
-	// Changes create a new baseline.
+	// Browser actions to run in order after the page loads and before each capture.
+	// Requires a paid plan. Changing it resets the baseline.
 	Actions []MonitorUpdateResponseTargetPageActionUnion `json:"actions" api:"nullable"`
-	// Remove matching regions after inclusions. Changes create a new baseline.
+	// CSS selectors for regions to ignore, applied after `include_selectors`. Changing
+	// it resets the baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
-	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
-	// create a new baseline.
+	// CSS selectors for the regions to watch. Omit or leave empty to watch the main
+	// content. Changing it resets the baseline.
 	IncludeSelectors []string `json:"include_selectors"`
-	// Plain-language goal describing which page changes matter. When provided without
-	// change_detection, semantic detection is inferred.
+	// Plain-language description of the changes that matter. Requires `semantic`
+	// detection, which is selected when `change_detection` is omitted.
 	Instructions string `json:"instructions"`
-	// Normalize whitespace before comparing or analyzing text.
+	// Collapse whitespace before comparing text, so spacing-only edits are not
+	// reported.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2714,7 +2767,7 @@ func (r *MonitorUpdateResponseTargetPageActionUnion) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pause for a fixed number of milliseconds before continuing to the next action.
+// Pause for a fixed time before the next action.
 type MonitorUpdateResponseTargetPageActionWait struct {
 	// Use `wait` to pause for a fixed duration.
 	Do constant.Wait `json:"do" default:"wait"`
@@ -2735,7 +2788,7 @@ func (r *MonitorUpdateResponseTargetPageActionWait) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolve and perform one natural-language browser action.
+// Perform one browser instruction written in plain language.
 type MonitorUpdateResponseTargetPageActionPerform struct {
 	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
@@ -2756,22 +2809,20 @@ func (r *MonitorUpdateResponseTargetPageActionPerform) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Scroll the page or a selected scrollable container, waiting adaptively for
-// content and dimensions to settle after each iteration.
+// Scroll the page or a scrollable container. Waits for new content to settle after
+// each scroll.
 type MonitorUpdateResponseTargetPageActionScroll struct {
 	// Use `scroll` to move through the page or a container.
 	Do constant.Scroll `json:"do" default:"scroll"`
-	// Pixels per scroll, one visible viewport, or the current scroll boundary.
-	// Defaults to viewport.
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
 	Amount MonitorUpdateResponseTargetPageActionScrollAmountUnion `json:"amount"`
-	// CSS selector for the first matching scroll container. Defaults to the page.
+	// Scroll the first container matching this CSS selector. Omit to scroll the page.
 	Container string `json:"container"`
-	// Direction to scroll. Defaults to down.
+	// Direction to scroll.
 	//
 	// Any of "up", "down", "left", "right".
 	Direction string `json:"direction"`
-	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
-	// changing. Defaults to 1.
+	// Maximum number of scroll steps. Stops early when the page stops changing.
 	MaxScrolls int64 `json:"maxScrolls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2834,17 +2885,17 @@ const (
 	MonitorUpdateResponseTargetPageActionScrollAmountStringMax      MonitorUpdateResponseTargetPageActionScrollAmountString = "max"
 )
 
-// Watch a site’s URL inventory for confirmed additions and removals.
+// Watch a sitemap and report URLs that are added or removed.
 type MonitorUpdateResponseTargetSitemap struct {
 	// Use `sitemap` to watch a site for added or removed URLs.
 	Type constant.Sitemap `json:"type" default:"sitemap"`
-	// Sitemap URL to monitor.
+	// Public HTTP(S) URL of the sitemap to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude (max 50).
+	// Path patterns of URLs to ignore, such as `/legal/*`.
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include (max 50).
+	// Path patterns of URLs to track, such as `/blog/*`.
 	Include []string `json:"include"`
-	// Maximum number of sitemap URLs to track (capped at 10,000).
+	// Maximum number of URLs to track.
 	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2864,24 +2915,25 @@ func (r *MonitorUpdateResponseTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Track relevant pages selected by `schema` and `instructions`; refresh the page
-// set periodically.
+// Extract structured data from the most relevant pages of a site and report
+// meaningful changes. Pages are chosen from `schema` and `instructions`, and the
+// page set is refreshed periodically.
 type MonitorUpdateResponseTargetExtract struct {
-	// Natural-language instructions guiding which pages and facts to track and which
-	// changes to report.
+	// Plain-language description of the pages and facts to track and the changes to
+	// report.
 	Instructions string `json:"instructions" api:"required"`
 	// Use `extract` to watch structured data across selected pages.
 	Type constant.Extract `json:"type" default:"extract"`
-	// Root URL to extract structured data from.
+	// Public HTTP(S) URL where page discovery starts, usually the site home page.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Allow page discovery on subdomains of the target site.
+	// Also discover pages on subdomains of the site.
 	FollowSubdomains bool `json:"follow_subdomains"`
-	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// Maximum link depth from `url`. `0` tracks only the starting page.
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema for page selection and the baseline snapshot. Changes return diffs
-	// and evidence.
+	// JSON Schema for the data to extract, up to 20,000 characters; it also guides
+	// which pages are tracked. Defaults to a `summary` string and a `key_points` list.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2904,16 +2956,17 @@ func (r *MonitorUpdateResponseTargetExtract) UnmarshalJSON(data []byte) error {
 }
 
 // Search the web on every run and report results not seen before, listed in the
-// change’s `matched_urls` and `evidence`. Semantic detection reports only results
-// describing a new development that matches `instructions`; exact detection
+// change's `matched_urls` and `evidence`. `semantic` detection reports only
+// results about a new development that matches `instructions`; `exact` detection
 // reports every new result.
 type MonitorUpdateResponseTargetSearch struct {
-	// Web search query to run on every check. Supports operators such as `site:`,
-	// `-site:`, and quoted phrases.
+	// Web search query to run on every check. Supports `site:`, `-site:`, and quoted
+	// phrases.
 	Query string `json:"query" api:"required"`
-	// Use `search` to watch the whole web for new results about a topic.
+	// Use `search` to watch the web for new results about a topic.
 	Type constant.Search `json:"type" default:"search"`
-	// Plain-language description of which new results matter. Defaults to the query.
+	// Plain-language description of the new results that matter. Defaults to `query`.
+	// Not allowed with `exact` detection.
 	Instructions string `json:"instructions"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -2991,11 +3044,11 @@ func (r *MonitorUpdateResponseBaselineUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `page` monitor: the visible page text as last observed.
+// Baseline for a `page` target: the page's visible text from the last capture.
 type MonitorUpdateResponseBaselinePageBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// The page's visible text as last observed.
+	// Visible page text from the last capture.
 	Text string `json:"text" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3012,14 +3065,14 @@ func (r *MonitorUpdateResponseBaselinePageBaseline) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `sitemap` monitor: the normalized URL set as last
-// observed.
+// Baseline for a `sitemap` target: the normalized set of URLs from the last
+// capture.
 type MonitorUpdateResponseBaselineSitemapBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// Number of URLs in the baseline.
 	URLCount int64 `json:"url_count" api:"required"`
-	// The sitemap URLs as last observed (sorted, normalized).
+	// Normalized sitemap URLs from the last capture, sorted.
 	URLs []string `json:"urls" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3037,15 +3090,15 @@ func (r *MonitorUpdateResponseBaselineSitemapBaseline) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the pages it tracks and the structured
-// data as last extracted.
+// Baseline for an `extract` target: the tracked pages and the data last extracted
+// from them.
 type MonitorUpdateResponseBaselineExtractBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Latest structured snapshot matching the extraction schema, refreshed at most
-	// daily; `null` before capture.
+	// Latest extracted data, matching the target's `schema`. Refreshed at most once a
+	// day; `null` before the first capture.
 	Data any `json:"data" api:"required"`
-	// The page URLs the monitor tracks and analyzes for changes.
+	// Pages the monitor tracks for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3063,11 +3116,11 @@ func (r *MonitorUpdateResponseBaselineExtractBaseline) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `search` monitor: the search results as last observed.
+// Baseline for a `search` target: the results from the last capture.
 type MonitorUpdateResponseBaselineSearchBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Search results as last observed.
+	// Search results from the last capture.
 	Results []MonitorUpdateResponseBaselineSearchBaselineResult `json:"results" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3087,10 +3140,12 @@ func (r *MonitorUpdateResponseBaselineSearchBaseline) UnmarshalJSON(data []byte)
 type MonitorUpdateResponseBaselineSearchBaselineResult struct {
 	// Result snippet.
 	Description string `json:"description" api:"required"`
-	// When the result was published, when known.
+	// When the result was published. `null` when unknown.
 	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
-	Title       string    `json:"title" api:"required"`
-	URL         string    `json:"url" api:"required" format:"uri"`
+	// Title of the result.
+	Title string `json:"title" api:"required"`
+	// URL of the result.
+	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description respjson.Field
@@ -3112,7 +3167,7 @@ func (r *MonitorUpdateResponseBaselineSearchBaselineResult) UnmarshalJSON(data [
 type MonitorUpdateResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3129,9 +3184,11 @@ func (r *MonitorUpdateResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Error from the most recent failed run; null when the last run succeeded.
+// Error from the most recent failed run. `null` when the last run succeeded.
 type MonitorUpdateResponseLastError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3148,19 +3205,17 @@ func (r *MonitorUpdateResponseLastError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
+// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+// interval must be between 10 minutes and 1 year.
 type MonitorUpdateResponseSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
+	// Number of `unit` periods between runs. The interval must be between 10 minutes
+	// and 1 year, so at least `10` with `minutes` and at most `365` with `days`.
 	Frequency int64 `json:"frequency" api:"required"`
 	// Use `interval` to run on a repeating schedule.
 	//
 	// Any of "interval".
 	Type string `json:"type" api:"required"`
-	// Time unit used with `frequency` to set the run interval.
+	// Time unit for `frequency`.
 	//
 	// Any of "minutes", "hours", "days".
 	Unit string `json:"unit" api:"required"`
@@ -3180,20 +3235,20 @@ func (r *MonitorUpdateResponseSchedule) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Webhook destination and delivery settings. Null means no webhook is configured.
+// Webhook that receives monitor events. `null` when no webhook is configured.
 type MonitorUpdateResponseWebhook struct {
-	// Public HTTP(S) URL that receives events. Slack and GovSlack URLs get formatted
-	// messages.
+	// Public HTTP(S) URL that receives events. Slack and GovSlack webhook URLs get
+	// formatted messages.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Events to deliver. Defaults to `change.detected`; `run.completed` also includes
-	// unchanged runs.
+	// Events to send. Defaults to `change.detected`. Add `run.completed` to get a
+	// delivery after every completed run, including runs with no change.
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfig `json:"retry"`
-	// API-generated signing secret. Visible only with full access or `monitors:write`
-	// permission.
+	// Signing secret for verifying deliveries, generated by Context.dev. Returned only
+	// to API keys with full access or the `monitors:write` permission.
 	Secret string `json:"secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3212,18 +3267,19 @@ func (r *MonitorUpdateResponseWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Present while webhook deliveries are failing consecutively; null when deliveries
-// are healthy or no webhook is configured. Cleared on the next successful delivery
-// and when the webhook URL changes.
+// Details of failing webhook deliveries. `null` when deliveries succeed or no
+// webhook is configured; cleared by the next successful delivery or a new webhook
+// URL.
 type MonitorUpdateResponseWebhookFailure struct {
-	// Number of consecutive delivery attempts that did not succeed.
-	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
-	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
-	// Human-readable description of the most recent failure.
+	// Number of failed delivery attempts in a row.
+	ConsecutiveFailures int64 `json:"consecutive_failures" api:"required"`
+	// When the most recent delivery failed.
+	LastFailedAt time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable explanation of the most recent failure.
 	LastMessage string `json:"last_message" api:"required"`
-	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
-	// failed means no HTTP response was received; skipped_unsafe_url means the URL
-	// failed the public-endpoint safety check.
+	// Outcome of the most recent failed delivery: `rejected` (non-2xx response),
+	// `failed` (no response), or `skipped_unsafe_url` (the URL isn't a safe public
+	// endpoint).
 	//
 	// Any of "rejected", "failed", "skipped_unsafe_url".
 	LastStatus string `json:"last_status" api:"required"`
@@ -3245,9 +3301,12 @@ func (r *MonitorUpdateResponseWebhookFailure) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListResponse struct {
-	Data       []MonitorListResponseData `json:"data" api:"required"`
-	HasMore    bool                      `json:"has_more" api:"required"`
-	NextCursor string                    `json:"next_cursor" api:"required"`
+	// Monitors on this page.
+	Data []MonitorListResponseData `json:"data" api:"required"`
+	// Whether more results are available after this page.
+	HasMore bool `json:"has_more" api:"required"`
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
+	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -3271,50 +3330,60 @@ func (r *MonitorListResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// A web monitor. `mode` is the constant `web`; behavior is described by `target`
-// (page/sitemap/extract/search) and `change_detection` (exact/semantic).
+// A monitor checks a web page, sitemap, site data, or web search on a schedule and
+// records each change it detects. `target` sets what to watch, `change_detection`
+// how changes are judged, and `schedule` how often it runs.
 type MonitorListResponseData struct {
+	// Unique ID of the monitor.
 	ID string `json:"id" api:"required"`
 	// How changes are judged. Defaults to `semantic` for extract and search targets
-	// and page targets with `instructions`, otherwise `exact`.
+	// and for page targets with `instructions`; otherwise `exact`. Sitemap targets
+	// support only `exact`, and extract targets only `semantic`.
 	ChangeDetection MonitorListResponseDataChangeDetectionUnion `json:"change_detection" api:"required"`
-	CreatedAt       time.Time                                   `json:"created_at" api:"required" format:"date-time"`
-	// Always `web`. Optional.
+	// When the monitor was created.
+	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
 	Mode string `json:"mode" api:"required"`
+	// Display name of the monitor.
 	Name string `json:"name" api:"required"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
+	// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+	// interval must be between 10 minutes and 1 year.
 	Schedule MonitorListResponseDataSchedule `json:"schedule" api:"required"`
-	// Current state. Failed monitors keep running; paused monitors must be resumed
-	// with `status: "active"`.
+	// `active` monitors run on schedule. `failed` monitors keep running after a failed
+	// run and return to `active` on the next success. `paused` monitors don't run
+	// until you set `status` to `active`; Context.dev also pauses monitors after
+	// repeated failures or credit shortfalls.
 	//
 	// Any of "active", "paused", "failed".
 	Status string `json:"status" api:"required"`
 	// What to watch: a page, a sitemap, data extracted from a site, or web search
 	// results.
-	Target    MonitorListResponseDataTargetUnion `json:"target" api:"required"`
-	UpdatedAt time.Time                          `json:"updated_at" api:"required" format:"date-time"`
-	// Comparison baseline, included on Retrieve. Null until capture completes or after
-	// target changes.
-	Baseline     MonitorListResponseDataBaselineUnion `json:"baseline" api:"nullable"`
-	LastChangeAt time.Time                            `json:"last_change_at" api:"nullable" format:"date-time"`
-	// Error from the most recent failed run; null when the last run succeeded.
+	Target MonitorListResponseDataTargetUnion `json:"target" api:"required"`
+	// When the monitor was last updated.
+	UpdatedAt time.Time `json:"updated_at" api:"required" format:"date-time"`
+	// What the next run compares against. Returned only by
+	// `GET /monitors/{monitor_id}`; `null` until the first capture finishes or after
+	// the target changes.
+	Baseline MonitorListResponseDataBaselineUnion `json:"baseline" api:"nullable"`
+	// When the monitor last detected a change. `null` until it detects one.
+	LastChangeAt time.Time `json:"last_change_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run. `null` when the last run succeeded.
 	LastError MonitorListResponseDataLastError `json:"last_error" api:"nullable"`
-	LastRunAt time.Time                        `json:"last_run_at" api:"nullable" format:"date-time"`
-	// When the next scheduled run is due; null while paused.
+	// When the most recent run ended. `null` until the first run ends.
+	LastRunAt time.Time `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due. `null` while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// Access policy IDs applied to every run.
 	Policies []string `json:"policies"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Labels for grouping monitors. Filter monitors, changes, and credit usage by tag.
 	Tags []string `json:"tags"`
-	// Webhook destination and delivery settings. Null means no webhook is configured.
+	// Webhook that receives monitor events. `null` when no webhook is configured.
 	Webhook MonitorListResponseDataWebhook `json:"webhook" api:"nullable"`
-	// Present while webhook deliveries are failing consecutively; null when deliveries
-	// are healthy or no webhook is configured. Cleared on the next successful delivery
-	// and when the webhook URL changes.
+	// Details of failing webhook deliveries. `null` when deliveries succeed or no
+	// webhook is configured; cleared by the next successful delivery or a new webhook
+	// URL.
 	WebhookFailure MonitorListResponseDataWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3414,9 +3483,8 @@ func (r *MonitorListResponseDataChangeDetectionUnion) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals. For search targets, this
-// means every new result.
+// Report every change: visible-text diffs for pages, added or removed URLs for
+// sitemaps, and every new result for searches.
 type MonitorListResponseDataChangeDetectionExact struct {
 	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
@@ -3434,12 +3502,13 @@ func (r *MonitorListResponseDataChangeDetectionExact) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaningful content changes using the target’s instructions and optional
-// schema.
+// Report only changes that matter, judged against the target's `instructions` and,
+// for extract targets, its `schema`.
 type MonitorListResponseDataChangeDetectionSemantic struct {
-	// Use `semantic` to judge changes against the target instructions.
+	// Use `semantic` to report only changes that match the target's `instructions`.
 	Type constant.Semantic `json:"type" default:"semantic"`
-	// Minimum confidence required to report a meaningful change, from 0 to 1.
+	// Minimum confidence a change needs to be reported. Higher values mean fewer, more
+	// certain alerts.
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3456,19 +3525,17 @@ func (r *MonitorListResponseDataChangeDetectionSemantic) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
+// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+// interval must be between 10 minutes and 1 year.
 type MonitorListResponseDataSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
+	// Number of `unit` periods between runs. The interval must be between 10 minutes
+	// and 1 year, so at least `10` with `minutes` and at most `365` with `days`.
 	Frequency int64 `json:"frequency" api:"required"`
 	// Use `interval` to run on a repeating schedule.
 	//
 	// Any of "interval".
 	Type string `json:"type" api:"required"`
-	// Time unit used with `frequency` to set the run interval.
+	// Time unit for `frequency`.
 	//
 	// Any of "minutes", "hours", "days".
 	Unit string `json:"unit" api:"required"`
@@ -3609,26 +3676,27 @@ func (r *MonitorListResponseDataTargetUnion) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page. Exact detection reports visible-text diffs; semantic
-// detection judges confirmed stable diffs against `instructions`.
+// Watch one web page. `exact` detection reports any change to the visible text;
+// `semantic` detection reports only confirmed changes that match `instructions`.
 type MonitorListResponseDataTargetPage struct {
 	// Use `page` to watch one web page.
 	Type constant.Page `json:"type" default:"page"`
-	// Public HTTP(S) page URL to monitor.
+	// Public HTTP(S) URL of the page to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Optional browser actions executed in array order after the page loads, before
-	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
-	// Changes create a new baseline.
+	// Browser actions to run in order after the page loads and before each capture.
+	// Requires a paid plan. Changing it resets the baseline.
 	Actions []MonitorListResponseDataTargetPageActionUnion `json:"actions" api:"nullable"`
-	// Remove matching regions after inclusions. Changes create a new baseline.
+	// CSS selectors for regions to ignore, applied after `include_selectors`. Changing
+	// it resets the baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
-	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
-	// create a new baseline.
+	// CSS selectors for the regions to watch. Omit or leave empty to watch the main
+	// content. Changing it resets the baseline.
 	IncludeSelectors []string `json:"include_selectors"`
-	// Plain-language goal describing which page changes matter. When provided without
-	// change_detection, semantic detection is inferred.
+	// Plain-language description of the changes that matter. Requires `semantic`
+	// detection, which is selected when `change_detection` is omitted.
 	Instructions string `json:"instructions"`
-	// Normalize whitespace before comparing or analyzing text.
+	// Collapse whitespace before comparing text, so spacing-only edits are not
+	// reported.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3743,7 +3811,7 @@ func (r *MonitorListResponseDataTargetPageActionUnion) UnmarshalJSON(data []byte
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pause for a fixed number of milliseconds before continuing to the next action.
+// Pause for a fixed time before the next action.
 type MonitorListResponseDataTargetPageActionWait struct {
 	// Use `wait` to pause for a fixed duration.
 	Do constant.Wait `json:"do" default:"wait"`
@@ -3764,7 +3832,7 @@ func (r *MonitorListResponseDataTargetPageActionWait) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolve and perform one natural-language browser action.
+// Perform one browser instruction written in plain language.
 type MonitorListResponseDataTargetPageActionPerform struct {
 	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
@@ -3785,22 +3853,20 @@ func (r *MonitorListResponseDataTargetPageActionPerform) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Scroll the page or a selected scrollable container, waiting adaptively for
-// content and dimensions to settle after each iteration.
+// Scroll the page or a scrollable container. Waits for new content to settle after
+// each scroll.
 type MonitorListResponseDataTargetPageActionScroll struct {
 	// Use `scroll` to move through the page or a container.
 	Do constant.Scroll `json:"do" default:"scroll"`
-	// Pixels per scroll, one visible viewport, or the current scroll boundary.
-	// Defaults to viewport.
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
 	Amount MonitorListResponseDataTargetPageActionScrollAmountUnion `json:"amount"`
-	// CSS selector for the first matching scroll container. Defaults to the page.
+	// Scroll the first container matching this CSS selector. Omit to scroll the page.
 	Container string `json:"container"`
-	// Direction to scroll. Defaults to down.
+	// Direction to scroll.
 	//
 	// Any of "up", "down", "left", "right".
 	Direction string `json:"direction"`
-	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
-	// changing. Defaults to 1.
+	// Maximum number of scroll steps. Stops early when the page stops changing.
 	MaxScrolls int64 `json:"maxScrolls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3864,17 +3930,17 @@ const (
 	MonitorListResponseDataTargetPageActionScrollAmountStringMax      MonitorListResponseDataTargetPageActionScrollAmountString = "max"
 )
 
-// Watch a site’s URL inventory for confirmed additions and removals.
+// Watch a sitemap and report URLs that are added or removed.
 type MonitorListResponseDataTargetSitemap struct {
 	// Use `sitemap` to watch a site for added or removed URLs.
 	Type constant.Sitemap `json:"type" default:"sitemap"`
-	// Sitemap URL to monitor.
+	// Public HTTP(S) URL of the sitemap to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude (max 50).
+	// Path patterns of URLs to ignore, such as `/legal/*`.
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include (max 50).
+	// Path patterns of URLs to track, such as `/blog/*`.
 	Include []string `json:"include"`
-	// Maximum number of sitemap URLs to track (capped at 10,000).
+	// Maximum number of URLs to track.
 	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3894,24 +3960,25 @@ func (r *MonitorListResponseDataTargetSitemap) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Track relevant pages selected by `schema` and `instructions`; refresh the page
-// set periodically.
+// Extract structured data from the most relevant pages of a site and report
+// meaningful changes. Pages are chosen from `schema` and `instructions`, and the
+// page set is refreshed periodically.
 type MonitorListResponseDataTargetExtract struct {
-	// Natural-language instructions guiding which pages and facts to track and which
-	// changes to report.
+	// Plain-language description of the pages and facts to track and the changes to
+	// report.
 	Instructions string `json:"instructions" api:"required"`
 	// Use `extract` to watch structured data across selected pages.
 	Type constant.Extract `json:"type" default:"extract"`
-	// Root URL to extract structured data from.
+	// Public HTTP(S) URL where page discovery starts, usually the site home page.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Allow page discovery on subdomains of the target site.
+	// Also discover pages on subdomains of the site.
 	FollowSubdomains bool `json:"follow_subdomains"`
-	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// Maximum link depth from `url`. `0` tracks only the starting page.
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema for page selection and the baseline snapshot. Changes return diffs
-	// and evidence.
+	// JSON Schema for the data to extract, up to 20,000 characters; it also guides
+	// which pages are tracked. Defaults to a `summary` string and a `key_points` list.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -3934,16 +4001,17 @@ func (r *MonitorListResponseDataTargetExtract) UnmarshalJSON(data []byte) error 
 }
 
 // Search the web on every run and report results not seen before, listed in the
-// change’s `matched_urls` and `evidence`. Semantic detection reports only results
-// describing a new development that matches `instructions`; exact detection
+// change's `matched_urls` and `evidence`. `semantic` detection reports only
+// results about a new development that matches `instructions`; `exact` detection
 // reports every new result.
 type MonitorListResponseDataTargetSearch struct {
-	// Web search query to run on every check. Supports operators such as `site:`,
-	// `-site:`, and quoted phrases.
+	// Web search query to run on every check. Supports `site:`, `-site:`, and quoted
+	// phrases.
 	Query string `json:"query" api:"required"`
-	// Use `search` to watch the whole web for new results about a topic.
+	// Use `search` to watch the web for new results about a topic.
 	Type constant.Search `json:"type" default:"search"`
-	// Plain-language description of which new results matter. Defaults to the query.
+	// Plain-language description of the new results that matter. Defaults to `query`.
+	// Not allowed with `exact` detection.
 	Instructions string `json:"instructions"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4021,11 +4089,11 @@ func (r *MonitorListResponseDataBaselineUnion) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `page` monitor: the visible page text as last observed.
+// Baseline for a `page` target: the page's visible text from the last capture.
 type MonitorListResponseDataBaselinePageBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// The page's visible text as last observed.
+	// Visible page text from the last capture.
 	Text string `json:"text" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4042,14 +4110,14 @@ func (r *MonitorListResponseDataBaselinePageBaseline) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `sitemap` monitor: the normalized URL set as last
-// observed.
+// Baseline for a `sitemap` target: the normalized set of URLs from the last
+// capture.
 type MonitorListResponseDataBaselineSitemapBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// Number of URLs in the baseline.
 	URLCount int64 `json:"url_count" api:"required"`
-	// The sitemap URLs as last observed (sorted, normalized).
+	// Normalized sitemap URLs from the last capture, sorted.
 	URLs []string `json:"urls" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4067,15 +4135,15 @@ func (r *MonitorListResponseDataBaselineSitemapBaseline) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the pages it tracks and the structured
-// data as last extracted.
+// Baseline for an `extract` target: the tracked pages and the data last extracted
+// from them.
 type MonitorListResponseDataBaselineExtractBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Latest structured snapshot matching the extraction schema, refreshed at most
-	// daily; `null` before capture.
+	// Latest extracted data, matching the target's `schema`. Refreshed at most once a
+	// day; `null` before the first capture.
 	Data any `json:"data" api:"required"`
-	// The page URLs the monitor tracks and analyzes for changes.
+	// Pages the monitor tracks for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4093,11 +4161,11 @@ func (r *MonitorListResponseDataBaselineExtractBaseline) UnmarshalJSON(data []by
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `search` monitor: the search results as last observed.
+// Baseline for a `search` target: the results from the last capture.
 type MonitorListResponseDataBaselineSearchBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Search results as last observed.
+	// Search results from the last capture.
 	Results []MonitorListResponseDataBaselineSearchBaselineResult `json:"results" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4117,10 +4185,12 @@ func (r *MonitorListResponseDataBaselineSearchBaseline) UnmarshalJSON(data []byt
 type MonitorListResponseDataBaselineSearchBaselineResult struct {
 	// Result snippet.
 	Description string `json:"description" api:"required"`
-	// When the result was published, when known.
+	// When the result was published. `null` when unknown.
 	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
-	Title       string    `json:"title" api:"required"`
-	URL         string    `json:"url" api:"required" format:"uri"`
+	// Title of the result.
+	Title string `json:"title" api:"required"`
+	// URL of the result.
+	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description respjson.Field
@@ -4138,9 +4208,11 @@ func (r *MonitorListResponseDataBaselineSearchBaselineResult) UnmarshalJSON(data
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Error from the most recent failed run; null when the last run succeeded.
+// Error from the most recent failed run. `null` when the last run succeeded.
 type MonitorListResponseDataLastError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4157,20 +4229,20 @@ func (r *MonitorListResponseDataLastError) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Webhook destination and delivery settings. Null means no webhook is configured.
+// Webhook that receives monitor events. `null` when no webhook is configured.
 type MonitorListResponseDataWebhook struct {
-	// Public HTTP(S) URL that receives events. Slack and GovSlack URLs get formatted
-	// messages.
+	// Public HTTP(S) URL that receives events. Slack and GovSlack webhook URLs get
+	// formatted messages.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Events to deliver. Defaults to `change.detected`; `run.completed` also includes
-	// unchanged runs.
+	// Events to send. Defaults to `change.detected`. Add `run.completed` to get a
+	// delivery after every completed run, including runs with no change.
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfig `json:"retry"`
-	// API-generated signing secret. Visible only with full access or `monitors:write`
-	// permission.
+	// Signing secret for verifying deliveries, generated by Context.dev. Returned only
+	// to API keys with full access or the `monitors:write` permission.
 	Secret string `json:"secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4189,18 +4261,19 @@ func (r *MonitorListResponseDataWebhook) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Present while webhook deliveries are failing consecutively; null when deliveries
-// are healthy or no webhook is configured. Cleared on the next successful delivery
-// and when the webhook URL changes.
+// Details of failing webhook deliveries. `null` when deliveries succeed or no
+// webhook is configured; cleared by the next successful delivery or a new webhook
+// URL.
 type MonitorListResponseDataWebhookFailure struct {
-	// Number of consecutive delivery attempts that did not succeed.
-	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
-	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
-	// Human-readable description of the most recent failure.
+	// Number of failed delivery attempts in a row.
+	ConsecutiveFailures int64 `json:"consecutive_failures" api:"required"`
+	// When the most recent delivery failed.
+	LastFailedAt time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable explanation of the most recent failure.
 	LastMessage string `json:"last_message" api:"required"`
-	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
-	// failed means no HTTP response was received; skipped_unsafe_url means the URL
-	// failed the public-endpoint safety check.
+	// Outcome of the most recent failed delivery: `rejected` (non-2xx response),
+	// `failed` (no response), or `skipped_unsafe_url` (the URL isn't a safe public
+	// endpoint).
 	//
 	// Any of "rejected", "failed", "skipped_unsafe_url".
 	LastStatus string `json:"last_status" api:"required"`
@@ -4225,7 +4298,7 @@ func (r *MonitorListResponseDataWebhookFailure) UnmarshalJSON(data []byte) error
 type MonitorListResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4243,8 +4316,10 @@ func (r *MonitorListResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorDeleteResponse struct {
-	ID      string `json:"id" api:"required"`
-	Deleted bool   `json:"deleted" api:"required"`
+	// ID of the deleted monitor.
+	ID string `json:"id" api:"required"`
+	// Whether the monitor was deleted.
+	Deleted bool `json:"deleted" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -4271,7 +4346,7 @@ func (r *MonitorDeleteResponse) UnmarshalJSON(data []byte) error {
 type MonitorDeleteResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4289,11 +4364,12 @@ func (r *MonitorDeleteResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorGetCreditUsageResponse struct {
+	// Usage per monitor, highest first.
 	Data []MonitorGetCreditUsageResponseData `json:"data" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Sum of credits across all monitors in the window.
+	// Total credits across the monitors in `data`.
 	TotalCredits int64 `json:"total_credits" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata MonitorGetCreditUsageResponseKeyMetadata `json:"key_metadata"`
@@ -4315,12 +4391,13 @@ func (r *MonitorGetCreditUsageResponse) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorGetCreditUsageResponseData struct {
-	// Credits charged to this monitor over the window.
-	Credits   int64  `json:"credits" api:"required"`
+	// Credits charged to the monitor in the window.
+	Credits int64 `json:"credits" api:"required"`
+	// ID of the monitor.
 	MonitorID string `json:"monitor_id" api:"required"`
-	// Monitor name (falls back to the id when the monitor was deleted).
+	// Name of the monitor, or its ID if the monitor was deleted.
 	Name string `json:"name" api:"required"`
-	// Number of billed runs over the window.
+	// Number of billed runs in the window.
 	Runs int64 `json:"runs" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4343,7 +4420,7 @@ func (r *MonitorGetCreditUsageResponseData) UnmarshalJSON(data []byte) error {
 type MonitorGetCreditUsageResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4361,12 +4438,13 @@ func (r *MonitorGetCreditUsageResponseKeyMetadata) UnmarshalJSON(data []byte) er
 }
 
 type MonitorGetLimitsResponse struct {
-	// Most monitors you can have: your plan's allowance or a custom limit.
+	// Maximum number of monitors your organization can have, from your plan or a
+	// custom limit.
 	MonitorsLimit int64 `json:"monitors_limit" api:"required"`
-	// Number of monitors the account currently has.
+	// Number of monitors your organization has.
 	MonitorsUsed int64 `json:"monitors_used" api:"required"`
-	// `starter` means Developer; `pro` means Pro or Growth; `scale` means Scale or
-	// Enterprise.
+	// Your plan tier. `free` is Free, `starter` is Developer, `pro` is Pro or Growth,
+	// and `scale` is Scale or Enterprise.
 	//
 	// Any of "free", "starter", "pro", "scale".
 	Plan MonitorGetLimitsResponsePlan `json:"plan" api:"required"`
@@ -4393,8 +4471,8 @@ func (r *MonitorGetLimitsResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// `starter` means Developer; `pro` means Pro or Growth; `scale` means Scale or
-// Enterprise.
+// Your plan tier. `free` is Free, `starter` is Developer, `pro` is Pro or Growth,
+// and `scale` is Scale or Enterprise.
 type MonitorGetLimitsResponsePlan string
 
 const (
@@ -4408,7 +4486,7 @@ const (
 type MonitorGetLimitsResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4426,9 +4504,12 @@ func (r *MonitorGetLimitsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListAccountChangesResponse struct {
-	Data       []MonitorListAccountChangesResponseData `json:"data" api:"required"`
-	HasMore    bool                                    `json:"has_more" api:"required"`
-	NextCursor string                                  `json:"next_cursor" api:"required"`
+	// Changes on this page.
+	Data []MonitorListAccountChangesResponseData `json:"data" api:"required"`
+	// Whether more results are available after this page.
+	HasMore bool `json:"has_more" api:"required"`
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
+	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -4452,43 +4533,67 @@ func (r *MonitorListAccountChangesResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detected change, including applicable diffs, URLs, and supporting evidence.
+// A change detected by a monitor run, with a summary and, depending on the target,
+// a text diff, added or removed URLs, matched results, and evidence.
 type MonitorListAccountChangesResponseData struct {
+	// Unique ID of the change.
 	ID string `json:"id" api:"required"`
+	// Change detection type the monitor uses.
+	//
 	// Any of "exact", "semantic".
-	ChangeDetectionType string    `json:"change_detection_type" api:"required"`
-	DetectedAt          time.Time `json:"detected_at" api:"required" format:"date-time"`
-	// Always `web`. Optional.
+	ChangeDetectionType string `json:"change_detection_type" api:"required"`
+	// When the change was detected.
+	DetectedAt time.Time `json:"detected_at" api:"required" format:"date-time"`
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
-	Mode      string `json:"mode" api:"required"`
+	Mode string `json:"mode" api:"required"`
+	// ID of the monitor that detected the change.
 	MonitorID string `json:"monitor_id" api:"required"`
-	// The run that detected this change.
-	RunID   string `json:"run_id" api:"required"`
+	// ID of the run that detected the change.
+	RunID string `json:"run_id" api:"required"`
+	// Plain-language summary of what changed.
 	Summary string `json:"summary" api:"required"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Tags the monitor had when the change was detected.
 	Tags []string `json:"tags" api:"required"`
+	// Type of target the monitor watches.
+	//
 	// Any of "page", "sitemap", "extract", "search".
 	TargetType string `json:"target_type" api:"required"`
-	Title      string `json:"title" api:"required"`
-	// The monitored URL. For search targets, the first newly reported result.
-	URL           string `json:"url" api:"required" format:"uri"`
-	AddedURLCount int64  `json:"added_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
-	AddedURLs         []string `json:"added_urls" format:"uri"`
-	AfterTextExcerpt  string   `json:"after_text_excerpt"`
-	BeforeTextExcerpt string   `json:"before_text_excerpt"`
-	Confidence        float64  `json:"confidence"`
-	// Text diff between the previous and current page baseline (page targets).
-	Diff     string                                          `json:"diff"`
+	// Short headline for the change.
+	Title string `json:"title" api:"required"`
+	// Monitored URL. For search targets, the first new result.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Total number of URLs added.
+	AddedURLCount int64 `json:"added_url_count"`
+	// URLs added to the sitemap, up to 500. `added_url_count` has the full count.
+	AddedURLs []string `json:"added_urls" format:"uri"`
+	// Excerpt of the page text after the change. Page targets only.
+	AfterTextExcerpt string `json:"after_text_excerpt"`
+	// Excerpt of the page text before the change. Page targets only.
+	BeforeTextExcerpt string `json:"before_text_excerpt"`
+	// Confidence that the change matters, from 0 to 1. Set by `semantic` detection
+	// only.
+	Confidence float64 `json:"confidence"`
+	// Text diff of the change, for page and extract targets. Extract diffs have one
+	// section per changed page.
+	Diff string `json:"diff"`
+	// Before and after excerpts that support the change.
 	Evidence []MonitorListAccountChangesResponseDataEvidence `json:"evidence"`
+	// How important the change is. Set by `semantic` detection only.
+	//
 	// Any of "low", "medium", "high".
-	Importance      string `json:"importance"`
-	MatchedURLCount int64  `json:"matched_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
-	MatchedURLs     []string `json:"matched_urls" format:"uri"`
-	RemovedURLCount int64    `json:"removed_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
+	Importance string `json:"importance"`
+	// Total number of matched URLs.
+	MatchedURLCount int64 `json:"matched_url_count"`
+	// URLs where the change was found: the changed pages for page and extract targets,
+	// or the new results for search targets. Up to 500; `matched_url_count` has the
+	// full count.
+	MatchedURLs []string `json:"matched_urls" format:"uri"`
+	// Total number of URLs removed.
+	RemovedURLCount int64 `json:"removed_url_count"`
+	// URLs removed from the sitemap, or pages no longer found for extract targets, up
+	// to 500. `removed_url_count` has the full count.
 	RemovedURLs []string `json:"removed_urls" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4526,12 +4631,13 @@ func (r *MonitorListAccountChangesResponseData) UnmarshalJSON(data []byte) error
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Before and after excerpts that support a change.
 type MonitorListAccountChangesResponseDataEvidence struct {
-	// Snapshot of the content after the change.
+	// Content after the change.
 	After string `json:"after" api:"required"`
-	// Snapshot of the content before the change.
+	// Content before the change. Empty for new search results.
 	Before string `json:"before" api:"required"`
-	// Optional URL the evidence relates to. Absent for whole-target diffs.
+	// Page the evidence comes from. Omitted when the evidence covers the whole target.
 	URL string `json:"url" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4553,7 +4659,7 @@ func (r *MonitorListAccountChangesResponseDataEvidence) UnmarshalJSON(data []byt
 type MonitorListAccountChangesResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4571,9 +4677,12 @@ func (r *MonitorListAccountChangesResponseKeyMetadata) UnmarshalJSON(data []byte
 }
 
 type MonitorListAccountRunsResponse struct {
-	Data       []MonitorListAccountRunsResponseData `json:"data" api:"required"`
-	HasMore    bool                                 `json:"has_more" api:"required"`
-	NextCursor string                               `json:"next_cursor" api:"required"`
+	// Runs on this page.
+	Data []MonitorListAccountRunsResponseData `json:"data" api:"required"`
+	// Whether more results are available after this page.
+	HasMore bool `json:"has_more" api:"required"`
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
+	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -4598,44 +4707,54 @@ func (r *MonitorListAccountRunsResponse) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListAccountRunsResponseData struct {
+	// Unique ID of the run.
 	ID string `json:"id" api:"required"`
-	// True when this run established the monitor's initial baseline; baseline runs
-	// perform no change detection.
+	// `true` when this run captured the monitor's baseline instead of checking for
+	// changes.
 	BaselineCreated bool `json:"baseline_created" api:"required"`
-	ChangeDetected  bool `json:"change_detected" api:"required"`
+	// Whether the run detected a change.
+	ChangeDetected bool `json:"change_detected" api:"required"`
+	// Change detection type the monitor uses.
+	//
 	// Any of "exact", "semantic".
 	ChangeDetectionType string `json:"change_detection_type" api:"required"`
-	// Credits charged for this run (0 for skipped/failed runs).
-	CreditsCharged int64  `json:"credits_charged" api:"required"`
-	MonitorID      string `json:"monitor_id" api:"required"`
-	// A baseline run follows creation or a target or detection change.
+	// Credits charged for this run. `0` for skipped and failed runs.
+	CreditsCharged int64 `json:"credits_charged" api:"required"`
+	// ID of the monitor this run belongs to.
+	MonitorID string `json:"monitor_id" api:"required"`
+	// `baseline` runs capture a fresh baseline after creation or a target or detection
+	// change. `scheduled` runs, including on-demand ones, check for changes.
 	//
 	// Any of "baseline", "scheduled".
 	RunType string `json:"run_type" api:"required"`
-	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	// Run status. `skipped` runs never executed; `skip_reason` says why.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status string `json:"status" api:"required"`
+	// Type of target the monitor watches.
+	//
 	// Any of "page", "sitemap", "extract", "search".
-	TargetType  string                                  `json:"target_type" api:"required"`
-	ChangeID    string                                  `json:"change_id" api:"nullable"`
+	TargetType string `json:"target_type" api:"required"`
+	// ID of the change this run detected. `null` when it found none.
+	ChangeID string `json:"change_id" api:"nullable"`
+	// When the run ended. `null` until it ends.
 	CompletedAt time.Time                               `json:"completed_at" api:"nullable" format:"date-time"`
 	Error       MonitorListAccountRunsResponseDataError `json:"error" api:"nullable"`
-	// Why a skipped run never executed; null unless status is `skipped`.
+	// Why the run was skipped; `superseded` means a concurrent run took its place or
+	// the monitor was deleted. `null` unless `status` is `skipped`.
 	//
 	// Any of "insufficient_credits", "monitor_paused", "superseded".
-	SkipReason string    `json:"skip_reason" api:"nullable"`
-	StartedAt  time.Time `json:"started_at" api:"nullable" format:"date-time"`
-	// All webhook deliveries attempted by this run — one per subscribed event that
-	// fired. Omitted when no webhook was attempted, including runs created before
-	// event selection was added.
+	SkipReason string `json:"skip_reason" api:"nullable"`
+	// When the run started. `null` until it starts.
+	StartedAt time.Time `json:"started_at" api:"nullable" format:"date-time"`
+	// Webhook deliveries for this run, one per subscribed event that fired. Omitted
+	// when no delivery was attempted.
 	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
 	// Deprecated. Use `webhook_deliveries` for all attempts.
 	//
 	// Deprecated: deprecated
 	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
-	// Webhook delivery IDs for this run.
+	// IDs of the webhook deliveries sent for this run.
 	WebhookDeliveryIDs []string `json:"webhook_delivery_ids"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4668,7 +4787,9 @@ func (r *MonitorListAccountRunsResponseData) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListAccountRunsResponseDataError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4689,7 +4810,7 @@ func (r *MonitorListAccountRunsResponseDataError) UnmarshalJSON(data []byte) err
 type MonitorListAccountRunsResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4707,9 +4828,12 @@ func (r *MonitorListAccountRunsResponseKeyMetadata) UnmarshalJSON(data []byte) e
 }
 
 type MonitorListChangesResponse struct {
-	Data       []MonitorListChangesResponseData `json:"data" api:"required"`
-	HasMore    bool                             `json:"has_more" api:"required"`
-	NextCursor string                           `json:"next_cursor" api:"required"`
+	// Changes on this page.
+	Data []MonitorListChangesResponseData `json:"data" api:"required"`
+	// Whether more results are available after this page.
+	HasMore bool `json:"has_more" api:"required"`
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
+	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -4733,43 +4857,67 @@ func (r *MonitorListChangesResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detected change, including applicable diffs, URLs, and supporting evidence.
+// A change detected by a monitor run, with a summary and, depending on the target,
+// a text diff, added or removed URLs, matched results, and evidence.
 type MonitorListChangesResponseData struct {
+	// Unique ID of the change.
 	ID string `json:"id" api:"required"`
+	// Change detection type the monitor uses.
+	//
 	// Any of "exact", "semantic".
-	ChangeDetectionType string    `json:"change_detection_type" api:"required"`
-	DetectedAt          time.Time `json:"detected_at" api:"required" format:"date-time"`
-	// Always `web`. Optional.
+	ChangeDetectionType string `json:"change_detection_type" api:"required"`
+	// When the change was detected.
+	DetectedAt time.Time `json:"detected_at" api:"required" format:"date-time"`
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
-	Mode      string `json:"mode" api:"required"`
+	Mode string `json:"mode" api:"required"`
+	// ID of the monitor that detected the change.
 	MonitorID string `json:"monitor_id" api:"required"`
-	// The run that detected this change.
-	RunID   string `json:"run_id" api:"required"`
+	// ID of the run that detected the change.
+	RunID string `json:"run_id" api:"required"`
+	// Plain-language summary of what changed.
 	Summary string `json:"summary" api:"required"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Tags the monitor had when the change was detected.
 	Tags []string `json:"tags" api:"required"`
+	// Type of target the monitor watches.
+	//
 	// Any of "page", "sitemap", "extract", "search".
 	TargetType string `json:"target_type" api:"required"`
-	Title      string `json:"title" api:"required"`
-	// The monitored URL. For search targets, the first newly reported result.
-	URL           string `json:"url" api:"required" format:"uri"`
-	AddedURLCount int64  `json:"added_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
-	AddedURLs         []string `json:"added_urls" format:"uri"`
-	AfterTextExcerpt  string   `json:"after_text_excerpt"`
-	BeforeTextExcerpt string   `json:"before_text_excerpt"`
-	Confidence        float64  `json:"confidence"`
-	// Text diff between the previous and current page baseline (page targets).
-	Diff     string                                   `json:"diff"`
+	// Short headline for the change.
+	Title string `json:"title" api:"required"`
+	// Monitored URL. For search targets, the first new result.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Total number of URLs added.
+	AddedURLCount int64 `json:"added_url_count"`
+	// URLs added to the sitemap, up to 500. `added_url_count` has the full count.
+	AddedURLs []string `json:"added_urls" format:"uri"`
+	// Excerpt of the page text after the change. Page targets only.
+	AfterTextExcerpt string `json:"after_text_excerpt"`
+	// Excerpt of the page text before the change. Page targets only.
+	BeforeTextExcerpt string `json:"before_text_excerpt"`
+	// Confidence that the change matters, from 0 to 1. Set by `semantic` detection
+	// only.
+	Confidence float64 `json:"confidence"`
+	// Text diff of the change, for page and extract targets. Extract diffs have one
+	// section per changed page.
+	Diff string `json:"diff"`
+	// Before and after excerpts that support the change.
 	Evidence []MonitorListChangesResponseDataEvidence `json:"evidence"`
+	// How important the change is. Set by `semantic` detection only.
+	//
 	// Any of "low", "medium", "high".
-	Importance      string `json:"importance"`
-	MatchedURLCount int64  `json:"matched_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
-	MatchedURLs     []string `json:"matched_urls" format:"uri"`
-	RemovedURLCount int64    `json:"removed_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
+	Importance string `json:"importance"`
+	// Total number of matched URLs.
+	MatchedURLCount int64 `json:"matched_url_count"`
+	// URLs where the change was found: the changed pages for page and extract targets,
+	// or the new results for search targets. Up to 500; `matched_url_count` has the
+	// full count.
+	MatchedURLs []string `json:"matched_urls" format:"uri"`
+	// Total number of URLs removed.
+	RemovedURLCount int64 `json:"removed_url_count"`
+	// URLs removed from the sitemap, or pages no longer found for extract targets, up
+	// to 500. `removed_url_count` has the full count.
 	RemovedURLs []string `json:"removed_urls" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4807,12 +4955,13 @@ func (r *MonitorListChangesResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Before and after excerpts that support a change.
 type MonitorListChangesResponseDataEvidence struct {
-	// Snapshot of the content after the change.
+	// Content after the change.
 	After string `json:"after" api:"required"`
-	// Snapshot of the content before the change.
+	// Content before the change. Empty for new search results.
 	Before string `json:"before" api:"required"`
-	// Optional URL the evidence relates to. Absent for whole-target diffs.
+	// Page the evidence comes from. Omitted when the evidence covers the whole target.
 	URL string `json:"url" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4834,7 +4983,7 @@ func (r *MonitorListChangesResponseDataEvidence) UnmarshalJSON(data []byte) erro
 type MonitorListChangesResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4852,9 +5001,12 @@ func (r *MonitorListChangesResponseKeyMetadata) UnmarshalJSON(data []byte) error
 }
 
 type MonitorListRunsResponse struct {
-	Data       []MonitorListRunsResponseData `json:"data" api:"required"`
-	HasMore    bool                          `json:"has_more" api:"required"`
-	NextCursor string                        `json:"next_cursor" api:"required"`
+	// Runs on this page.
+	Data []MonitorListRunsResponseData `json:"data" api:"required"`
+	// Whether more results are available after this page.
+	HasMore bool `json:"has_more" api:"required"`
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
+	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
@@ -4879,44 +5031,54 @@ func (r *MonitorListRunsResponse) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListRunsResponseData struct {
+	// Unique ID of the run.
 	ID string `json:"id" api:"required"`
-	// True when this run established the monitor's initial baseline; baseline runs
-	// perform no change detection.
+	// `true` when this run captured the monitor's baseline instead of checking for
+	// changes.
 	BaselineCreated bool `json:"baseline_created" api:"required"`
-	ChangeDetected  bool `json:"change_detected" api:"required"`
+	// Whether the run detected a change.
+	ChangeDetected bool `json:"change_detected" api:"required"`
+	// Change detection type the monitor uses.
+	//
 	// Any of "exact", "semantic".
 	ChangeDetectionType string `json:"change_detection_type" api:"required"`
-	// Credits charged for this run (0 for skipped/failed runs).
-	CreditsCharged int64  `json:"credits_charged" api:"required"`
-	MonitorID      string `json:"monitor_id" api:"required"`
-	// A baseline run follows creation or a target or detection change.
+	// Credits charged for this run. `0` for skipped and failed runs.
+	CreditsCharged int64 `json:"credits_charged" api:"required"`
+	// ID of the monitor this run belongs to.
+	MonitorID string `json:"monitor_id" api:"required"`
+	// `baseline` runs capture a fresh baseline after creation or a target or detection
+	// change. `scheduled` runs, including on-demand ones, check for changes.
 	//
 	// Any of "baseline", "scheduled".
 	RunType string `json:"run_type" api:"required"`
-	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	// Run status. `skipped` runs never executed; `skip_reason` says why.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status string `json:"status" api:"required"`
+	// Type of target the monitor watches.
+	//
 	// Any of "page", "sitemap", "extract", "search".
-	TargetType  string                           `json:"target_type" api:"required"`
-	ChangeID    string                           `json:"change_id" api:"nullable"`
+	TargetType string `json:"target_type" api:"required"`
+	// ID of the change this run detected. `null` when it found none.
+	ChangeID string `json:"change_id" api:"nullable"`
+	// When the run ended. `null` until it ends.
 	CompletedAt time.Time                        `json:"completed_at" api:"nullable" format:"date-time"`
 	Error       MonitorListRunsResponseDataError `json:"error" api:"nullable"`
-	// Why a skipped run never executed; null unless status is `skipped`.
+	// Why the run was skipped; `superseded` means a concurrent run took its place or
+	// the monitor was deleted. `null` unless `status` is `skipped`.
 	//
 	// Any of "insufficient_credits", "monitor_paused", "superseded".
-	SkipReason string    `json:"skip_reason" api:"nullable"`
-	StartedAt  time.Time `json:"started_at" api:"nullable" format:"date-time"`
-	// All webhook deliveries attempted by this run — one per subscribed event that
-	// fired. Omitted when no webhook was attempted, including runs created before
-	// event selection was added.
+	SkipReason string `json:"skip_reason" api:"nullable"`
+	// When the run started. `null` until it starts.
+	StartedAt time.Time `json:"started_at" api:"nullable" format:"date-time"`
+	// Webhook deliveries for this run, one per subscribed event that fired. Omitted
+	// when no delivery was attempted.
 	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
 	// Deprecated. Use `webhook_deliveries` for all attempts.
 	//
 	// Deprecated: deprecated
 	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
-	// Webhook delivery IDs for this run.
+	// IDs of the webhook deliveries sent for this run.
 	WebhookDeliveryIDs []string `json:"webhook_delivery_ids"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4949,7 +5111,9 @@ func (r *MonitorListRunsResponseData) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListRunsResponseDataError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4970,7 +5134,7 @@ func (r *MonitorListRunsResponseDataError) UnmarshalJSON(data []byte) error {
 type MonitorListRunsResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -4988,46 +5152,69 @@ func (r *MonitorListRunsResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorGetChangeResponse struct {
+	// Unique ID of the change.
 	ID string `json:"id" api:"required"`
+	// Change detection type the monitor uses.
+	//
 	// Any of "exact", "semantic".
 	ChangeDetectionType MonitorGetChangeResponseChangeDetectionType `json:"change_detection_type" api:"required"`
-	DetectedAt          time.Time                                   `json:"detected_at" api:"required" format:"date-time"`
-	// Always `web`. Optional.
+	// When the change was detected.
+	DetectedAt time.Time `json:"detected_at" api:"required" format:"date-time"`
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
-	Mode      MonitorGetChangeResponseMode `json:"mode" api:"required"`
-	MonitorID string                       `json:"monitor_id" api:"required"`
+	Mode MonitorGetChangeResponseMode `json:"mode" api:"required"`
+	// ID of the monitor that detected the change.
+	MonitorID string `json:"monitor_id" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// The run that detected this change.
-	RunID   string `json:"run_id" api:"required"`
+	// ID of the run that detected the change.
+	RunID string `json:"run_id" api:"required"`
+	// Plain-language summary of what changed.
 	Summary string `json:"summary" api:"required"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Tags the monitor had when the change was detected.
 	Tags []string `json:"tags" api:"required"`
+	// Type of target the monitor watches.
+	//
 	// Any of "page", "sitemap", "extract", "search".
 	TargetType MonitorGetChangeResponseTargetType `json:"target_type" api:"required"`
-	Title      string                             `json:"title" api:"required"`
-	// The monitored URL. For search targets, the first newly reported result.
-	URL           string `json:"url" api:"required" format:"uri"`
-	AddedURLCount int64  `json:"added_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
-	AddedURLs         []string `json:"added_urls" format:"uri"`
-	AfterTextExcerpt  string   `json:"after_text_excerpt"`
-	BeforeTextExcerpt string   `json:"before_text_excerpt"`
-	Confidence        float64  `json:"confidence"`
-	// Text diff between the previous and current page baseline (page targets).
-	Diff     string                             `json:"diff"`
+	// Short headline for the change.
+	Title string `json:"title" api:"required"`
+	// Monitored URL. For search targets, the first new result.
+	URL string `json:"url" api:"required" format:"uri"`
+	// Total number of URLs added.
+	AddedURLCount int64 `json:"added_url_count"`
+	// URLs added to the sitemap, up to 500. `added_url_count` has the full count.
+	AddedURLs []string `json:"added_urls" format:"uri"`
+	// Excerpt of the page text after the change. Page targets only.
+	AfterTextExcerpt string `json:"after_text_excerpt"`
+	// Excerpt of the page text before the change. Page targets only.
+	BeforeTextExcerpt string `json:"before_text_excerpt"`
+	// Confidence that the change matters, from 0 to 1. Set by `semantic` detection
+	// only.
+	Confidence float64 `json:"confidence"`
+	// Text diff of the change, for page and extract targets. Extract diffs have one
+	// section per changed page.
+	Diff string `json:"diff"`
+	// Before and after excerpts that support the change.
 	Evidence []MonitorGetChangeResponseEvidence `json:"evidence"`
+	// How important the change is. Set by `semantic` detection only.
+	//
 	// Any of "low", "medium", "high".
 	Importance MonitorGetChangeResponseImportance `json:"importance"`
 	// Credits this request used and your remaining balance.
-	KeyMetadata     MonitorGetChangeResponseKeyMetadata `json:"key_metadata"`
-	MatchedURLCount int64                               `json:"matched_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
-	MatchedURLs     []string `json:"matched_urls" format:"uri"`
-	RemovedURLCount int64    `json:"removed_url_count"`
-	// At most 500 URLs are included; the corresponding count field is always exact.
+	KeyMetadata MonitorGetChangeResponseKeyMetadata `json:"key_metadata"`
+	// Total number of matched URLs.
+	MatchedURLCount int64 `json:"matched_url_count"`
+	// URLs where the change was found: the changed pages for page and extract targets,
+	// or the new results for search targets. Up to 500; `matched_url_count` has the
+	// full count.
+	MatchedURLs []string `json:"matched_urls" format:"uri"`
+	// Total number of URLs removed.
+	RemovedURLCount int64 `json:"removed_url_count"`
+	// URLs removed from the sitemap, or pages no longer found for extract targets, up
+	// to 500. `removed_url_count` has the full count.
 	RemovedURLs []string `json:"removed_urls" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5067,6 +5254,7 @@ func (r *MonitorGetChangeResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Change detection type the monitor uses.
 type MonitorGetChangeResponseChangeDetectionType string
 
 const (
@@ -5074,13 +5262,14 @@ const (
 	MonitorGetChangeResponseChangeDetectionTypeSemantic MonitorGetChangeResponseChangeDetectionType = "semantic"
 )
 
-// Always `web`. Optional.
+// Monitor category. Always `web`.
 type MonitorGetChangeResponseMode string
 
 const (
 	MonitorGetChangeResponseModeWeb MonitorGetChangeResponseMode = "web"
 )
 
+// Type of target the monitor watches.
 type MonitorGetChangeResponseTargetType string
 
 const (
@@ -5090,12 +5279,13 @@ const (
 	MonitorGetChangeResponseTargetTypeSearch  MonitorGetChangeResponseTargetType = "search"
 )
 
+// Before and after excerpts that support a change.
 type MonitorGetChangeResponseEvidence struct {
-	// Snapshot of the content after the change.
+	// Content after the change.
 	After string `json:"after" api:"required"`
-	// Snapshot of the content before the change.
+	// Content before the change. Empty for new search results.
 	Before string `json:"before" api:"required"`
-	// Optional URL the evidence relates to. Absent for whole-target diffs.
+	// Page the evidence comes from. Omitted when the evidence covers the whole target.
 	URL string `json:"url" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5113,6 +5303,7 @@ func (r *MonitorGetChangeResponseEvidence) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// How important the change is. Set by `semantic` detection only.
 type MonitorGetChangeResponseImportance string
 
 const (
@@ -5125,7 +5316,7 @@ const (
 type MonitorGetChangeResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5143,49 +5334,59 @@ func (r *MonitorGetChangeResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorGetRunResponse struct {
+	// Unique ID of the run.
 	ID string `json:"id" api:"required"`
-	// True when this run established the monitor's initial baseline; baseline runs
-	// perform no change detection.
+	// `true` when this run captured the monitor's baseline instead of checking for
+	// changes.
 	BaselineCreated bool `json:"baseline_created" api:"required"`
-	ChangeDetected  bool `json:"change_detected" api:"required"`
+	// Whether the run detected a change.
+	ChangeDetected bool `json:"change_detected" api:"required"`
+	// Change detection type the monitor uses.
+	//
 	// Any of "exact", "semantic".
 	ChangeDetectionType MonitorGetRunResponseChangeDetectionType `json:"change_detection_type" api:"required"`
-	// Credits charged for this run (0 for skipped/failed runs).
-	CreditsCharged int64  `json:"credits_charged" api:"required"`
-	MonitorID      string `json:"monitor_id" api:"required"`
+	// Credits charged for this run. `0` for skipped and failed runs.
+	CreditsCharged int64 `json:"credits_charged" api:"required"`
+	// ID of the monitor this run belongs to.
+	MonitorID string `json:"monitor_id" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// A baseline run follows creation or a target or detection change.
+	// `baseline` runs capture a fresh baseline after creation or a target or detection
+	// change. `scheduled` runs, including on-demand ones, check for changes.
 	//
 	// Any of "baseline", "scheduled".
 	RunType MonitorGetRunResponseRunType `json:"run_type" api:"required"`
-	// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-	// (insufficient credits, monitor paused, or superseded by a concurrent run).
+	// Run status. `skipped` runs never executed; `skip_reason` says why.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorGetRunResponseStatus `json:"status" api:"required"`
+	// Type of target the monitor watches.
+	//
 	// Any of "page", "sitemap", "extract", "search".
-	TargetType  MonitorGetRunResponseTargetType `json:"target_type" api:"required"`
-	ChangeID    string                          `json:"change_id" api:"nullable"`
-	CompletedAt time.Time                       `json:"completed_at" api:"nullable" format:"date-time"`
-	Error       MonitorGetRunResponseError      `json:"error" api:"nullable"`
+	TargetType MonitorGetRunResponseTargetType `json:"target_type" api:"required"`
+	// ID of the change this run detected. `null` when it found none.
+	ChangeID string `json:"change_id" api:"nullable"`
+	// When the run ended. `null` until it ends.
+	CompletedAt time.Time                  `json:"completed_at" api:"nullable" format:"date-time"`
+	Error       MonitorGetRunResponseError `json:"error" api:"nullable"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata MonitorGetRunResponseKeyMetadata `json:"key_metadata"`
-	// Why a skipped run never executed; null unless status is `skipped`.
+	// Why the run was skipped; `superseded` means a concurrent run took its place or
+	// the monitor was deleted. `null` unless `status` is `skipped`.
 	//
 	// Any of "insufficient_credits", "monitor_paused", "superseded".
 	SkipReason MonitorGetRunResponseSkipReason `json:"skip_reason" api:"nullable"`
-	StartedAt  time.Time                       `json:"started_at" api:"nullable" format:"date-time"`
-	// All webhook deliveries attempted by this run — one per subscribed event that
-	// fired. Omitted when no webhook was attempted, including runs created before
-	// event selection was added.
+	// When the run started. `null` until it starts.
+	StartedAt time.Time `json:"started_at" api:"nullable" format:"date-time"`
+	// Webhook deliveries for this run, one per subscribed event that fired. Omitted
+	// when no delivery was attempted.
 	WebhookDeliveries []WebhookDelivery `json:"webhook_deliveries"`
 	// Deprecated. Use `webhook_deliveries` for all attempts.
 	//
 	// Deprecated: deprecated
 	WebhookDelivery WebhookDelivery `json:"webhook_delivery"`
-	// Webhook delivery IDs for this run.
+	// IDs of the webhook deliveries sent for this run.
 	WebhookDeliveryIDs []string `json:"webhook_delivery_ids"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5219,6 +5420,7 @@ func (r *MonitorGetRunResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// Change detection type the monitor uses.
 type MonitorGetRunResponseChangeDetectionType string
 
 const (
@@ -5226,7 +5428,8 @@ const (
 	MonitorGetRunResponseChangeDetectionTypeSemantic MonitorGetRunResponseChangeDetectionType = "semantic"
 )
 
-// A baseline run follows creation or a target or detection change.
+// `baseline` runs capture a fresh baseline after creation or a target or detection
+// change. `scheduled` runs, including on-demand ones, check for changes.
 type MonitorGetRunResponseRunType string
 
 const (
@@ -5234,8 +5437,7 @@ const (
 	MonitorGetRunResponseRunTypeScheduled MonitorGetRunResponseRunType = "scheduled"
 )
 
-// Lifecycle status of a run. `skipped` runs never executed — see `skip_reason`
-// (insufficient credits, monitor paused, or superseded by a concurrent run).
+// Run status. `skipped` runs never executed; `skip_reason` says why.
 type MonitorGetRunResponseStatus string
 
 const (
@@ -5246,6 +5448,7 @@ const (
 	MonitorGetRunResponseStatusSkipped   MonitorGetRunResponseStatus = "skipped"
 )
 
+// Type of target the monitor watches.
 type MonitorGetRunResponseTargetType string
 
 const (
@@ -5256,7 +5459,9 @@ const (
 )
 
 type MonitorGetRunResponseError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5277,7 +5482,7 @@ func (r *MonitorGetRunResponseError) UnmarshalJSON(data []byte) error {
 type MonitorGetRunResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5294,7 +5499,8 @@ func (r *MonitorGetRunResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Why a skipped run never executed; null unless status is `skipped`.
+// Why the run was skipped; `superseded` means a concurrent run took its place or
+// the monitor was deleted. `null` unless `status` is `skipped`.
 type MonitorGetRunResponseSkipReason string
 
 const (
@@ -5304,52 +5510,61 @@ const (
 )
 
 type MonitorRotateWebhookSecretResponse struct {
+	// Unique ID of the monitor.
 	ID string `json:"id" api:"required"`
 	// How changes are judged. Defaults to `semantic` for extract and search targets
-	// and page targets with `instructions`, otherwise `exact`.
+	// and for page targets with `instructions`; otherwise `exact`. Sitemap targets
+	// support only `exact`, and extract targets only `semantic`.
 	ChangeDetection MonitorRotateWebhookSecretResponseChangeDetectionUnion `json:"change_detection" api:"required"`
-	CreatedAt       time.Time                                              `json:"created_at" api:"required" format:"date-time"`
-	// Always `web`. Optional.
+	// When the monitor was created.
+	CreatedAt time.Time `json:"created_at" api:"required" format:"date-time"`
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
 	Mode MonitorRotateWebhookSecretResponseMode `json:"mode" api:"required"`
-	Name string                                 `json:"name" api:"required"`
+	// Display name of the monitor.
+	Name string `json:"name" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Current state. Failed monitors keep running; paused monitors must be resumed
-	// with `status: "active"`.
+	// `active` monitors run on schedule. `failed` monitors keep running after a failed
+	// run and return to `active` on the next success. `paused` monitors don't run
+	// until you set `status` to `active`; Context.dev also pauses monitors after
+	// repeated failures or credit shortfalls.
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorRotateWebhookSecretResponseStatus `json:"status" api:"required"`
 	// What to watch: a page, a sitemap, data extracted from a site, or web search
 	// results.
-	Target    MonitorRotateWebhookSecretResponseTargetUnion `json:"target" api:"required"`
-	UpdatedAt time.Time                                     `json:"updated_at" api:"required" format:"date-time"`
-	// Comparison baseline, included on Retrieve. Null until capture completes or after
-	// target changes.
+	Target MonitorRotateWebhookSecretResponseTargetUnion `json:"target" api:"required"`
+	// When the monitor was last updated.
+	UpdatedAt time.Time `json:"updated_at" api:"required" format:"date-time"`
+	// What the next run compares against. Returned only by
+	// `GET /monitors/{monitor_id}`; `null` until the first capture finishes or after
+	// the target changes.
 	Baseline MonitorRotateWebhookSecretResponseBaselineUnion `json:"baseline" api:"nullable"`
 	// Credits this request used and your remaining balance.
-	KeyMetadata  MonitorRotateWebhookSecretResponseKeyMetadata `json:"key_metadata"`
-	LastChangeAt time.Time                                     `json:"last_change_at" api:"nullable" format:"date-time"`
-	// Error from the most recent failed run; null when the last run succeeded.
+	KeyMetadata MonitorRotateWebhookSecretResponseKeyMetadata `json:"key_metadata"`
+	// When the monitor last detected a change. `null` until it detects one.
+	LastChangeAt time.Time `json:"last_change_at" api:"nullable" format:"date-time"`
+	// Error from the most recent failed run. `null` when the last run succeeded.
 	LastError MonitorRotateWebhookSecretResponseLastError `json:"last_error" api:"nullable"`
-	LastRunAt time.Time                                   `json:"last_run_at" api:"nullable" format:"date-time"`
-	// When the next scheduled run is due; null while paused.
+	// When the most recent run ended. `null` until the first run ends.
+	LastRunAt time.Time `json:"last_run_at" api:"nullable" format:"date-time"`
+	// When the next scheduled run is due. `null` while paused.
 	NextRunAt time.Time `json:"next_run_at" api:"nullable" format:"date-time"`
 	// Access policy IDs applied to every run.
 	Policies []string `json:"policies"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
+	// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+	// interval must be between 10 minutes and 1 year.
 	Schedule MonitorRotateWebhookSecretResponseSchedule `json:"schedule"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Labels for grouping monitors. Filter monitors, changes, and credit usage by tag.
 	Tags []string `json:"tags"`
-	// Webhook destination and delivery settings. Null means no webhook is configured.
+	// Webhook that receives monitor events. `null` when no webhook is configured.
 	Webhook MonitorRotateWebhookSecretResponseWebhook `json:"webhook" api:"nullable"`
-	// Present while webhook deliveries are failing consecutively; null when deliveries
-	// are healthy or no webhook is configured. Cleared on the next successful delivery
-	// and when the webhook URL changes.
+	// Details of failing webhook deliveries. `null` when deliveries succeed or no
+	// webhook is configured; cleared by the next successful delivery or a new webhook
+	// URL.
 	WebhookFailure MonitorRotateWebhookSecretResponseWebhookFailure `json:"webhook_failure" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5454,9 +5669,8 @@ func (r *MonitorRotateWebhookSecretResponseChangeDetectionUnion) UnmarshalJSON(d
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals. For search targets, this
-// means every new result.
+// Report every change: visible-text diffs for pages, added or removed URLs for
+// sitemaps, and every new result for searches.
 type MonitorRotateWebhookSecretResponseChangeDetectionExact struct {
 	// Use `exact` to compare visible text, sitemap URLs, or search results.
 	Type constant.Exact `json:"type" default:"exact"`
@@ -5474,12 +5688,13 @@ func (r *MonitorRotateWebhookSecretResponseChangeDetectionExact) UnmarshalJSON(d
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaningful content changes using the target’s instructions and optional
-// schema.
+// Report only changes that matter, judged against the target's `instructions` and,
+// for extract targets, its `schema`.
 type MonitorRotateWebhookSecretResponseChangeDetectionSemantic struct {
-	// Use `semantic` to judge changes against the target instructions.
+	// Use `semantic` to report only changes that match the target's `instructions`.
 	Type constant.Semantic `json:"type" default:"semantic"`
-	// Minimum confidence required to report a meaningful change, from 0 to 1.
+	// Minimum confidence a change needs to be reported. Higher values mean fewer, more
+	// certain alerts.
 	ConfidenceThreshold float64 `json:"confidence_threshold"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5498,15 +5713,17 @@ func (r *MonitorRotateWebhookSecretResponseChangeDetectionSemantic) UnmarshalJSO
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Always `web`. Optional.
+// Monitor category. Always `web`.
 type MonitorRotateWebhookSecretResponseMode string
 
 const (
 	MonitorRotateWebhookSecretResponseModeWeb MonitorRotateWebhookSecretResponseMode = "web"
 )
 
-// Current state. Failed monitors keep running; paused monitors must be resumed
-// with `status: "active"`.
+// `active` monitors run on schedule. `failed` monitors keep running after a failed
+// run and return to `active` on the next success. `paused` monitors don't run
+// until you set `status` to `active`; Context.dev also pauses monitors after
+// repeated failures or credit shortfalls.
 type MonitorRotateWebhookSecretResponseStatus string
 
 const (
@@ -5641,26 +5858,27 @@ func (r *MonitorRotateWebhookSecretResponseTargetUnion) UnmarshalJSON(data []byt
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Watch a single web page. Exact detection reports visible-text diffs; semantic
-// detection judges confirmed stable diffs against `instructions`.
+// Watch one web page. `exact` detection reports any change to the visible text;
+// `semantic` detection reports only confirmed changes that match `instructions`.
 type MonitorRotateWebhookSecretResponseTargetPage struct {
 	// Use `page` to watch one web page.
 	Type constant.Page `json:"type" default:"page"`
-	// Public HTTP(S) page URL to monitor.
+	// Public HTTP(S) URL of the page to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Optional browser actions executed in array order after the page loads, before
-	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
-	// Changes create a new baseline.
+	// Browser actions to run in order after the page loads and before each capture.
+	// Requires a paid plan. Changing it resets the baseline.
 	Actions []MonitorRotateWebhookSecretResponseTargetPageActionUnion `json:"actions" api:"nullable"`
-	// Remove matching regions after inclusions. Changes create a new baseline.
+	// CSS selectors for regions to ignore, applied after `include_selectors`. Changing
+	// it resets the baseline.
 	ExcludeSelectors []string `json:"exclude_selectors"`
-	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
-	// create a new baseline.
+	// CSS selectors for the regions to watch. Omit or leave empty to watch the main
+	// content. Changing it resets the baseline.
 	IncludeSelectors []string `json:"include_selectors"`
-	// Plain-language goal describing which page changes matter. When provided without
-	// change_detection, semantic detection is inferred.
+	// Plain-language description of the changes that matter. Requires `semantic`
+	// detection, which is selected when `change_detection` is omitted.
 	Instructions string `json:"instructions"`
-	// Normalize whitespace before comparing or analyzing text.
+	// Collapse whitespace before comparing text, so spacing-only edits are not
+	// reported.
 	NormalizeWhitespace bool `json:"normalize_whitespace"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5783,7 +6001,7 @@ func (r *MonitorRotateWebhookSecretResponseTargetPageActionUnion) UnmarshalJSON(
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Pause for a fixed number of milliseconds before continuing to the next action.
+// Pause for a fixed time before the next action.
 type MonitorRotateWebhookSecretResponseTargetPageActionWait struct {
 	// Use `wait` to pause for a fixed duration.
 	Do constant.Wait `json:"do" default:"wait"`
@@ -5804,7 +6022,7 @@ func (r *MonitorRotateWebhookSecretResponseTargetPageActionWait) UnmarshalJSON(d
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolve and perform one natural-language browser action.
+// Perform one browser instruction written in plain language.
 type MonitorRotateWebhookSecretResponseTargetPageActionPerform struct {
 	// One browser instruction, such as clicking a button or entering text.
 	Action string `json:"action" api:"required"`
@@ -5827,22 +6045,20 @@ func (r *MonitorRotateWebhookSecretResponseTargetPageActionPerform) UnmarshalJSO
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Scroll the page or a selected scrollable container, waiting adaptively for
-// content and dimensions to settle after each iteration.
+// Scroll the page or a scrollable container. Waits for new content to settle after
+// each scroll.
 type MonitorRotateWebhookSecretResponseTargetPageActionScroll struct {
 	// Use `scroll` to move through the page or a container.
 	Do constant.Scroll `json:"do" default:"scroll"`
-	// Pixels per scroll, one visible viewport, or the current scroll boundary.
-	// Defaults to viewport.
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
 	Amount MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountUnion `json:"amount"`
-	// CSS selector for the first matching scroll container. Defaults to the page.
+	// Scroll the first container matching this CSS selector. Omit to scroll the page.
 	Container string `json:"container"`
-	// Direction to scroll. Defaults to down.
+	// Direction to scroll.
 	//
 	// Any of "up", "down", "left", "right".
 	Direction string `json:"direction"`
-	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
-	// changing. Defaults to 1.
+	// Maximum number of scroll steps. Stops early when the page stops changing.
 	MaxScrolls int64 `json:"maxScrolls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5908,17 +6124,17 @@ const (
 	MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountStringMax      MonitorRotateWebhookSecretResponseTargetPageActionScrollAmountString = "max"
 )
 
-// Watch a site’s URL inventory for confirmed additions and removals.
+// Watch a sitemap and report URLs that are added or removed.
 type MonitorRotateWebhookSecretResponseTargetSitemap struct {
 	// Use `sitemap` to watch a site for added or removed URLs.
 	Type constant.Sitemap `json:"type" default:"sitemap"`
-	// Sitemap URL to monitor.
+	// Public HTTP(S) URL of the sitemap to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// URL path patterns to exclude (max 50).
+	// Path patterns of URLs to ignore, such as `/legal/*`.
 	Exclude []string `json:"exclude"`
-	// URL path patterns to include (max 50).
+	// Path patterns of URLs to track, such as `/blog/*`.
 	Include []string `json:"include"`
-	// Maximum number of sitemap URLs to track (capped at 10,000).
+	// Maximum number of URLs to track.
 	MaxURLs int64 `json:"max_urls"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5938,24 +6154,25 @@ func (r *MonitorRotateWebhookSecretResponseTargetSitemap) UnmarshalJSON(data []b
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Track relevant pages selected by `schema` and `instructions`; refresh the page
-// set periodically.
+// Extract structured data from the most relevant pages of a site and report
+// meaningful changes. Pages are chosen from `schema` and `instructions`, and the
+// page set is refreshed periodically.
 type MonitorRotateWebhookSecretResponseTargetExtract struct {
-	// Natural-language instructions guiding which pages and facts to track and which
-	// changes to report.
+	// Plain-language description of the pages and facts to track and the changes to
+	// report.
 	Instructions string `json:"instructions" api:"required"`
 	// Use `extract` to watch structured data across selected pages.
 	Type constant.Extract `json:"type" default:"extract"`
-	// Root URL to extract structured data from.
+	// Public HTTP(S) URL where page discovery starts, usually the site home page.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Allow page discovery on subdomains of the target site.
+	// Also discover pages on subdomains of the site.
 	FollowSubdomains bool `json:"follow_subdomains"`
-	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// Maximum link depth from `url`. `0` tracks only the starting page.
 	MaxDepth int64 `json:"max_depth"`
 	// Maximum number of pages to track.
 	MaxPages int64 `json:"max_pages"`
-	// JSON Schema for page selection and the baseline snapshot. Changes return diffs
-	// and evidence.
+	// JSON Schema for the data to extract, up to 20,000 characters; it also guides
+	// which pages are tracked. Defaults to a `summary` string and a `key_points` list.
 	Schema map[string]any `json:"schema"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -5978,16 +6195,17 @@ func (r *MonitorRotateWebhookSecretResponseTargetExtract) UnmarshalJSON(data []b
 }
 
 // Search the web on every run and report results not seen before, listed in the
-// change’s `matched_urls` and `evidence`. Semantic detection reports only results
-// describing a new development that matches `instructions`; exact detection
+// change's `matched_urls` and `evidence`. `semantic` detection reports only
+// results about a new development that matches `instructions`; `exact` detection
 // reports every new result.
 type MonitorRotateWebhookSecretResponseTargetSearch struct {
-	// Web search query to run on every check. Supports operators such as `site:`,
-	// `-site:`, and quoted phrases.
+	// Web search query to run on every check. Supports `site:`, `-site:`, and quoted
+	// phrases.
 	Query string `json:"query" api:"required"`
-	// Use `search` to watch the whole web for new results about a topic.
+	// Use `search` to watch the web for new results about a topic.
 	Type constant.Search `json:"type" default:"search"`
-	// Plain-language description of which new results matter. Defaults to the query.
+	// Plain-language description of the new results that matter. Defaults to `query`.
+	// Not allowed with `exact` detection.
 	Instructions string `json:"instructions"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6071,11 +6289,11 @@ func (r *MonitorRotateWebhookSecretResponseBaselineUnion) UnmarshalJSON(data []b
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `page` monitor: the visible page text as last observed.
+// Baseline for a `page` target: the page's visible text from the last capture.
 type MonitorRotateWebhookSecretResponseBaselinePageBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// The page's visible text as last observed.
+	// Visible page text from the last capture.
 	Text string `json:"text" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6092,14 +6310,14 @@ func (r *MonitorRotateWebhookSecretResponseBaselinePageBaseline) UnmarshalJSON(d
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `sitemap` monitor: the normalized URL set as last
-// observed.
+// Baseline for a `sitemap` target: the normalized set of URLs from the last
+// capture.
 type MonitorRotateWebhookSecretResponseBaselineSitemapBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
 	// Number of URLs in the baseline.
 	URLCount int64 `json:"url_count" api:"required"`
-	// The sitemap URLs as last observed (sorted, normalized).
+	// Normalized sitemap URLs from the last capture, sorted.
 	URLs []string `json:"urls" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6119,15 +6337,15 @@ func (r *MonitorRotateWebhookSecretResponseBaselineSitemapBaseline) UnmarshalJSO
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of an `extract` monitor: the pages it tracks and the structured
-// data as last extracted.
+// Baseline for an `extract` target: the tracked pages and the data last extracted
+// from them.
 type MonitorRotateWebhookSecretResponseBaselineExtractBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Latest structured snapshot matching the extraction schema, refreshed at most
-	// daily; `null` before capture.
+	// Latest extracted data, matching the target's `schema`. Refreshed at most once a
+	// day; `null` before the first capture.
 	Data any `json:"data" api:"required"`
-	// The page URLs the monitor tracks and analyzes for changes.
+	// Pages the monitor tracks for changes.
 	URLsAnalyzed []string `json:"urls_analyzed" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6147,11 +6365,11 @@ func (r *MonitorRotateWebhookSecretResponseBaselineExtractBaseline) UnmarshalJSO
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Current baseline of a `search` monitor: the search results as last observed.
+// Baseline for a `search` target: the results from the last capture.
 type MonitorRotateWebhookSecretResponseBaselineSearchBaseline struct {
-	// When this baseline was last captured or replaced.
+	// When the baseline was last captured or updated.
 	CapturedAt time.Time `json:"captured_at" api:"required" format:"date-time"`
-	// Search results as last observed.
+	// Search results from the last capture.
 	Results []MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult `json:"results" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6171,10 +6389,12 @@ func (r *MonitorRotateWebhookSecretResponseBaselineSearchBaseline) UnmarshalJSON
 type MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult struct {
 	// Result snippet.
 	Description string `json:"description" api:"required"`
-	// When the result was published, when known.
+	// When the result was published. `null` when unknown.
 	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
-	Title       string    `json:"title" api:"required"`
-	URL         string    `json:"url" api:"required" format:"uri"`
+	// Title of the result.
+	Title string `json:"title" api:"required"`
+	// URL of the result.
+	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Description respjson.Field
@@ -6198,7 +6418,7 @@ func (r *MonitorRotateWebhookSecretResponseBaselineSearchBaselineResult) Unmarsh
 type MonitorRotateWebhookSecretResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6215,9 +6435,11 @@ func (r *MonitorRotateWebhookSecretResponseKeyMetadata) UnmarshalJSON(data []byt
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Error from the most recent failed run; null when the last run succeeded.
+// Error from the most recent failed run. `null` when the last run succeeded.
 type MonitorRotateWebhookSecretResponseLastError struct {
-	Code    string `json:"code" api:"required"`
+	// Machine-readable error code, such as `fetch_failed`.
+	Code string `json:"code" api:"required"`
+	// Human-readable explanation of the error.
 	Message string `json:"message" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6234,19 +6456,17 @@ func (r *MonitorRotateWebhookSecretResponseLastError) UnmarshalJSON(data []byte)
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
+// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+// interval must be between 10 minutes and 1 year.
 type MonitorRotateWebhookSecretResponseSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
+	// Number of `unit` periods between runs. The interval must be between 10 minutes
+	// and 1 year, so at least `10` with `minutes` and at most `365` with `days`.
 	Frequency int64 `json:"frequency" api:"required"`
 	// Use `interval` to run on a repeating schedule.
 	//
 	// Any of "interval".
 	Type string `json:"type" api:"required"`
-	// Time unit used with `frequency` to set the run interval.
+	// Time unit for `frequency`.
 	//
 	// Any of "minutes", "hours", "days".
 	Unit string `json:"unit" api:"required"`
@@ -6266,20 +6486,20 @@ func (r *MonitorRotateWebhookSecretResponseSchedule) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Webhook destination and delivery settings. Null means no webhook is configured.
+// Webhook that receives monitor events. `null` when no webhook is configured.
 type MonitorRotateWebhookSecretResponseWebhook struct {
-	// Public HTTP(S) URL that receives events. Slack and GovSlack URLs get formatted
-	// messages.
+	// Public HTTP(S) URL that receives events. Slack and GovSlack webhook URLs get
+	// formatted messages.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Events to deliver. Defaults to `change.detected`; `run.completed` also includes
-	// unchanged runs.
+	// Events to send. Defaults to `change.detected`. Add `run.completed` to get a
+	// delivery after every completed run, including runs with no change.
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfig `json:"retry"`
-	// API-generated signing secret. Visible only with full access or `monitors:write`
-	// permission.
+	// Signing secret for verifying deliveries, generated by Context.dev. Returned only
+	// to API keys with full access or the `monitors:write` permission.
 	Secret string `json:"secret"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6298,18 +6518,19 @@ func (r *MonitorRotateWebhookSecretResponseWebhook) UnmarshalJSON(data []byte) e
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Present while webhook deliveries are failing consecutively; null when deliveries
-// are healthy or no webhook is configured. Cleared on the next successful delivery
-// and when the webhook URL changes.
+// Details of failing webhook deliveries. `null` when deliveries succeed or no
+// webhook is configured; cleared by the next successful delivery or a new webhook
+// URL.
 type MonitorRotateWebhookSecretResponseWebhookFailure struct {
-	// Number of consecutive delivery attempts that did not succeed.
-	ConsecutiveFailures int64     `json:"consecutive_failures" api:"required"`
-	LastFailedAt        time.Time `json:"last_failed_at" api:"required" format:"date-time"`
-	// Human-readable description of the most recent failure.
+	// Number of failed delivery attempts in a row.
+	ConsecutiveFailures int64 `json:"consecutive_failures" api:"required"`
+	// When the most recent delivery failed.
+	LastFailedAt time.Time `json:"last_failed_at" api:"required" format:"date-time"`
+	// Human-readable explanation of the most recent failure.
 	LastMessage string `json:"last_message" api:"required"`
-	// Outcome of the most recent failed delivery. rejected means a non-2xx response;
-	// failed means no HTTP response was received; skipped_unsafe_url means the URL
-	// failed the public-endpoint safety check.
+	// Outcome of the most recent failed delivery: `rejected` (non-2xx response),
+	// `failed` (no response), or `skipped_unsafe_url` (the URL isn't a safe public
+	// endpoint).
 	//
 	// Any of "rejected", "failed", "skipped_unsafe_url".
 	LastStatus string `json:"last_status" api:"required"`
@@ -6331,12 +6552,14 @@ func (r *MonitorRotateWebhookSecretResponseWebhookFailure) UnmarshalJSON(data []
 }
 
 type MonitorRunResponse struct {
+	// ID of the monitor.
 	MonitorID string `json:"monitor_id" api:"required"`
-	Queued    bool   `json:"queued" api:"required"`
+	// Whether the run was queued.
+	Queued bool `json:"queued" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// ID of the queued run; pass it to Retrieve a monitor run.
+	// ID of the queued run. Poll it with `GET /monitors/{monitor_id}/runs/{run_id}`.
 	RunID string `json:"run_id" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata MonitorRunResponseKeyMetadata `json:"key_metadata"`
@@ -6362,7 +6585,7 @@ func (r *MonitorRunResponse) UnmarshalJSON(data []byte) error {
 type MonitorRunResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -6385,24 +6608,23 @@ type MonitorNewParams struct {
 	// What to watch: a page, a sitemap, data extracted from a site, or web search
 	// results.
 	Target MonitorNewParamsTargetUnion `json:"target,omitzero" api:"required"`
-	// Webhook destination and delivery settings. Null means no webhook is configured.
+	// Webhook that receives monitor events. `null` when no webhook is configured.
 	Webhook MonitorNewParamsWebhook `json:"webhook,omitzero"`
 	// How changes are judged. Defaults to `semantic` for extract and search targets
-	// and page targets with `instructions`, otherwise `exact`.
+	// and for page targets with `instructions`; otherwise `exact`. Sitemap targets
+	// support only `exact`, and extract targets only `semantic`.
 	ChangeDetection MonitorNewParamsChangeDetectionUnion `json:"change_detection,omitzero"`
-	// Always `web`. Optional.
+	// Monitor category. Always `web`.
 	//
 	// Any of "web".
 	Mode MonitorNewParamsMode `json:"mode,omitzero"`
-	// Access policy IDs to apply to every run. Leave it out unless access policies are
-	// enabled for your organization; otherwise the request fails with
-	// `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply to every run. Requires access policies enabled for
+	// your organization; otherwise returns `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
+	// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+	// interval must be between 10 minutes and 1 year.
 	Schedule MonitorNewParamsSchedule `json:"schedule,omitzero"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Labels for grouping monitors. Filter monitors, changes, and credit usage by tag.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -6443,26 +6665,27 @@ func init() {
 	)
 }
 
-// Watch a single web page. Exact detection reports visible-text diffs; semantic
-// detection judges confirmed stable diffs against `instructions`.
+// Watch one web page. `exact` detection reports any change to the visible text;
+// `semantic` detection reports only confirmed changes that match `instructions`.
 //
 // The properties Type, URL are required.
 type MonitorNewParamsTargetPage struct {
-	// Public HTTP(S) page URL to monitor.
+	// Public HTTP(S) URL of the page to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Plain-language goal describing which page changes matter. When provided without
-	// change_detection, semantic detection is inferred.
+	// Plain-language description of the changes that matter. Requires `semantic`
+	// detection, which is selected when `change_detection` is omitted.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
-	// Normalize whitespace before comparing or analyzing text.
+	// Collapse whitespace before comparing text, so spacing-only edits are not
+	// reported.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
-	// Optional browser actions executed in array order after the page loads, before
-	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
-	// Changes create a new baseline.
+	// Browser actions to run in order after the page loads and before each capture.
+	// Requires a paid plan. Changing it resets the baseline.
 	Actions []MonitorNewParamsTargetPageActionUnion `json:"actions,omitzero"`
-	// Remove matching regions after inclusions. Changes create a new baseline.
+	// CSS selectors for regions to ignore, applied after `include_selectors`. Changing
+	// it resets the baseline.
 	ExcludeSelectors []string `json:"exclude_selectors,omitzero"`
-	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
-	// create a new baseline.
+	// CSS selectors for the regions to watch. Omit or leave empty to watch the main
+	// content. Changing it resets the baseline.
 	IncludeSelectors []string `json:"include_selectors,omitzero"`
 	// Use `page` to watch one web page.
 	//
@@ -6505,7 +6728,7 @@ func init() {
 	)
 }
 
-// Pause for a fixed number of milliseconds before continuing to the next action.
+// Pause for a fixed time before the next action.
 //
 // The properties Do, TimeMs are required.
 type MonitorNewParamsTargetPageActionWait struct {
@@ -6526,7 +6749,7 @@ func (r *MonitorNewParamsTargetPageActionWait) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolve and perform one natural-language browser action.
+// Perform one browser instruction written in plain language.
 //
 // The properties Action, Do are required.
 type MonitorNewParamsTargetPageActionPerform struct {
@@ -6547,20 +6770,18 @@ func (r *MonitorNewParamsTargetPageActionPerform) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Scroll the page or a selected scrollable container, waiting adaptively for
-// content and dimensions to settle after each iteration.
+// Scroll the page or a scrollable container. Waits for new content to settle after
+// each scroll.
 //
 // The property Do is required.
 type MonitorNewParamsTargetPageActionScroll struct {
-	// CSS selector for the first matching scroll container. Defaults to the page.
+	// Scroll the first container matching this CSS selector. Omit to scroll the page.
 	Container param.Opt[string] `json:"container,omitzero"`
-	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
-	// changing. Defaults to 1.
+	// Maximum number of scroll steps. Stops early when the page stops changing.
 	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
-	// Pixels per scroll, one visible viewport, or the current scroll boundary.
-	// Defaults to viewport.
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
 	Amount MonitorNewParamsTargetPageActionScrollAmountUnion `json:"amount,omitzero"`
-	// Direction to scroll. Defaults to down.
+	// Direction to scroll.
 	//
 	// Any of "up", "down", "left", "right".
 	Direction string `json:"direction,omitzero"`
@@ -6610,17 +6831,17 @@ const (
 	MonitorNewParamsTargetPageActionScrollAmountStringMax      MonitorNewParamsTargetPageActionScrollAmountString = "max"
 )
 
-// Watch a site’s URL inventory for confirmed additions and removals.
+// Watch a sitemap and report URLs that are added or removed.
 //
 // The properties Type, URL are required.
 type MonitorNewParamsTargetSitemap struct {
-	// Sitemap URL to monitor.
+	// Public HTTP(S) URL of the sitemap to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Maximum number of sitemap URLs to track (capped at 10,000).
+	// Maximum number of URLs to track.
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
-	// URL path patterns to exclude (max 50).
+	// Path patterns of URLs to ignore, such as `/legal/*`.
 	Exclude []string `json:"exclude,omitzero"`
-	// URL path patterns to include (max 50).
+	// Path patterns of URLs to track, such as `/blog/*`.
 	Include []string `json:"include,omitzero"`
 	// Use `sitemap` to watch a site for added or removed URLs.
 	//
@@ -6637,24 +6858,25 @@ func (r *MonitorNewParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Track relevant pages selected by `schema` and `instructions`; refresh the page
-// set periodically.
+// Extract structured data from the most relevant pages of a site and report
+// meaningful changes. Pages are chosen from `schema` and `instructions`, and the
+// page set is refreshed periodically.
 //
 // The properties Instructions, Type, URL are required.
 type MonitorNewParamsTargetExtract struct {
-	// Natural-language instructions guiding which pages and facts to track and which
-	// changes to report.
+	// Plain-language description of the pages and facts to track and the changes to
+	// report.
 	Instructions string `json:"instructions" api:"required"`
-	// Root URL to extract structured data from.
+	// Public HTTP(S) URL where page discovery starts, usually the site home page.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Allow page discovery on subdomains of the target site.
+	// Also discover pages on subdomains of the site.
 	FollowSubdomains param.Opt[bool] `json:"follow_subdomains,omitzero"`
-	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// Maximum link depth from `url`. `0` tracks only the starting page.
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
 	// Maximum number of pages to track.
 	MaxPages param.Opt[int64] `json:"max_pages,omitzero"`
-	// JSON Schema for page selection and the baseline snapshot. Changes return diffs
-	// and evidence.
+	// JSON Schema for the data to extract, up to 20,000 characters; it also guides
+	// which pages are tracked. Defaults to a `summary` string and a `key_points` list.
 	Schema map[string]any `json:"schema,omitzero"`
 	// Use `extract` to watch structured data across selected pages.
 	//
@@ -6672,18 +6894,19 @@ func (r *MonitorNewParamsTargetExtract) UnmarshalJSON(data []byte) error {
 }
 
 // Search the web on every run and report results not seen before, listed in the
-// change’s `matched_urls` and `evidence`. Semantic detection reports only results
-// describing a new development that matches `instructions`; exact detection
+// change's `matched_urls` and `evidence`. `semantic` detection reports only
+// results about a new development that matches `instructions`; `exact` detection
 // reports every new result.
 //
 // The properties Query, Type are required.
 type MonitorNewParamsTargetSearch struct {
-	// Web search query to run on every check. Supports operators such as `site:`,
-	// `-site:`, and quoted phrases.
+	// Web search query to run on every check. Supports `site:`, `-site:`, and quoted
+	// phrases.
 	Query string `json:"query" api:"required"`
-	// Plain-language description of which new results matter. Defaults to the query.
+	// Plain-language description of the new results that matter. Defaults to `query`.
+	// Not allowed with `exact` detection.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
-	// Use `search` to watch the whole web for new results about a topic.
+	// Use `search` to watch the web for new results about a topic.
 	//
 	// This field can be elided, and will marshal its zero value as "search".
 	Type constant.Search `json:"type" default:"search"`
@@ -6728,9 +6951,8 @@ func NewMonitorNewParamsChangeDetectionExact() MonitorNewParamsChangeDetectionEx
 	}
 }
 
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals. For search targets, this
-// means every new result.
+// Report every change: visible-text diffs for pages, added or removed URLs for
+// sitemaps, and every new result for searches.
 //
 // This struct has a constant value, construct it with
 // [NewMonitorNewParamsChangeDetectionExact].
@@ -6748,14 +6970,15 @@ func (r *MonitorNewParamsChangeDetectionExact) UnmarshalJSON(data []byte) error 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaningful content changes using the target’s instructions and optional
-// schema.
+// Report only changes that matter, judged against the target's `instructions` and,
+// for extract targets, its `schema`.
 //
 // The property Type is required.
 type MonitorNewParamsChangeDetectionSemantic struct {
-	// Minimum confidence required to report a meaningful change, from 0 to 1.
+	// Minimum confidence a change needs to be reported. Higher values mean fewer, more
+	// certain alerts.
 	ConfidenceThreshold param.Opt[float64] `json:"confidence_threshold,omitzero"`
-	// Use `semantic` to judge changes against the target instructions.
+	// Use `semantic` to report only changes that match the target's `instructions`.
 	//
 	// This field can be elided, and will marshal its zero value as "semantic".
 	Type constant.Semantic `json:"type" default:"semantic"`
@@ -6770,28 +6993,26 @@ func (r *MonitorNewParamsChangeDetectionSemantic) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Always `web`. Optional.
+// Monitor category. Always `web`.
 type MonitorNewParamsMode string
 
 const (
 	MonitorNewParamsModeWeb MonitorNewParamsMode = "web"
 )
 
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
+// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+// interval must be between 10 minutes and 1 year.
 //
 // The properties Frequency, Type, Unit are required.
 type MonitorNewParamsSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
+	// Number of `unit` periods between runs. The interval must be between 10 minutes
+	// and 1 year, so at least `10` with `minutes` and at most `365` with `days`.
 	Frequency int64 `json:"frequency" api:"required"`
 	// Use `interval` to run on a repeating schedule.
 	//
 	// Any of "interval".
 	Type string `json:"type,omitzero" api:"required"`
-	// Time unit used with `frequency` to set the run interval.
+	// Time unit for `frequency`.
 	//
 	// Any of "minutes", "hours", "days".
 	Unit string `json:"unit,omitzero" api:"required"`
@@ -6815,19 +7036,19 @@ func init() {
 	)
 }
 
-// Webhook destination and delivery settings. Null means no webhook is configured.
+// Webhook that receives monitor events. `null` when no webhook is configured.
 //
 // The property URL is required.
 type MonitorNewParamsWebhook struct {
-	// Public HTTP(S) URL that receives events. Slack and GovSlack URLs get formatted
-	// messages.
+	// Public HTTP(S) URL that receives events. Slack and GovSlack webhook URLs get
+	// formatted messages.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Events to deliver. Defaults to `change.detected`; `run.completed` also includes
-	// unchanged runs.
+	// Events to send. Defaults to `change.detected`. Add `run.completed` to get a
+	// delivery after every completed run, including runs with no change.
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events,omitzero"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfigParam `json:"retry,omitzero"`
 	paramObj
 }
@@ -6843,24 +7064,25 @@ func (r *MonitorNewParamsWebhook) UnmarshalJSON(data []byte) error {
 type MonitorUpdateParams struct {
 	// Display name for the monitor.
 	Name param.Opt[string] `json:"name,omitzero"`
-	// Set to null to remove the webhook. Changing `url` issues a new secret.
+	// Set to `null` to remove the webhook. Changing `url` generates a new secret.
 	Webhook MonitorUpdateParamsWebhook `json:"webhook,omitzero"`
 	// How changes are judged. Defaults to `semantic` for extract and search targets
-	// and page targets with `instructions`, otherwise `exact`.
+	// and for page targets with `instructions`; otherwise `exact`. Sitemap targets
+	// support only `exact`, and extract targets only `semantic`.
 	ChangeDetection MonitorUpdateParamsChangeDetectionUnion `json:"change_detection,omitzero"`
-	// Access policy IDs to apply to every run. Send an empty list to remove them.
-	// Leave it out unless access policies are enabled for your organization; otherwise
-	// the request fails with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply to every run, or an empty list to remove them.
+	// Requires access policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-	// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-	// between 10 minutes and 1 year.
+	// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+	// interval must be between 10 minutes and 1 year.
 	Schedule MonitorUpdateParamsSchedule `json:"schedule,omitzero"`
-	// Set `paused` to stop scheduled runs or `active` to resume them.
+	// Set `paused` to stop scheduled runs or `active` to resume them. A resumed
+	// monitor runs promptly instead of waiting a full interval.
 	//
 	// Any of "active", "paused".
 	Status MonitorUpdateParamsStatus `json:"status,omitzero"`
-	// Labels for filtering monitors, their changes, and their usage.
+	// Labels for grouping monitors. Filter monitors, changes, and credit usage by tag.
 	Tags []string `json:"tags,omitzero"`
 	// What to watch: a page, a sitemap, data extracted from a site, or web search
 	// results.
@@ -6906,9 +7128,8 @@ func NewMonitorUpdateParamsChangeDetectionExact() MonitorUpdateParamsChangeDetec
 	}
 }
 
-// Detect exact changes. For page targets, this means visible text diffs. For
-// sitemap targets, this means URL additions and removals. For search targets, this
-// means every new result.
+// Report every change: visible-text diffs for pages, added or removed URLs for
+// sitemaps, and every new result for searches.
 //
 // This struct has a constant value, construct it with
 // [NewMonitorUpdateParamsChangeDetectionExact].
@@ -6926,14 +7147,15 @@ func (r *MonitorUpdateParamsChangeDetectionExact) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detect meaningful content changes using the target’s instructions and optional
-// schema.
+// Report only changes that matter, judged against the target's `instructions` and,
+// for extract targets, its `schema`.
 //
 // The property Type is required.
 type MonitorUpdateParamsChangeDetectionSemantic struct {
-	// Minimum confidence required to report a meaningful change, from 0 to 1.
+	// Minimum confidence a change needs to be reported. Higher values mean fewer, more
+	// certain alerts.
 	ConfidenceThreshold param.Opt[float64] `json:"confidence_threshold,omitzero"`
-	// Use `semantic` to judge changes against the target instructions.
+	// Use `semantic` to report only changes that match the target's `instructions`.
 	//
 	// This field can be elided, and will marshal its zero value as "semantic".
 	Type constant.Semantic `json:"type" default:"semantic"`
@@ -6948,21 +7170,19 @@ func (r *MonitorUpdateParamsChangeDetectionSemantic) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Run the monitor on a fixed interval defined by a frequency and a unit, e.g.
-// every 6 hours or every 2 days. The total interval (frequency × unit) must be
-// between 10 minutes and 1 year.
+// Run the monitor at a fixed interval, such as every 6 hours or every 2 days. The
+// interval must be between 10 minutes and 1 year.
 //
 // The properties Frequency, Type, Unit are required.
 type MonitorUpdateParamsSchedule struct {
-	// Number of units between runs. The resulting interval (frequency × unit) must be
-	// at least 10 minutes and at most 1 year (e.g. minimum 10 when unit is minutes;
-	// maximum 365 when unit is days).
+	// Number of `unit` periods between runs. The interval must be between 10 minutes
+	// and 1 year, so at least `10` with `minutes` and at most `365` with `days`.
 	Frequency int64 `json:"frequency" api:"required"`
 	// Use `interval` to run on a repeating schedule.
 	//
 	// Any of "interval".
 	Type string `json:"type,omitzero" api:"required"`
-	// Time unit used with `frequency` to set the run interval.
+	// Time unit for `frequency`.
 	//
 	// Any of "minutes", "hours", "days".
 	Unit string `json:"unit,omitzero" api:"required"`
@@ -6986,7 +7206,8 @@ func init() {
 	)
 }
 
-// Set `paused` to stop scheduled runs or `active` to resume them.
+// Set `paused` to stop scheduled runs or `active` to resume them. A resumed
+// monitor runs promptly instead of waiting a full interval.
 type MonitorUpdateParamsStatus string
 
 const (
@@ -7022,26 +7243,27 @@ func init() {
 	)
 }
 
-// Watch a single web page. Exact detection reports visible-text diffs; semantic
-// detection judges confirmed stable diffs against `instructions`.
+// Watch one web page. `exact` detection reports any change to the visible text;
+// `semantic` detection reports only confirmed changes that match `instructions`.
 //
 // The properties Type, URL are required.
 type MonitorUpdateParamsTargetPage struct {
-	// Public HTTP(S) page URL to monitor.
+	// Public HTTP(S) URL of the page to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Plain-language goal describing which page changes matter. When provided without
-	// change_detection, semantic detection is inferred.
+	// Plain-language description of the changes that matter. Requires `semantic`
+	// detection, which is selected when `change_detection` is omitted.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
-	// Normalize whitespace before comparing or analyzing text.
+	// Collapse whitespace before comparing text, so spacing-only edits are not
+	// reported.
 	NormalizeWhitespace param.Opt[bool] `json:"normalize_whitespace,omitzero"`
-	// Optional browser actions executed in array order after the page loads, before
-	// content is captured, on every run. Requires a paid plan. Maximum: 5 actions.
-	// Changes create a new baseline.
+	// Browser actions to run in order after the page loads and before each capture.
+	// Requires a paid plan. Changing it resets the baseline.
 	Actions []MonitorUpdateParamsTargetPageActionUnion `json:"actions,omitzero"`
-	// Remove matching regions after inclusions. Changes create a new baseline.
+	// CSS selectors for regions to ignore, applied after `include_selectors`. Changing
+	// it resets the baseline.
 	ExcludeSelectors []string `json:"exclude_selectors,omitzero"`
-	// Monitor these CSS-selected regions. Empty or omitted uses main content. Changes
-	// create a new baseline.
+	// CSS selectors for the regions to watch. Omit or leave empty to watch the main
+	// content. Changing it resets the baseline.
 	IncludeSelectors []string `json:"include_selectors,omitzero"`
 	// Use `page` to watch one web page.
 	//
@@ -7084,7 +7306,7 @@ func init() {
 	)
 }
 
-// Pause for a fixed number of milliseconds before continuing to the next action.
+// Pause for a fixed time before the next action.
 //
 // The properties Do, TimeMs are required.
 type MonitorUpdateParamsTargetPageActionWait struct {
@@ -7105,7 +7327,7 @@ func (r *MonitorUpdateParamsTargetPageActionWait) UnmarshalJSON(data []byte) err
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolve and perform one natural-language browser action.
+// Perform one browser instruction written in plain language.
 //
 // The properties Action, Do are required.
 type MonitorUpdateParamsTargetPageActionPerform struct {
@@ -7126,20 +7348,18 @@ func (r *MonitorUpdateParamsTargetPageActionPerform) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Scroll the page or a selected scrollable container, waiting adaptively for
-// content and dimensions to settle after each iteration.
+// Scroll the page or a scrollable container. Waits for new content to settle after
+// each scroll.
 //
 // The property Do is required.
 type MonitorUpdateParamsTargetPageActionScroll struct {
-	// CSS selector for the first matching scroll container. Defaults to the page.
+	// Scroll the first container matching this CSS selector. Omit to scroll the page.
 	Container param.Opt[string] `json:"container,omitzero"`
-	// Maximum scroll iterations. Stops early when scrolling and scrollable extent stop
-	// changing. Defaults to 1.
+	// Maximum number of scroll steps. Stops early when the page stops changing.
 	MaxScrolls param.Opt[int64] `json:"maxScrolls,omitzero"`
-	// Pixels per scroll, one visible viewport, or the current scroll boundary.
-	// Defaults to viewport.
+	// Distance per scroll: pixels, one `viewport`, or `max` to reach the end.
 	Amount MonitorUpdateParamsTargetPageActionScrollAmountUnion `json:"amount,omitzero"`
-	// Direction to scroll. Defaults to down.
+	// Direction to scroll.
 	//
 	// Any of "up", "down", "left", "right".
 	Direction string `json:"direction,omitzero"`
@@ -7189,17 +7409,17 @@ const (
 	MonitorUpdateParamsTargetPageActionScrollAmountStringMax      MonitorUpdateParamsTargetPageActionScrollAmountString = "max"
 )
 
-// Watch a site’s URL inventory for confirmed additions and removals.
+// Watch a sitemap and report URLs that are added or removed.
 //
 // The properties Type, URL are required.
 type MonitorUpdateParamsTargetSitemap struct {
-	// Sitemap URL to monitor.
+	// Public HTTP(S) URL of the sitemap to watch.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Maximum number of sitemap URLs to track (capped at 10,000).
+	// Maximum number of URLs to track.
 	MaxURLs param.Opt[int64] `json:"max_urls,omitzero"`
-	// URL path patterns to exclude (max 50).
+	// Path patterns of URLs to ignore, such as `/legal/*`.
 	Exclude []string `json:"exclude,omitzero"`
-	// URL path patterns to include (max 50).
+	// Path patterns of URLs to track, such as `/blog/*`.
 	Include []string `json:"include,omitzero"`
 	// Use `sitemap` to watch a site for added or removed URLs.
 	//
@@ -7216,24 +7436,25 @@ func (r *MonitorUpdateParamsTargetSitemap) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Track relevant pages selected by `schema` and `instructions`; refresh the page
-// set periodically.
+// Extract structured data from the most relevant pages of a site and report
+// meaningful changes. Pages are chosen from `schema` and `instructions`, and the
+// page set is refreshed periodically.
 //
 // The properties Instructions, Type, URL are required.
 type MonitorUpdateParamsTargetExtract struct {
-	// Natural-language instructions guiding which pages and facts to track and which
-	// changes to report.
+	// Plain-language description of the pages and facts to track and the changes to
+	// report.
 	Instructions string `json:"instructions" api:"required"`
-	// Root URL to extract structured data from.
+	// Public HTTP(S) URL where page discovery starts, usually the site home page.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Allow page discovery on subdomains of the target site.
+	// Also discover pages on subdomains of the site.
 	FollowSubdomains param.Opt[bool] `json:"follow_subdomains,omitzero"`
-	// Optional maximum link depth from the starting URL (0 = only the starting page).
+	// Maximum link depth from `url`. `0` tracks only the starting page.
 	MaxDepth param.Opt[int64] `json:"max_depth,omitzero"`
 	// Maximum number of pages to track.
 	MaxPages param.Opt[int64] `json:"max_pages,omitzero"`
-	// JSON Schema for page selection and the baseline snapshot. Changes return diffs
-	// and evidence.
+	// JSON Schema for the data to extract, up to 20,000 characters; it also guides
+	// which pages are tracked. Defaults to a `summary` string and a `key_points` list.
 	Schema map[string]any `json:"schema,omitzero"`
 	// Use `extract` to watch structured data across selected pages.
 	//
@@ -7251,18 +7472,19 @@ func (r *MonitorUpdateParamsTargetExtract) UnmarshalJSON(data []byte) error {
 }
 
 // Search the web on every run and report results not seen before, listed in the
-// change’s `matched_urls` and `evidence`. Semantic detection reports only results
-// describing a new development that matches `instructions`; exact detection
+// change's `matched_urls` and `evidence`. `semantic` detection reports only
+// results about a new development that matches `instructions`; `exact` detection
 // reports every new result.
 //
 // The properties Query, Type are required.
 type MonitorUpdateParamsTargetSearch struct {
-	// Web search query to run on every check. Supports operators such as `site:`,
-	// `-site:`, and quoted phrases.
+	// Web search query to run on every check. Supports `site:`, `-site:`, and quoted
+	// phrases.
 	Query string `json:"query" api:"required"`
-	// Plain-language description of which new results matter. Defaults to the query.
+	// Plain-language description of the new results that matter. Defaults to `query`.
+	// Not allowed with `exact` detection.
 	Instructions param.Opt[string] `json:"instructions,omitzero"`
-	// Use `search` to watch the whole web for new results about a topic.
+	// Use `search` to watch the web for new results about a topic.
 	//
 	// This field can be elided, and will marshal its zero value as "search".
 	Type constant.Search `json:"type" default:"search"`
@@ -7277,19 +7499,19 @@ func (r *MonitorUpdateParamsTargetSearch) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Set to null to remove the webhook. Changing `url` issues a new secret.
+// Set to `null` to remove the webhook. Changing `url` generates a new secret.
 //
 // The property URL is required.
 type MonitorUpdateParamsWebhook struct {
-	// Public HTTP(S) URL that receives events. Slack and GovSlack URLs get formatted
-	// messages.
+	// Public HTTP(S) URL that receives events. Slack and GovSlack webhook URLs get
+	// formatted messages.
 	URL string `json:"url" api:"required" format:"uri"`
-	// Events to deliver. Defaults to `change.detected`; `run.completed` also includes
-	// unchanged runs.
+	// Events to send. Defaults to `change.detected`. Add `run.completed` to get a
+	// delivery after every completed run, including runs with no change.
 	//
 	// Any of "change.detected", "run.completed".
 	Events []string `json:"events,omitzero"`
-	// Webhook retry settings. Use {} for the default schedule.
+	// Automatic retry settings. Pass `{}` for the default schedule.
 	Retry RetryConfigParam `json:"retry,omitzero"`
 	paramObj
 }
@@ -7303,29 +7525,29 @@ func (r *MonitorUpdateParamsWebhook) UnmarshalJSON(data []byte) error {
 }
 
 type MonitorListParams struct {
-	// Opaque pagination cursor from a previous response.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Maximum number of items to return per page (1-100). Defaults to 25.
+	// Maximum number of monitors to return per page. Defaults to 25.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Free-text search term, matched against the fields named in `search_by`.
+	// Text to search for in the fields listed in `search_by`.
 	Q param.Opt[string] `query:"q,omitzero" json:"-"`
-	// Fields to search with `q`. Defaults to all fields; page, extract, and search
-	// targets can have instructions, and `url` matches a search target’s query.
+	// Comma-separated fields to search with `q`. Defaults to all fields. For search
+	// targets, `url` matches the target's `query`.
 	//
 	// Any of "name", "url", "instructions", "tags".
 	SearchBy []string `query:"search_by,omitzero" json:"-"`
-	// Comma-separated list of tags to filter by (matches monitors having any of them).
+	// Comma-separated tags. Returns monitors that have any of them.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	// Filter by change detection type.
 	//
 	// Any of "exact", "semantic".
 	ChangeDetectionType MonitorListParamsChangeDetectionType `query:"change_detection_type,omitzero" json:"-"`
-	// `prefix` for as-you-type prefix matching (default), `exact` for full-token
-	// matching.
+	// How `q` matches. `prefix` matches the start of words and tolerates one typo, for
+	// search as you type; `exact` matches whole words only. Defaults to `prefix`.
 	//
 	// Any of "exact", "prefix".
 	SearchType MonitorListParamsSearchType `query:"search_type,omitzero" json:"-"`
-	// Filter monitors by lifecycle status.
+	// Filter by monitor status.
 	//
 	// Any of "active", "paused", "failed".
 	Status MonitorListParamsStatus `query:"status,omitzero" json:"-"`
@@ -7352,8 +7574,8 @@ const (
 	MonitorListParamsChangeDetectionTypeSemantic MonitorListParamsChangeDetectionType = "semantic"
 )
 
-// `prefix` for as-you-type prefix matching (default), `exact` for full-token
-// matching.
+// How `q` matches. `prefix` matches the start of words and tolerates one typo, for
+// search as you type; `exact` matches whole words only. Defaults to `prefix`.
 type MonitorListParamsSearchType string
 
 const (
@@ -7361,7 +7583,7 @@ const (
 	MonitorListParamsSearchTypePrefix MonitorListParamsSearchType = "prefix"
 )
 
-// Filter monitors by lifecycle status.
+// Filter by monitor status.
 type MonitorListParamsStatus string
 
 const (
@@ -7381,12 +7603,12 @@ const (
 )
 
 type MonitorGetCreditUsageParams struct {
-	// Only include items at or after this ISO 8601 timestamp.
+	// Count only runs created at or after this time.
 	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
-	// Only include monitors that currently have this tag. Deleted monitors are left
-	// out.
+	// Return usage only for monitors that currently have this tag. Deleted monitors
+	// are excluded.
 	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
-	// Only include items before this ISO 8601 timestamp.
+	// Count only runs created at or before this time.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
 	paramObj
 }
@@ -7401,17 +7623,17 @@ func (r MonitorGetCreditUsageParams) URLQuery() (v url.Values, err error) {
 }
 
 type MonitorListAccountChangesParams struct {
-	// Opaque pagination cursor from a previous response.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Maximum number of items to return per page (1-100). Defaults to 25.
+	// Maximum number of changes to return per page. Defaults to 25.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Filter changes to a single monitor.
+	// Return only changes from this monitor.
 	MonitorID param.Opt[string] `query:"monitor_id,omitzero" json:"-"`
-	// Only include items at or after this ISO 8601 timestamp.
+	// Return only changes detected at or after this time.
 	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
-	// Filter to items that have this tag.
+	// Return only changes that have this tag.
 	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
-	// Only include items before this ISO 8601 timestamp.
+	// Return only changes detected at or before this time.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
 	// Filter by change detection type.
 	//
@@ -7452,11 +7674,11 @@ const (
 )
 
 type MonitorListAccountRunsParams struct {
-	// Opaque pagination cursor from a previous response.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Maximum number of items to return per page (1-100). Defaults to 25.
+	// Maximum number of runs to return per page. Defaults to 25.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Filter runs by lifecycle status.
+	// Filter by run status.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListAccountRunsParamsStatus `query:"status,omitzero" json:"-"`
@@ -7472,7 +7694,7 @@ func (r MonitorListAccountRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Filter runs by lifecycle status.
+// Filter by run status.
 type MonitorListAccountRunsParamsStatus string
 
 const (
@@ -7484,15 +7706,15 @@ const (
 )
 
 type MonitorListChangesParams struct {
-	// Opaque pagination cursor from a previous response.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Maximum number of items to return per page (1-100). Defaults to 25.
+	// Maximum number of changes to return per page. Defaults to 25.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Only include items at or after this ISO 8601 timestamp.
+	// Return only changes detected at or after this time.
 	Since param.Opt[time.Time] `query:"since,omitzero" format:"date-time" json:"-"`
-	// Filter to items that have this tag.
+	// Return only changes that have this tag.
 	Tag param.Opt[string] `query:"tag,omitzero" json:"-"`
-	// Only include items before this ISO 8601 timestamp.
+	// Return only changes detected at or before this time.
 	Until param.Opt[time.Time] `query:"until,omitzero" format:"date-time" json:"-"`
 	paramObj
 }
@@ -7507,11 +7729,11 @@ func (r MonitorListChangesParams) URLQuery() (v url.Values, err error) {
 }
 
 type MonitorListRunsParams struct {
-	// Opaque pagination cursor from a previous response.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `query:"cursor,omitzero" json:"-"`
-	// Maximum number of items to return per page (1-100). Defaults to 25.
+	// Maximum number of runs to return per page. Defaults to 25.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
-	// Filter runs by lifecycle status.
+	// Filter by run status.
 	//
 	// Any of "queued", "running", "completed", "failed", "skipped".
 	Status MonitorListRunsParamsStatus `query:"status,omitzero" json:"-"`
@@ -7526,7 +7748,7 @@ func (r MonitorListRunsParams) URLQuery() (v url.Values, err error) {
 	})
 }
 
-// Filter runs by lifecycle status.
+// Filter by run status.
 type MonitorListRunsParamsStatus string
 
 const (

@@ -19,7 +19,8 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/packages/respjson"
 )
 
-// Read your organization's API request logs.
+// Inspect your organization's API requests, including retained inputs and
+// responses.
 //
 // LogService contains methods and other services that help with interacting with
 // the context.dev API.
@@ -40,10 +41,8 @@ func NewLogService(opts ...option.RequestOption) (r LogService) {
 	return
 }
 
-// Retrieve a request’s metadata, retained input, and response. An entry becomes
-// retrievable a few seconds after its request completes, so a 404 NOT_FOUND for a
-// request that just finished means ingestion has not caught up yet; retry after a
-// few seconds.
+// Retrieve a request's metadata, retained input, and response. A request that just
+// finished can return 404 `NOT_FOUND` for a few seconds, so retry shortly.
 func (r *LogService) Get(ctx context.Context, requestID string, opts ...option.RequestOption) (res *LogGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	if requestID == "" {
@@ -55,8 +54,9 @@ func (r *LogService) Get(ctx context.Context, requestID string, opts ...option.R
 	return res, err
 }
 
-// List your organization’s request logs with filters and pagination. Logs also
-// include batch settlements and monitor runs.
+// List your organization's API requests, newest first. Filter by time, endpoint,
+// API key, status, error code, tags, or text. Includes batch settlements and
+// monitor runs.
 func (r *LogService) List(ctx context.Context, query LogListParams, opts ...option.RequestOption) (res *LogListResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "org/logs"
@@ -90,32 +90,33 @@ func (r *LogGetResponse) UnmarshalJSON(data []byte) error {
 type LogGetResponseData struct {
 	// Credits charged for this request.
 	CreditsUsed int64 `json:"credits_used" api:"required"`
-	// The `error_code` from the response, or null on success.
+	// The response's `error_code`. `null` on success.
 	ErrorCode string `json:"error_code" api:"required"`
-	// What was sent with the request.
+	// Input retained from the request.
 	Input LogGetResponseDataInput `json:"input" api:"required"`
-	// ID of the API key that made the request.
-	KeyID string `json:"key_id" api:"required"`
-	// Server-side processing time in milliseconds.
-	LatencyMs float64 `json:"latency_ms" api:"required"`
-	// HTTP method, or `MONITOR` / `BATCH` for monitor-run and batch-settlement
+	// ID of the API key that made the request. Can be `null` for `MONITOR` and `BATCH`
 	// entries.
+	KeyID string `json:"key_id" api:"required"`
+	// Server-side processing time, in milliseconds.
+	LatencyMs float64 `json:"latency_ms" api:"required"`
+	// HTTP method, or `MONITOR` for a monitor run and `BATCH` for a batch settlement.
 	Method string `json:"method" api:"required"`
-	// Endpoint path as called.
+	// Endpoint path that was called.
 	Path string `json:"path" api:"required"`
-	// Request ID of the logged API call.
+	// ID of the logged request.
 	RequestID string `json:"request_id" api:"required"`
-	// HTTP status code returned.
+	// HTTP status code of the response.
 	StatusCode int64 `json:"status_code" api:"required"`
-	// Request tags supplied by the caller.
+	// Tags sent with the request.
 	Tags []string `json:"tags" api:"required"`
 	// When the request completed.
 	Timestamp time.Time `json:"timestamp" api:"required" format:"date-time"`
-	// User-Agent header of the request.
+	// The request's `User-Agent` header.
 	UserAgent string `json:"user_agent" api:"required"`
-	// Whether the request was made under zero data retention.
+	// Whether the request used zero data retention (ZDR).
 	Zdr bool `json:"zdr" api:"required"`
-	// The retained JSON response with credentials redacted, or null when unavailable.
+	// Retained JSON response with credentials redacted. `null` when unavailable, such
+	// as under ZDR.
 	Response any `json:"response"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -144,9 +145,9 @@ func (r *LogGetResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// What was sent with the request.
+// Input retained from the request.
 type LogGetResponseDataInput struct {
-	// Query parameters as sent.
+	// Query parameters of the request.
 	Query map[string]any `json:"query" api:"required"`
 	// Request body with credentials and uploaded content redacted.
 	Body any `json:"body"`
@@ -169,7 +170,7 @@ func (r *LogGetResponseDataInput) UnmarshalJSON(data []byte) error {
 type LogGetResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -187,11 +188,11 @@ func (r *LogGetResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type LogListResponse struct {
-	// Log entries, newest first.
+	// Log entries on this page, newest first.
 	Data []LogListResponseData `json:"data" api:"required"`
-	// Whether a next page exists.
+	// Whether more results are available after this page.
 	HasMore bool `json:"has_more" api:"required"`
-	// Entries per page.
+	// Maximum number of log entries to return per page.
 	Limit int64 `json:"limit" api:"required"`
 	// Current page number.
 	Page int64 `json:"page" api:"required"`
@@ -222,26 +223,26 @@ func (r *LogListResponse) UnmarshalJSON(data []byte) error {
 type LogListResponseData struct {
 	// Credits charged for this request.
 	CreditsUsed int64 `json:"credits_used" api:"required"`
-	// The `error_code` from the response, or null on success.
+	// The response's `error_code`. `null` on success.
 	ErrorCode string `json:"error_code" api:"required"`
-	// ID of the API key that made the request.
-	KeyID string `json:"key_id" api:"required"`
-	// Server-side processing time in milliseconds.
-	LatencyMs float64 `json:"latency_ms" api:"required"`
-	// HTTP method, or `MONITOR` / `BATCH` for monitor-run and batch-settlement
+	// ID of the API key that made the request. Can be `null` for `MONITOR` and `BATCH`
 	// entries.
+	KeyID string `json:"key_id" api:"required"`
+	// Server-side processing time, in milliseconds.
+	LatencyMs float64 `json:"latency_ms" api:"required"`
+	// HTTP method, or `MONITOR` for a monitor run and `BATCH` for a batch settlement.
 	Method string `json:"method" api:"required"`
-	// Endpoint path as called.
+	// Endpoint path that was called.
 	Path string `json:"path" api:"required"`
-	// Request ID of the logged API call.
+	// ID of the logged request.
 	RequestID string `json:"request_id" api:"required"`
-	// HTTP status code returned.
+	// HTTP status code of the response.
 	StatusCode int64 `json:"status_code" api:"required"`
-	// Request tags supplied by the caller.
+	// Tags sent with the request.
 	Tags []string `json:"tags" api:"required"`
 	// When the request completed.
 	Timestamp time.Time `json:"timestamp" api:"required" format:"date-time"`
-	// Whether the request was made under zero data retention.
+	// Whether the request used zero data retention (ZDR).
 	Zdr bool `json:"zdr" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -271,7 +272,7 @@ func (r *LogListResponseData) UnmarshalJSON(data []byte) error {
 type LogListResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -291,28 +292,26 @@ func (r *LogListResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 type LogListParams struct {
 	// Filter by the `error_code` returned in the response.
 	ErrorCode param.Opt[string] `query:"error_code,omitzero" json:"-"`
-	// Only include requests that returned a 4xx or 5xx status.
+	// Return only requests that failed with a 4xx or 5xx status.
 	ErrorsOnly param.Opt[bool] `query:"errors_only,omitzero" json:"-"`
-	// Only include requests at or after this ISO 8601 timestamp. Defaults to 24 hours
-	// before `to`.
+	// Return requests at or after this time. Defaults to 24 hours before `to`.
 	From param.Opt[time.Time] `query:"from,omitzero" format:"date-time" json:"-"`
-	// Filter by the API key that made the request.
+	// Filter by the ID of the API key that made the request.
 	KeyID param.Opt[string] `query:"key_id,omitzero" json:"-"`
-	// Number of log entries per page.
+	// Maximum number of log entries to return per page.
 	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
 	// Page number, starting at 1.
 	Page param.Opt[int64] `query:"page,omitzero" json:"-"`
-	// Filter by endpoint path, with or without the /v1 prefix.
+	// Filter by endpoint path, with or without the `/v1` prefix.
 	Path param.Opt[string] `query:"path,omitzero" json:"-"`
-	// Case-insensitive substring match against the request query and body, e.g. a
-	// domain.
+	// Case-insensitive text to find in the request query or body, such as a domain.
 	Search param.Opt[string] `query:"search,omitzero" json:"-"`
 	// Filter by exact HTTP status code.
 	StatusCode param.Opt[int64] `query:"status_code,omitzero" json:"-"`
-	// Comma-separated request tags. Matches requests carrying any of them. Up to 20
-	// tags, each 1-50 characters.
+	// Comma-separated tags. Returns log entries that have any of them. Up to 20 tags
+	// of 1 to 50 characters each.
 	Tags param.Opt[string] `query:"tags,omitzero" json:"-"`
-	// Only include requests at or before this ISO 8601 timestamp. Defaults to now.
+	// Return requests at or before this time. Defaults to now.
 	To param.Opt[time.Time] `query:"to,omitzero" format:"date-time" json:"-"`
 	paramObj
 }

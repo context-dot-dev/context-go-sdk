@@ -14,7 +14,7 @@ import (
 // the [NewBrowserService] method instead.
 type BrowserService struct {
 	options []option.RequestOption
-	// See the authenticated browser profiles your organization created.
+	// List the authenticated browser profiles your organization created.
 	Profiles BrowserProfileService
 }
 

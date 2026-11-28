@@ -33,10 +33,10 @@ func NewWebhookService(opts ...option.RequestOption) (r WebhookService) {
 	return
 }
 
-// Webhook retry settings. Use {} for the default schedule.
+// Automatic retry settings. Pass `{}` for the default schedule.
 type RetryConfig struct {
-	// Retry delays in seconds, totaling at most 72 hours. Use [] to disable automatic
-	// retries.
+	// Delay before each automatic retry, in seconds, totaling at most 72 hours. Pass
+	// `[]` to disable automatic retries.
 	DelaysSeconds []int64 `json:"delays_seconds"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -61,10 +61,10 @@ func (r RetryConfig) ToParam() RetryConfigParam {
 	return param.Override[RetryConfigParam](json.RawMessage(r.RawJSON()))
 }
 
-// Webhook retry settings. Use {} for the default schedule.
+// Automatic retry settings. Pass `{}` for the default schedule.
 type RetryConfigParam struct {
-	// Retry delays in seconds, totaling at most 72 hours. Use [] to disable automatic
-	// retries.
+	// Delay before each automatic retry, in seconds, totaling at most 72 hours. Pass
+	// `[]` to disable automatic retries.
 	DelaysSeconds []int64 `json:"delays_seconds,omitzero"`
 	paramObj
 }

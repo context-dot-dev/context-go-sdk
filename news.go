@@ -16,7 +16,7 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
-// Search live and historical news about a company.
+// Search live and historical news by company or with a natural-language query.
 //
 // NewsService contains methods and other services that help with interacting with
 // the context.dev API.
@@ -38,8 +38,9 @@ func NewNewsService(opts ...option.RequestOption) (r NewsService) {
 }
 
 // Find news about a company by name, domain, ticker, or ISIN, or search all news
-// with a natural-language query. Filter articles and continue through results with
-// a cursor.
+// with a natural-language query. Each article includes its publisher, type of
+// coverage, and, for company searches, whether the company is the main subject.
+// Narrow results by publisher, country, language, article type, or publish date.
 func (r *NewsService) Search(ctx context.Context, body NewsSearchParams, opts ...option.RequestOption) (res *NewsSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "news/search"
@@ -48,14 +49,13 @@ func (r *NewsService) Search(ctx context.Context, body NewsSearchParams, opts ..
 }
 
 type NewsSearchResponse struct {
-	// Articles matching the search, in the requested order.
+	// Articles on this page, in the requested order.
 	Data []NewsSearchResponseData `json:"data" api:"required"`
-	// True when more results are available beyond this page.
+	// Whether more results are available after this page.
 	HasMore bool `json:"has_more" api:"required"`
-	// Summary information about this response.
+	// Summary of this page.
 	Meta NewsSearchResponseMeta `json:"meta" api:"required"`
-	// Pass as cursor in the next request to fetch the following page. Null when there
-	// are no more results.
+	// Pass as `cursor` to fetch the next page. `null` on the last page.
 	NextCursor string `json:"next_cursor" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
@@ -82,38 +82,37 @@ func (r *NewsSearchResponse) UnmarshalJSON(data []byte) error {
 }
 
 type NewsSearchResponseData struct {
-	// Stable unique identifier for this article. Use it to deduplicate or reference an
-	// article across requests.
+	// Unique ID of the article. It stays the same across requests, so you can use it
+	// to deduplicate.
 	ID string `json:"id" api:"required"`
-	// Bylined authors. Empty when no byline is available.
+	// Authors named in the byline. Empty when there is no byline.
 	Authors []string `json:"authors" api:"required"`
-	// Article summary or excerpt. Natural-language search descriptions include
-	// matching passages and are capped at 2,000 characters.
+	// Summary or excerpt of the article. For natural-language searches, it includes
+	// the matching passages, up to 2,000 characters.
 	Description string `json:"description" api:"required"`
-	// Lead image for the article, when one is available.
+	// URL of the article's lead image. `null` when there is none.
 	ImageURL string `json:"image_url" api:"required"`
-	// Language the article is written in, as a lowercase ISO 639-1 code such as en.
-	// Null when unknown.
+	// Language of the article, as an ISO 639-1 code such as `en`. `null` when unknown.
 	Language string `json:"language" api:"required"`
-	// How the article relates to the company you searched for. Null for
+	// How the article relates to the company you searched for. `null` for
 	// natural-language searches.
 	Match NewsSearchResponseDataMatch `json:"match" api:"required"`
-	// When the article was published, as an ISO 8601 timestamp. Null when the
-	// publisher does not state a reliable date.
+	// When the article was published. `null` when the publisher does not give a
+	// reliable date.
 	PublishedAt time.Time `json:"published_at" api:"required" format:"date-time"`
-	// The publication that published the article.
+	// Publication that published the article.
 	Source NewsSearchResponseDataSource `json:"source" api:"required"`
-	// Shared by articles covering the same story on the same day. Use it to group or
-	// collapse syndicated copies of one announcement across outlets.
+	// ID shared by articles that cover the same story on the same day. Use it to group
+	// syndicated copies of one announcement across outlets.
 	StoryID string `json:"story_id" api:"required"`
-	// Article headline.
+	// Headline of the article.
 	Title string `json:"title" api:"required"`
-	// Kind of coverage. Use it to separate independent reporting (editorial) from
-	// company-issued content (press_release, regulatory_filing, advisory).
+	// Type of coverage. Use it to separate independent reporting (`editorial`) from
+	// company-issued content (`press_release`, `regulatory_filing`, `advisory`).
 	//
 	// Any of "editorial", "press_release", "regulatory_filing", "advisory".
 	Type string `json:"type" api:"required"`
-	// Link to the article on the publisher site.
+	// URL of the article on the publisher's site.
 	URL string `json:"url" api:"required" format:"uri"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -140,13 +139,13 @@ func (r *NewsSearchResponseData) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// How the article relates to the company you searched for. Null for
+// How the article relates to the company you searched for. `null` for
 // natural-language searches.
 type NewsSearchResponseDataMatch struct {
-	// How confident the match is, from 0 to 1. Null when a score is unavailable.
+	// Confidence in the match, from 0 to 1. `null` when no score is available.
 	Confidence float64 `json:"confidence" api:"required"`
-	// primary when the article is mainly about the company, secondary when the company
-	// is mentioned but is not the main subject.
+	// `primary` when the article is mainly about the company; `secondary` when the
+	// company is mentioned but is not the main subject.
 	//
 	// Any of "primary", "secondary".
 	Level string `json:"level" api:"required"`
@@ -165,11 +164,12 @@ func (r *NewsSearchResponseDataMatch) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// The publication that published the article.
+// Publication that published the article.
 type NewsSearchResponseDataSource struct {
-	// True when Context observed this article in the publisher-owned feed.
+	// Whether the article came directly from the publisher's own feed rather than
+	// through an aggregator.
 	Direct bool `json:"direct" api:"required"`
-	// Website domain of the publication.
+	// Website domain of the publication, such as `reuters.com`.
 	Domain string `json:"domain" api:"required"`
 	// Name of the publication, such as Reuters.
 	Name string `json:"name" api:"required"`
@@ -189,9 +189,9 @@ func (r *NewsSearchResponseDataSource) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Summary information about this response.
+// Summary of this page.
 type NewsSearchResponseMeta struct {
-	// Number of articles in this page.
+	// Number of articles on this page.
 	Count int64 `json:"count" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -211,7 +211,7 @@ func (r *NewsSearchResponseMeta) UnmarshalJSON(data []byte) error {
 type NewsSearchResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -229,25 +229,25 @@ func (r *NewsSearchResponseKeyMetadata) UnmarshalJSON(data []byte) error {
 }
 
 type NewsSearchParams struct {
-	// What to search for: a specific company, or a natural-language query across all
-	// news.
+	// What to search for: news about a specific company, or a natural-language query
+	// across all news.
 	SearchBy NewsSearchParamsSearchByUnion `json:"searchBy,omitzero" api:"required"`
-	// Opaque next_cursor from the previous response, or null for the first page.
+	// Cursor from the previous page's `next_cursor`. Omit for the first page.
 	Cursor param.Opt[string] `json:"cursor,omitzero"`
-	// Maximum results to return. Defaults to 10.
+	// Maximum number of articles to return per page.
 	Limit param.Opt[int64] `json:"limit,omitzero"`
-	// Optional result filters. Use at most one of sourceDomain, sourceCountry,
-	// articleLanguage, or articleType. A date range may accompany that category;
-	// date.from must not exceed date.to.
+	// Filters for the results. Use at most one of `sourceDomain`, `sourceCountry`,
+	// `articleLanguage`, or `articleType`, optionally combined with `date`.
 	FilterBy NewsSearchParamsFilterBy `json:"filterBy,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Result ordering. Defaults to newest for entity searches. Natural-language
-	// searches are always ordered by relevance.
+	// How to order results. Company searches default to `newest`; natural-language
+	// searches always use `relevance`.
 	SortBy NewsSearchParamsSortBy `json:"sortBy,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	paramObj
 }
@@ -289,10 +289,10 @@ func init() {
 //
 // The properties Query, Type are required.
 type NewsSearchParamsSearchByNaturalLanguage struct {
-	// What to search for, in plain language, such as "chip export restrictions to
-	// China".
+	// What to search for, in plain language, such as
+	// `chip export restrictions to China`.
 	Query string `json:"query" api:"required"`
-	// Use `natural_language` to search all news with a plain-language query.
+	// Set to `natural_language` to search all news with a plain-language query.
 	//
 	// This field can be elided, and will marshal its zero value as "natural_language".
 	Type constant.NaturalLanguage `json:"type" default:"natural_language"`
@@ -313,7 +313,7 @@ func (r *NewsSearchParamsSearchByNaturalLanguage) UnmarshalJSON(data []byte) err
 type NewsSearchParamsSearchByEntity struct {
 	// The company to search news for, identified by name, domain, ticker, or ISIN.
 	Entity NewsSearchParamsSearchByEntityEntityUnion `json:"entity,omitzero" api:"required"`
-	// Use `entity` to find news about a specific company.
+	// Set to `entity` to find news about a specific company.
 	//
 	// This field can be elided, and will marshal its zero value as "entity".
 	Type constant.Entity `json:"type" default:"entity"`
@@ -360,9 +360,9 @@ func init() {
 //
 // The properties Name, Type are required.
 type NewsSearchParamsSearchByEntityEntityName struct {
-	// Company name.
+	// Company name, such as `Stripe`.
 	Name string `json:"name" api:"required"`
-	// Use `name` to identify the company by name.
+	// Set to `name` to identify the company by name.
 	//
 	// This field can be elided, and will marshal its zero value as "name".
 	Type constant.Name `json:"type" default:"name"`
@@ -381,9 +381,9 @@ func (r *NewsSearchParamsSearchByEntityEntityName) UnmarshalJSON(data []byte) er
 //
 // The properties Domain, Type are required.
 type NewsSearchParamsSearchByEntityEntityDomain struct {
-	// Company website domain, such as apple.com.
+	// Company website domain, such as `apple.com`.
 	Domain string `json:"domain" api:"required"`
-	// Use `domain` to identify the company by website domain.
+	// Set to `domain` to identify the company by website domain.
 	//
 	// This field can be elided, and will marshal its zero value as "domain".
 	Type constant.Domain `json:"type" default:"domain"`
@@ -398,14 +398,14 @@ func (r *NewsSearchParamsSearchByEntityEntityDomain) UnmarshalJSON(data []byte) 
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Identify the company by stock ticker, optionally scoped to an exchange.
+// Identify the company by stock ticker, optionally on a specific exchange.
 //
 // The properties Ticker, Type are required.
 type NewsSearchParamsSearchByEntityEntityTicker struct {
-	// Public-company ticker.
+	// Stock ticker symbol, such as `AAPL`.
 	Ticker string `json:"ticker" api:"required"`
-	// Stock exchange the ticker trades on, used to disambiguate tickers listed on
-	// multiple exchanges.
+	// Exchange the ticker trades on. Use it when the same ticker is listed on more
+	// than one exchange.
 	//
 	// Any of "AMEX", "AMS", "AQS", "ASX", "ATH", "BER", "BME", "BRU", "BSE", "BUD",
 	// "BUE", "BVC", "CBOE", "CNQ", "CPH", "DFM", "DOH", "DUB", "DUS", "DXE", "EGX",
@@ -415,7 +415,7 @@ type NewsSearchParamsSearchByEntityEntityTicker struct {
 	// "SAU", "SES", "SET", "SGO", "SHH", "SHZ", "SIX", "STO", "STU", "TAI", "TAL",
 	// "TLV", "TSX", "TSXV", "TWO", "VIE", "WSE", "XETRA".
 	Exchange string `json:"exchange,omitzero"`
-	// Use `ticker` to identify a publicly traded company.
+	// Set to `ticker` to identify a publicly traded company.
 	//
 	// This field can be elided, and will marshal its zero value as "ticker".
 	Type constant.Ticker `json:"type" default:"ticker"`
@@ -436,13 +436,14 @@ func init() {
 	)
 }
 
-// Identify the company by International Securities Identification Number.
+// Identify the company by International Securities Identification Number (ISIN).
 //
 // The properties Isin, Type are required.
 type NewsSearchParamsSearchByEntityEntityIsin struct {
-	// International Securities Identification Number.
+	// International Securities Identification Number, such as `US0378331005`.
 	Isin string `json:"isin" api:"required"`
-	// Use `isin` to identify the company by its securities identifier.
+	// Set to `isin` to identify the company by its International Securities
+	// Identification Number.
 	//
 	// This field can be elided, and will marshal its zero value as "isin".
 	Type constant.Isin `json:"type" default:"isin"`
@@ -457,11 +458,10 @@ func (r *NewsSearchParamsSearchByEntityEntityIsin) UnmarshalJSON(data []byte) er
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Optional result filters. Use at most one of sourceDomain, sourceCountry,
-// articleLanguage, or articleType. A date range may accompany that category;
-// date.from must not exceed date.to.
+// Filters for the results. Use at most one of `sourceDomain`, `sourceCountry`,
+// `articleLanguage`, or `articleType`, optionally combined with `date`.
 type NewsSearchParamsFilterBy struct {
-	// Article languages to include. Up to 3.
+	// Only return articles in these languages, as ISO 639 codes such as `en`.
 	//
 	// Any of "am", "ar", "az", "be", "bg", "bn", "ca", "ceb", "cs", "cy", "da", "de",
 	// "el", "en", "es", "et", "eu", "fa", "fi", "fr", "gu", "ha", "haw", "he", "hi",
@@ -470,19 +470,20 @@ type NewsSearchParamsFilterBy struct {
 	// "pl", "ps", "pt", "ro", "ru", "sk", "sl", "so", "sq", "sr", "sv", "sw", "ta",
 	// "te", "th", "tl", "tr", "uk", "ur", "uz", "vi", "yo", "zh".
 	ArticleLanguage []string `json:"articleLanguage,omitzero"`
-	// Article types to include. Up to 3.
+	// Only return these types of coverage, such as `press_release`.
 	//
 	// Any of "editorial", "press_release", "regulatory_filing", "advisory".
 	ArticleType []string `json:"articleType,omitzero"`
-	// Published-at window in epoch milliseconds. from must be before or equal to to.
+	// Publish date range, in epoch milliseconds. `from` must not be later than `to`.
 	Date NewsSearchParamsFilterByDate `json:"date,omitzero"`
-	// Publisher countries to include, as lowercase ISO 3166-1 alpha-2 codes. Up to 3.
+	// Only return articles from publishers in these countries, as ISO 3166-1 alpha-2
+	// codes such as `us`.
 	//
 	// Any of "ae", "ar", "au", "ca", "cg", "ch", "cl", "cz", "de", "fi", "fr", "gb",
 	// "hk", "il", "in", "jp", "kr", "mx", "ng", "nl", "pk", "qa", "sa", "se", "sg",
 	// "us", "za".
 	SourceCountry []string `json:"sourceCountry,omitzero"`
-	// Publisher domains to include. Up to 3.
+	// Only return articles from these publisher domains, such as `reuters.com`.
 	SourceDomain []string `json:"sourceDomain,omitzero"`
 	paramObj
 }
@@ -495,11 +496,11 @@ func (r *NewsSearchParamsFilterBy) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Published-at window in epoch milliseconds. from must be before or equal to to.
+// Publish date range, in epoch milliseconds. `from` must not be later than `to`.
 type NewsSearchParamsFilterByDate struct {
-	// Inclusive start of the published-at window, in epoch milliseconds.
+	// Inclusive start of the publish date range, in epoch milliseconds.
 	From param.Opt[int64] `json:"from,omitzero"`
-	// Inclusive end of the published-at window, in epoch milliseconds.
+	// Inclusive end of the publish date range, in epoch milliseconds.
 	To param.Opt[int64] `json:"to,omitzero"`
 	paramObj
 }
@@ -512,12 +513,13 @@ func (r *NewsSearchParamsFilterByDate) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Result ordering. Defaults to newest for entity searches. Natural-language
-// searches are always ordered by relevance.
+// How to order results. Company searches default to `newest`; natural-language
+// searches always use `relevance`.
 //
 // The property Type is required.
 type NewsSearchParamsSortBy struct {
-	// Result ordering.
+	// `newest` puts the most recently published articles first; `relevance` puts the
+	// closest matches first.
 	//
 	// Any of "relevance", "newest".
 	Type string `json:"type,omitzero" api:"required"`

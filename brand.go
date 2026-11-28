@@ -17,6 +17,9 @@ import (
 	"github.com/context-dot-dev/context-go-sdk/v2/shared/constant"
 )
 
+// Retrieve a brand's logos, colors, company details, and social links, or find
+// brands by name or domain.
+//
 // BrandService contains methods and other services that help with interacting with
 // the context.dev API.
 //
@@ -36,8 +39,10 @@ func NewBrandService(opts ...option.RequestOption) (r BrandService) {
 	return
 }
 
-// Retrieve logos, colors, company details, and social links using one lookup
-// identifier. A direct URL limits extraction to that page.
+// Look up a brand by domain, company name, work email, stock ticker, page URL, or
+// card transaction descriptor. Returns logos, colors, backdrops, description,
+// industries, address, stock listing, and social links. A `by_direct_url` lookup
+// reads only that page.
 func (r *BrandService) Get(ctx context.Context, body BrandGetParams, opts ...option.RequestOption) (res *BrandGetResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "brand/retrieve"
@@ -45,10 +50,10 @@ func (r *BrandService) Get(ctx context.Context, body BrandGetParams, opts ...opt
 	return res, err
 }
 
-// Find up to 10 brands by name or domain, ordered by popularity. Optionally filter
-// by country and primary language; both filters must match when provided together.
-// Results include description, country, and language when available. Use the
-// returned domain to retrieve a full brand profile.
+// Autocomplete brand names and domains as a user types, with up to 10 brands
+// ranked by popularity and a ready-to-use logo URL for each. Filter by country and
+// primary language. Pass a returned `domain` to `POST /brand/retrieve` for the
+// full brand profile.
 func (r *BrandService) Search(ctx context.Context, query BrandSearchParams, opts ...option.RequestOption) (res *BrandSearchResponse, err error) {
 	opts = slices.Concat(r.options, opts)
 	path := "brand/search"
@@ -57,11 +62,11 @@ func (r *BrandService) Search(ctx context.Context, query BrandSearchParams, opts
 }
 
 type BrandGetResponse struct {
-	// Detailed brand information
+	// The brand's identity, visual assets, and company details.
 	Brand BrandGetResponseBrand `json:"brand" api:"required"`
-	// Whether this response came from cache.
+	// Cache status of this response.
 	CacheMetadata BrandGetResponseCacheMetadata `json:"cache_metadata" api:"required"`
-	// HTTP status code
+	// HTTP status code. Always `200` on success.
 	Code int64 `json:"code" api:"required"`
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
@@ -70,8 +75,8 @@ type BrandGetResponse struct {
 	Status string `json:"status" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BrandGetResponseKeyMetadata `json:"key_metadata"`
-	// True when the timeout ended processing and this response contains the usable
-	// data completed so far. Unfinished fields are omitted.
+	// `true` when the `timeoutOpts` deadline ended processing early. The response
+	// holds the data completed so far; unfinished fields are omitted.
 	Partial bool `json:"partial"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -93,35 +98,34 @@ func (r *BrandGetResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Detailed brand information
+// The brand's identity, visual assets, and company details.
 type BrandGetResponseBrand struct {
-	// Physical address of the brand
+	// Physical address of the brand. Omitted when unknown.
 	Address BrandGetResponseBrandAddress `json:"address"`
-	// An array of backdrop images for the brand
+	// Backdrop images for the brand, such as social profile banners.
 	Backdrops []BrandGetResponseBrandBackdrop `json:"backdrops"`
-	// An array of brand colors
+	// Brand colors from the website and logos.
 	Colors []BrandGetResponseBrandColor `json:"colors"`
-	// A brief description of the brand
+	// Short description of the brand.
 	Description string `json:"description"`
-	// The domain name of the brand
+	// Domain of the brand.
 	Domain string `json:"domain"`
-	// Company email address
+	// Contact email address for the company.
 	Email string `json:"email"`
-	// Employee headcount information for the brand (will be null if unknown)
+	// Employee headcount. Omitted when unknown.
 	Employees BrandGetResponseBrandEmployees `json:"employees"`
-	// Industry classification information for the brand
+	// Industry classification of the brand.
 	Industries BrandGetResponseBrandIndustries `json:"industries"`
-	// Indicates whether the brand content is not safe for work (NSFW)
+	// Whether the brand's content is not safe for work (NSFW).
 	IsNsfw bool `json:"is_nsfw"`
-	// Important website links for the brand
+	// Key pages on the brand's website.
 	Links BrandGetResponseBrandLinks `json:"links"`
-	// An array of logos associated with the brand. When a similarly shaped SVG variant
-	// exists, it is returned ahead of its raster equivalent; otherwise relevance order
-	// is preserved
+	// Brand logos, most relevant first. An SVG is listed ahead of a raster logo of the
+	// same shape.
 	Logos []BrandGetResponseBrandLogo `json:"logos"`
-	// Company phone number
+	// Contact phone number for the company.
 	Phone string `json:"phone"`
-	// Language, e.g. `english`.
+	// Lowercase language name, such as `english`.
 	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
@@ -142,14 +146,13 @@ type BrandGetResponseBrand struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	PrimaryLanguage string `json:"primary_language" api:"nullable"`
-	// The brand's slogan
+	// Brand slogan or tagline.
 	Slogan string `json:"slogan"`
-	// An array of social media links for the brand
+	// Social media profiles of the brand.
 	Socials []BrandGetResponseBrandSocial `json:"socials"`
-	// Stock market information for this brand (will be null if not a publicly traded
-	// company)
+	// Stock listing. Omitted when the company is not publicly traded.
 	Stock BrandGetResponseBrandStock `json:"stock"`
-	// The title or name of the brand
+	// Brand name.
 	Title string `json:"title"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -181,21 +184,21 @@ func (r *BrandGetResponseBrand) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Physical address of the brand
+// Physical address of the brand. Omitted when unknown.
 type BrandGetResponseBrandAddress struct {
-	// City name
+	// City.
 	City string `json:"city"`
-	// Country name
+	// Country name.
 	Country string `json:"country"`
-	// Country code
+	// Country code, such as `US`.
 	CountryCode string `json:"country_code"`
-	// Postal or ZIP code
+	// Postal or ZIP code.
 	PostalCode string `json:"postal_code"`
-	// State or province code
+	// State or province code.
 	StateCode string `json:"state_code"`
-	// State or province name
+	// State or province name.
 	StateProvince string `json:"state_province"`
-	// Street address
+	// Street address.
 	Street string `json:"street"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -218,11 +221,11 @@ func (r *BrandGetResponseBrandAddress) UnmarshalJSON(data []byte) error {
 }
 
 type BrandGetResponseBrandBackdrop struct {
-	// Array of colors in the backdrop image
+	// Colors in the backdrop image.
 	Colors []BrandGetResponseBrandBackdropColor `json:"colors"`
-	// Resolution of the backdrop image
+	// Size of the backdrop image.
 	Resolution BrandGetResponseBrandBackdropResolution `json:"resolution"`
-	// URL of the backdrop image
+	// URL of the backdrop image.
 	URL string `json:"url"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -241,9 +244,9 @@ func (r *BrandGetResponseBrandBackdrop) UnmarshalJSON(data []byte) error {
 }
 
 type BrandGetResponseBrandBackdropColor struct {
-	// Color in hexadecimal format
+	// Hex color code, such as `#635BFF`.
 	Hex string `json:"hex"`
-	// Name of the color
+	// Human-readable color name.
 	Name string `json:"name"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -260,13 +263,13 @@ func (r *BrandGetResponseBrandBackdropColor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolution of the backdrop image
+// Size of the backdrop image.
 type BrandGetResponseBrandBackdropResolution struct {
-	// Aspect ratio of the image (width/height)
+	// Aspect ratio, as width divided by height.
 	AspectRatio float64 `json:"aspect_ratio"`
-	// Height of the image in pixels
+	// Height, in pixels.
 	Height int64 `json:"height"`
-	// Width of the image in pixels
+	// Width, in pixels.
 	Width int64 `json:"width"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -285,13 +288,12 @@ func (r *BrandGetResponseBrandBackdropResolution) UnmarshalJSON(data []byte) err
 }
 
 type BrandGetResponseBrandColor struct {
-	// Color in hexadecimal format
+	// Hex color code, such as `#635BFF`.
 	Hex string `json:"hex"`
-	// Name of the color
+	// Human-readable color name.
 	Name string `json:"name"`
-	// Where the color was observed: 'site' colors come from the website's own theme
-	// signals (rendered page colors, manifest, theme-color meta), 'logo' colors from
-	// logo image pixels.
+	// `site` colors come from the website's own theme (rendered page colors, web app
+	// manifest, `theme-color` meta tag); `logo` colors come from logo pixels.
 	//
 	// Any of "site", "logo".
 	Source string `json:"source"`
@@ -311,11 +313,11 @@ func (r *BrandGetResponseBrandColor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Employee headcount information for the brand (will be null if unknown)
+// Employee headcount. Omitted when unknown.
 type BrandGetResponseBrandEmployees struct {
-	// Exact employee count when a precise headcount is known
+	// Exact employee count, when known.
 	Exact int64 `json:"exact"`
-	// Employee count range for the brand (e.g. '11 to 50')
+	// Headcount range, such as `11 to 50`.
 	//
 	// Any of "1 to 10", "11 to 50", "51 to 200", "201 to 500", "501 to 1000", "1001 to
 	// 5000", "5001 to 10000", "10001+".
@@ -335,9 +337,10 @@ func (r *BrandGetResponseBrandEmployees) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Industry classification information for the brand
+// Industry classification of the brand.
 type BrandGetResponseBrandIndustries struct {
-	// Easy Industry Classification - array of industry and subindustry pairs
+	// Industry and subindustry pairs from Context.dev's Easy Industry Classification
+	// (EIC).
 	Eic []BrandGetResponseBrandIndustriesEic `json:"eic"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -354,7 +357,7 @@ func (r *BrandGetResponseBrandIndustries) UnmarshalJSON(data []byte) error {
 }
 
 type BrandGetResponseBrandIndustriesEic struct {
-	// Industry classification enum
+	// Top-level industry in the Easy Industry Classification (EIC).
 	//
 	// Any of "Aerospace & Defense", "Technology", "Finance", "Healthcare", "Retail &
 	// E-commerce", "Entertainment", "Education", "Government & Nonprofit", "Industrial
@@ -364,7 +367,7 @@ type BrandGetResponseBrandIndustriesEic struct {
 	// & Agencies", "Chemicals & Materials", "Logistics & Supply Chain", "Hospitality &
 	// Tourism", "Construction & Built Environment", "Consumer Packaged Goods (CPG)".
 	Industry string `json:"industry" api:"required"`
-	// Subindustry classification enum
+	// Subindustry in the Easy Industry Classification (EIC).
 	//
 	// Any of "Defense Systems & Military Hardware", "Aerospace Manufacturing",
 	// "Avionics & Navigation Technology", "Subsea & Naval Defense Systems", "Space &
@@ -478,19 +481,19 @@ func (r *BrandGetResponseBrandIndustriesEic) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Important website links for the brand
+// Key pages on the brand's website.
 type BrandGetResponseBrandLinks struct {
-	// URL to the brand's blog or news page
+	// URL of the blog or newsroom. `null` when not found.
 	Blog string `json:"blog" api:"nullable"`
-	// URL to the brand's careers or job opportunities page
+	// URL of the careers page. `null` when not found.
 	Careers string `json:"careers" api:"nullable"`
-	// URL to the brand's contact or contact us page
+	// URL of the contact page. `null` when not found.
 	Contact string `json:"contact" api:"nullable"`
-	// URL to the brand's pricing or plans page
+	// URL of the pricing page. `null` when not found.
 	Pricing string `json:"pricing" api:"nullable"`
-	// URL to the brand's privacy policy page
+	// URL of the privacy policy. `null` when not found.
 	Privacy string `json:"privacy" api:"nullable"`
-	// URL to the brand's terms of service or terms and conditions page
+	// URL of the terms of service. `null` when not found.
 	Terms string `json:"terms" api:"nullable"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -512,21 +515,21 @@ func (r *BrandGetResponseBrandLinks) UnmarshalJSON(data []byte) error {
 }
 
 type BrandGetResponseBrandLogo struct {
-	// Array of colors in the logo
+	// Colors in the logo.
 	Colors []BrandGetResponseBrandLogoColor `json:"colors"`
-	// Indicates when this logo is best used: 'light' = best for light mode, 'dark' =
-	// best for dark mode, 'has_opaque_background' = can be used for either as image
-	// has its own background
+	// `light` works best in light mode, `dark` works best in dark mode, and
+	// `has_opaque_background` works in either because the image has its own
+	// background.
 	//
 	// Any of "light", "dark", "has_opaque_background".
 	Mode string `json:"mode"`
-	// Resolution of the logo image
+	// Size of the logo image.
 	Resolution BrandGetResponseBrandLogoResolution `json:"resolution"`
-	// Type of the logo based on resolution (e.g., 'icon', 'logo')
+	// Whether the image is an `icon` or a full `logo`, based on its dimensions.
 	//
 	// Any of "icon", "logo".
 	Type string `json:"type"`
-	// Hosted logo URL.
+	// URL of the hosted logo image.
 	URL string `json:"url"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -547,9 +550,9 @@ func (r *BrandGetResponseBrandLogo) UnmarshalJSON(data []byte) error {
 }
 
 type BrandGetResponseBrandLogoColor struct {
-	// Color in hexadecimal format
+	// Hex color code, such as `#635BFF`.
 	Hex string `json:"hex"`
-	// Name of the color
+	// Human-readable color name.
 	Name string `json:"name"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -566,13 +569,13 @@ func (r *BrandGetResponseBrandLogoColor) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Resolution of the logo image
+// Size of the logo image.
 type BrandGetResponseBrandLogoResolution struct {
-	// Aspect ratio of the image (width/height)
+	// Aspect ratio, as width divided by height.
 	AspectRatio float64 `json:"aspect_ratio"`
-	// Height of the image in pixels
+	// Height, in pixels.
 	Height int64 `json:"height"`
-	// Width of the image in pixels
+	// Width, in pixels.
 	Width int64 `json:"width"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -591,7 +594,7 @@ func (r *BrandGetResponseBrandLogoResolution) UnmarshalJSON(data []byte) error {
 }
 
 type BrandGetResponseBrandSocial struct {
-	// Type of social media platform
+	// Social platform.
 	//
 	// Any of "x", "facebook", "instagram", "linkedin", "youtube", "pinterest",
 	// "tiktok", "dribbble", "github", "behance", "snapchat", "whatsapp", "telegram",
@@ -599,7 +602,7 @@ type BrandGetResponseBrandSocial struct {
 	// "medium", "spotify", "soundcloud", "tripadvisor", "yelp", "producthunt",
 	// "reddit", "crunchbase", "appstore", "playstore".
 	Type string `json:"type"`
-	// URL of the social media page
+	// URL of the brand's profile on that platform.
 	URL string `json:"url"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -616,12 +619,11 @@ func (r *BrandGetResponseBrandSocial) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Stock market information for this brand (will be null if not a publicly traded
-// company)
+// Stock listing. Omitted when the company is not publicly traded.
 type BrandGetResponseBrandStock struct {
-	// Stock exchange name
+	// Exchange the stock trades on.
 	Exchange string `json:"exchange"`
-	// Stock ticker symbol
+	// Stock ticker symbol.
 	Ticker string `json:"ticker"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -638,12 +640,12 @@ func (r *BrandGetResponseBrandStock) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Whether this response came from cache.
+// Cache status of this response.
 type BrandGetResponseCacheMetadata struct {
-	// Age of the cached data in milliseconds. Zero for miss and zdr responses.
+	// Age of the cached data, in milliseconds. `0` for `miss` and `zdr`.
 	AgeMs int64 `json:"age_ms" api:"required"`
-	// Whether the response was served from cache, required fresh work, or honored
-	// zero-data-retention cache bypass.
+	// `hit` when served from cache, `miss` when fetched fresh, `zdr` when zero data
+	// retention bypassed the cache.
 	//
 	// Any of "hit", "miss", "zdr".
 	Status string `json:"status" api:"required"`
@@ -666,7 +668,7 @@ func (r *BrandGetResponseCacheMetadata) UnmarshalJSON(data []byte) error {
 type BrandGetResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -687,8 +689,8 @@ type BrandSearchResponse struct {
 	// Unique ID of this request, also in `X-Request-Id`. Include it when contacting
 	// support.
 	RequestID string `json:"request_id" api:"required" format:"uuid"`
-	// Up to 10 matching brands, name matches first, then domain matches, most popular
-	// first within each group. Empty when nothing matches.
+	// Up to 10 matching brands: name matches first, then domain matches, each group
+	// ordered by popularity. Empty when nothing matches.
 	Results []BrandSearchResponseResult `json:"results" api:"required"`
 	// Credits this request used and your remaining balance.
 	KeyMetadata BrandSearchResponseKeyMetadata `json:"key_metadata"`
@@ -709,14 +711,15 @@ func (r *BrandSearchResponse) UnmarshalJSON(data []byte) error {
 }
 
 type BrandSearchResponseResult struct {
-	// The brand's domain.
+	// Domain of the brand.
 	Domain string `json:"domain" api:"required"`
-	// Logo link URL that serves the brand's logo, generated per request for the
-	// calling organization.
+	// Logo Link URL that serves the brand's logo with your organization's client ID.
+	// Use it directly as an image source.
 	Logo string `json:"logo" api:"required"`
-	// The brand's name. Empty string when unknown.
+	// Name of the brand. Empty string when unknown.
 	Name string `json:"name" api:"required"`
-	// The brand's country, when available, as an uppercase ISO 3166-1 alpha-2 code.
+	// Country of the brand, as an uppercase ISO 3166-1 alpha-2 code. Omitted when
+	// unknown.
 	//
 	// Any of "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
 	// "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ",
@@ -739,9 +742,9 @@ type BrandSearchResponseResult struct {
 	// "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT",
 	// "ZA", "ZM", "ZW".
 	Country string `json:"country"`
-	// The brand's description, when available.
+	// Short description of the brand. Omitted when unknown.
 	Description string `json:"description"`
-	// The brand's primary language, when available.
+	// Primary language of the brand. Omitted when unknown.
 	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
@@ -785,7 +788,7 @@ func (r *BrandSearchResponseResult) UnmarshalJSON(data []byte) error {
 type BrandSearchResponseKeyMetadata struct {
 	// Credits charged for this request.
 	CreditsConsumed int64 `json:"credits_consumed" api:"required"`
-	// Credits remaining for your organization.
+	// Credits your organization has left after this request.
 	CreditsRemaining int64 `json:"credits_remaining" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
@@ -808,29 +811,25 @@ type BrandGetParams struct {
 	// Request body variants
 	//
 
-	// This field is a request body variant, only one variant field can be set.
-	// Retrieve brand data by domain. Cannot be combined with name, email, or ticker.
+	// This field is a request body variant, only one variant field can be set. Look up
+	// a brand by its domain.
 	OfByDomain *BrandGetParamsBodyByDomain `json:",inline"`
-	// This field is a request body variant, only one variant field can be set.
-	// Retrieve brand data by company name. Cannot be combined with domain, email, or
-	// ticker.
+	// This field is a request body variant, only one variant field can be set. Look up
+	// a brand by company name.
 	OfByName *BrandGetParamsBodyByName `json:",inline"`
-	// This field is a request body variant, only one variant field can be set.
-	// Retrieve brand data by email address. The domain is extracted from the email.
-	// Free and disposable email providers are rejected with 422. Cannot be combined
-	// with domain, name, or ticker.
+	// This field is a request body variant, only one variant field can be set. Look up
+	// a brand from a work email address. Free and disposable email providers
+	// return 422.
 	OfByEmail *BrandGetParamsBodyByEmail `json:",inline"`
-	// This field is a request body variant, only one variant field can be set.
-	// Retrieve brand data by stock ticker. Cannot be combined with domain, name, or
-	// email.
+	// This field is a request body variant, only one variant field can be set. Look up
+	// a publicly traded company by stock ticker.
 	OfByTicker *BrandGetParamsBodyByTicker `json:",inline"`
-	// This field is a request body variant, only one variant field can be set.
-	// Retrieve brand data from this exact URL. Cross-site enrichment and other lookup
-	// identifiers are excluded.
+	// This field is a request body variant, only one variant field can be set. Extract
+	// brand data from a single page. Only that URL is read, and no data from other
+	// sources is added.
 	OfByDirectURL *BrandGetParamsBodyByDirectURL `json:",inline"`
 	// This field is a request body variant, only one variant field can be set.
-	// Identify brand data from a transaction descriptor. Cannot be combined with
-	// domain, name, email, or ticker.
+	// Identify the merchant behind a card or bank transaction descriptor.
 	OfByTransaction *BrandGetParamsBodyByTransaction `json:",inline"`
 
 	paramObj
@@ -848,19 +847,20 @@ func (r *BrandGetParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// Retrieve brand data by domain. Cannot be combined with name, email, or ticker.
+// Look up a brand by its domain.
 //
 // The properties Domain, Type are required.
 type BrandGetParamsBodyByDomain struct {
-	// Domain name to retrieve brand data for (e.g., 'stripe.com').
+	// Domain of the brand, such as `stripe.com`.
 	Domain string `json:"domain" api:"required"`
-	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
-	// year. `0` refreshes.
+	// Maximum age of cached brand data, in milliseconds. `0` always fetches fresh.
+	// Defaults to 90 days (7776000000 ms). Values above 1 year (31536000000 ms) are
+	// capped at 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Optional parameter to optimize the API call for maximum speed. When set to true,
-	// the API will skip time-consuming operations for faster response at the cost of
-	// less comprehensive data.
+	// Skip slower enrichment steps for a faster, less detailed response.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
+	// Translate the brand's `title`, `description`, and `slogan` into this language.
+	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -880,21 +880,22 @@ type BrandGetParamsBodyByDomain struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDomainTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs and traces and omits request and response
-	// content from usage logs. Brand data and hosted assets may still be stored.
+	// `enabled` turns off request logs and traces and keeps request and response
+	// content out of usage logs. Brand data and hosted assets may still be stored.
 	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
-	// Discriminator for domain-based brand retrieval.
+	// Set to `by_domain` to look up a brand by domain.
 	//
 	// This field can be elided, and will marshal its zero value as "by_domain".
 	Type constant.ByDomain `json:"type" default:"by_domain"`
@@ -924,8 +925,8 @@ func init() {
 type BrandGetParamsBodyByDomainTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -946,20 +947,20 @@ func init() {
 	)
 }
 
-// Retrieve brand data by company name. Cannot be combined with domain, email, or
-// ticker.
+// Look up a brand by company name.
 //
 // The properties Name, Type are required.
 type BrandGetParamsBodyByName struct {
-	// Company name to retrieve brand data for (e.g., 'Apple Inc').
+	// Company name, such as `Apple Inc`.
 	Name string `json:"name" api:"required"`
-	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
-	// year. `0` refreshes.
+	// Maximum age of cached brand data, in milliseconds. `0` always fetches fresh.
+	// Defaults to 90 days (7776000000 ms). Values above 1 year (31536000000 ms) are
+	// capped at 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Optional parameter to optimize the API call for maximum speed. When set to true,
-	// the API will skip time-consuming operations for faster response at the cost of
-	// less comprehensive data.
+	// Skip slower enrichment steps for a faster, less detailed response.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
+	// Translate the brand's `title`, `description`, and `slogan` into this language.
+	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1001,21 +1002,22 @@ type BrandGetParamsBodyByName struct {
 	// "tv", "ug", "ua", "ae", "gb", "us", "um", "uy", "uz", "vu", "ve", "vn", "vg",
 	// "vi", "wf", "eh", "ye", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByNameTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs and traces and omits request and response
-	// content from usage logs. Brand data and hosted assets may still be stored.
+	// `enabled` turns off request logs and traces and keeps request and response
+	// content out of usage logs. Brand data and hosted assets may still be stored.
 	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
-	// Discriminator for name-based brand retrieval.
+	// Set to `by_name` to look up a brand by company name.
 	//
 	// This field can be elided, and will marshal its zero value as "by_name".
 	Type constant.ByName `json:"type" default:"by_name"`
@@ -1048,8 +1050,8 @@ func init() {
 type BrandGetParamsBodyByNameTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1070,21 +1072,22 @@ func init() {
 	)
 }
 
-// Retrieve brand data by email address. The domain is extracted from the email.
-// Free and disposable email providers are rejected with 422. Cannot be combined
-// with domain, name, or ticker.
+// Look up a brand from a work email address. Free and disposable email providers
+// return 422.
 //
 // The properties Email, Type are required.
 type BrandGetParamsBodyByEmail struct {
-	// Email address to retrieve brand data for (e.g., 'jane@stripe.com').
+	// Work email address, such as `jane@stripe.com`. The brand is looked up from its
+	// domain.
 	Email string `json:"email" api:"required" format:"email"`
-	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
-	// year. `0` refreshes.
+	// Maximum age of cached brand data, in milliseconds. `0` always fetches fresh.
+	// Defaults to 90 days (7776000000 ms). Values above 1 year (31536000000 ms) are
+	// capped at 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Optional parameter to optimize the API call for maximum speed. When set to true,
-	// the API will skip time-consuming operations for faster response at the cost of
-	// less comprehensive data.
+	// Skip slower enrichment steps for a faster, less detailed response.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
+	// Translate the brand's `title`, `description`, and `slogan` into this language.
+	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1104,21 +1107,22 @@ type BrandGetParamsBodyByEmail struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByEmailTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs and traces and omits request and response
-	// content from usage logs. Brand data and hosted assets may still be stored.
+	// `enabled` turns off request logs and traces and keeps request and response
+	// content out of usage logs. Brand data and hosted assets may still be stored.
 	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
-	// Discriminator for email-based brand retrieval.
+	// Set to `by_email` to look up a brand from a work email address.
 	//
 	// This field can be elided, and will marshal its zero value as "by_email".
 	Type constant.ByEmail `json:"type" default:"by_email"`
@@ -1148,8 +1152,8 @@ func init() {
 type BrandGetParamsBodyByEmailTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1170,20 +1174,20 @@ func init() {
 	)
 }
 
-// Retrieve brand data by stock ticker. Cannot be combined with domain, name, or
-// email.
+// Look up a publicly traded company by stock ticker.
 //
 // The properties Ticker, Type are required.
 type BrandGetParamsBodyByTicker struct {
-	// Stock ticker symbol to retrieve brand data for (e.g., 'AAPL').
+	// Stock ticker symbol, such as `AAPL`.
 	Ticker string `json:"ticker" api:"required"`
-	// Maximum age of cached brand data in ms. Defaults to 3 months; clamped to 0–1
-	// year. `0` refreshes.
+	// Maximum age of cached brand data, in milliseconds. `0` always fetches fresh.
+	// Defaults to 90 days (7776000000 ms). Values above 1 year (31536000000 ms) are
+	// capped at 1 year.
 	MaxAgeMs param.Opt[int64] `json:"maxAgeMs,omitzero"`
-	// Optional parameter to optimize the API call for maximum speed. When set to true,
-	// the API will skip time-consuming operations for faster response at the cost of
-	// less comprehensive data.
+	// Skip slower enrichment steps for a faster, less detailed response.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
+	// Translate the brand's `title`, `description`, and `slogan` into this language.
+	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1203,13 +1207,14 @@ type BrandGetParamsBodyByTicker struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	ForceLanguage string `json:"force_language,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
-	// Stock exchange code.
+	// Stock exchange code, such as `NASDAQ` or `LSE`.
 	//
 	// Any of "AMEX", "AMS", "AQS", "ASX", "ATH", "BER", "BME", "BRU", "BSE", "BUD",
 	// "BUE", "BVC", "CBOE", "CNQ", "CPH", "DFM", "DOH", "DUB", "DUS", "DXE", "EGX",
@@ -1221,13 +1226,13 @@ type BrandGetParamsBodyByTicker struct {
 	TickerExchange string `json:"ticker_exchange,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTickerTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs and traces and omits request and response
-	// content from usage logs. Brand data and hosted assets may still be stored.
+	// `enabled` turns off request logs and traces and keeps request and response
+	// content out of usage logs. Brand data and hosted assets may still be stored.
 	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
-	// Discriminator for ticker-based brand retrieval.
+	// Set to `by_ticker` to look up a brand by stock ticker.
 	//
 	// This field can be elided, and will marshal its zero value as "by_ticker".
 	Type constant.ByTicker `json:"type" default:"by_ticker"`
@@ -1260,8 +1265,8 @@ func init() {
 type BrandGetParamsBodyByTickerTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1282,30 +1287,30 @@ func init() {
 	)
 }
 
-// Retrieve brand data from this exact URL. Cross-site enrichment and other lookup
-// identifiers are excluded.
+// Extract brand data from a single page. Only that URL is read, and no data from
+// other sources is added.
 //
 // The properties DirectURL, Type are required.
 type BrandGetParamsBodyByDirectURL struct {
-	// Full http(s) URL to fetch brand data from (e.g.,
-	// 'https://stripe.com/enterprise'). Only this URL is fetched — not the entire
-	// internet.
+	// Full `http` or `https` URL of the page to read, such as
+	// `https://stripe.com/enterprise`. Only this page is fetched.
 	DirectURL string `json:"direct_url" api:"required" format:"uri"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByDirectURLTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs and traces and omits request and response
-	// content from usage logs. Brand data and hosted assets may still be stored.
+	// `enabled` turns off request logs and traces and keeps request and response
+	// content out of usage logs. Brand data and hosted assets may still be stored.
 	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
-	// Discriminator for direct-URL-based brand retrieval.
+	// Set to `by_direct_url` to extract brand data from a single page.
 	//
 	// This field can be elided, and will marshal its zero value as "by_direct_url".
 	Type constant.ByDirectURL `json:"type" default:"by_direct_url"`
@@ -1332,8 +1337,8 @@ func init() {
 type BrandGetParamsBodyByDirectURLTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1354,22 +1359,21 @@ func init() {
 	)
 }
 
-// Identify brand data from a transaction descriptor. Cannot be combined with
-// domain, name, email, or ticker.
+// Identify the merchant behind a card or bank transaction descriptor.
 //
 // The properties TransactionInfo, Type are required.
 type BrandGetParamsBodyByTransaction struct {
-	// Transaction information to identify the brand.
+	// Transaction descriptor from a card or bank statement, such as `SQ *COFFEE SHOP`.
 	TransactionInfo string `json:"transaction_info" api:"required"`
-	// Optional city name to prioritize when searching for the brand.
+	// City where the transaction took place. Brands in this city are preferred.
 	City param.Opt[string] `json:"city,omitzero"`
-	// When set to true, the API performs additional verification to ensure the
-	// identified brand matches the transaction with high confidence.
+	// Run extra verification so the returned brand matches the transaction with high
+	// confidence.
 	HighConfidenceOnly param.Opt[bool] `json:"high_confidence_only,omitzero"`
-	// Optional parameter to optimize the API call for maximum speed. When set to true,
-	// the API will skip time-consuming operations for faster response at the cost of
-	// less comprehensive data.
+	// Skip slower enrichment steps for a faster, less detailed response.
 	MaxSpeed param.Opt[bool] `json:"maxSpeed,omitzero"`
+	// Translate the brand's `title`, `description`, and `slogan` into this language.
+	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
 	// "burmese", "cantonese", "catalan", "cebuano", "chinese", "corsican", "croatian",
@@ -1411,26 +1415,28 @@ type BrandGetParamsBodyByTransaction struct {
 	// "tv", "ug", "ua", "ae", "gb", "us", "um", "uy", "uz", "vu", "ve", "vn", "vg",
 	// "vi", "wf", "eh", "ye", "zm", "zw".
 	Country string `json:"country,omitzero"`
-	// Optional Merchant Category Code (MCC) to help identify the business category or
-	// industry.
+	// Merchant Category Code (MCC) from the transaction. Helps identify the type of
+	// business.
 	Mcc BrandGetParamsBodyByTransactionMccUnion `json:"mcc,omitzero"`
-	// Optional phone number from the transaction to help verify brand match.
+	// Merchant phone number from the transaction. Helps confirm the match.
 	Phone BrandGetParamsBodyByTransactionPhoneUnion `json:"phone,omitzero"`
-	// Access policy IDs to apply. A URL must pass every policy. Leave it out unless
-	// access policies are enabled for your organization; otherwise the request fails
-	// with `ACCESS_POLICIES_NOT_ENABLED`.
+	// Access policy IDs to apply; each URL must pass all of them. Requires access
+	// policies enabled for your organization; otherwise returns
+	// `ACCESS_POLICIES_NOT_ENABLED`.
 	Policies []string `json:"policies,omitzero"`
-	// Labels for filtering usage in the dashboard.
+	// Labels for this request. Filter usage and request logs by them in the dashboard
+	// or with `GET /org/logs`.
 	Tags []string `json:"tags,omitzero"`
 	// Request deadline and what to return when it passes.
 	TimeoutOpts BrandGetParamsBodyByTransactionTimeoutOpts `json:"timeoutOpts,omitzero"`
-	// `enabled` disables request logs and traces and omits request and response
-	// content from usage logs. Brand data and hosted assets may still be stored.
+	// `enabled` turns off request logs and traces and keeps request and response
+	// content out of usage logs. Brand data and hosted assets may still be stored.
 	// Returns 403 `ZDR_NOT_ENABLED` unless your organization has ZDR.
 	//
 	// Any of "enabled", "disabled".
 	Zdr string `json:"zdr,omitzero"`
-	// Discriminator for transaction-based brand retrieval.
+	// Set to `by_transaction` to identify the merchant behind a transaction
+	// descriptor.
 	//
 	// This field can be elided, and will marshal its zero value as "by_transaction".
 	Type constant.ByTransaction `json:"type" default:"by_transaction"`
@@ -1495,8 +1501,8 @@ func (u *BrandGetParamsBodyByTransactionPhoneUnion) UnmarshalJSON(data []byte) e
 type BrandGetParamsBodyByTransactionTimeoutOpts struct {
 	// Deadline in milliseconds.
 	Milliseconds int64 `json:"milliseconds" api:"required"`
-	// "fail" returns 408 at the deadline. "return-partial" returns available results;
-	// inspect the response’s partial flag.
+	// `fail` returns 408 at the deadline. `return-partial` returns the results
+	// collected so far and marks the response as partial.
 	//
 	// Any of "fail", "return-partial".
 	Behavior string `json:"behavior,omitzero"`
@@ -1518,17 +1524,16 @@ func init() {
 }
 
 type BrandSearchParams struct {
-	// Search term, matched against the fields selected by queryBy (e.g. 'nike',
-	// 'nike.com', 'nik').
+	// Search term, matched against the fields in `queryBy`, such as `nike`,
+	// `nike.com`, or `nik`.
 	Query string `query:"query" api:"required" json:"-"`
-	// Whether the search term matches by prefix, so partial words match as they are
-	// typed (e.g. 'nik' matches Nike). Set to false to match whole words only.
+	// Match the search term as a prefix, so `nik` matches Nike while the user is still
+	// typing. Set to `false` to match whole words only.
 	Autocomplete param.Opt[bool] `query:"autocomplete,omitzero" json:"-"`
-	// Maximum number of typos tolerated when matching, from 0 to 2. Defaults to 0 (no
-	// typo tolerance).
+	// Maximum number of typos to tolerate when matching. `0` requires exact spelling.
 	TypoTolerance param.Opt[int64] `query:"typoTolerance,omitzero" json:"-"`
 	// Only return brands in this country, as an uppercase ISO 3166-1 alpha-2 code such
-	// as US or GB.
+	// as `US` or `GB`.
 	//
 	// Any of "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
 	// "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ",
@@ -1551,7 +1556,7 @@ type BrandSearchParams struct {
 	// "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT",
 	// "ZA", "ZM", "ZW".
 	Country BrandSearchParamsCountry `query:"country,omitzero" json:"-"`
-	// Only return brands with this primary language, such as english or french.
+	// Only return brands with this primary language, such as `english` or `french`.
 	//
 	// Any of "afrikaans", "albanian", "amharic", "arabic", "armenian", "assamese",
 	// "aymara", "azeri", "basque", "belarusian", "bengali", "bosnian", "bulgarian",
@@ -1572,12 +1577,13 @@ type BrandSearchParams struct {
 	// "uyghur", "uzbek", "vietnamese", "welsh", "wolof", "xhosa", "yiddish", "yoruba",
 	// "zulu".
 	Language BrandSearchParamsLanguage `query:"language,omitzero" json:"-"`
-	// Fields to match the search term against, as a comma-separated list or repeated
-	// parameter: 'name', 'domain', or both. Defaults to both.
+	// Fields to match the search term against: `name`, `domain`, or both. Send a
+	// comma-separated list or repeat the parameter.
 	//
 	// Any of "name", "domain".
 	QueryBy []string `query:"queryBy,omitzero" json:"-"`
-	// Comma-separated labels for filtering usage, e.g. `production,team-alpha`.
+	// Comma-separated labels for this request, such as `production,team-alpha`. Filter
+	// usage and request logs by them.
 	Tags []string `query:"tags,omitzero" json:"-"`
 	paramObj
 }
@@ -1591,7 +1597,7 @@ func (r BrandSearchParams) URLQuery() (v url.Values, err error) {
 }
 
 // Only return brands in this country, as an uppercase ISO 3166-1 alpha-2 code such
-// as US or GB.
+// as `US` or `GB`.
 type BrandSearchParamsCountry string
 
 const (
@@ -1846,7 +1852,7 @@ const (
 	BrandSearchParamsCountryZw BrandSearchParamsCountry = "ZW"
 )
 
-// Only return brands with this primary language, such as english or french.
+// Only return brands with this primary language, such as `english` or `french`.
 type BrandSearchParamsLanguage string
 
 const (

@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.50.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.49.0...v2.50.0) (2026-11-28)
+
+
+### Features
+
+* **answers:** limit research to listed sources with controls ([#3252](https://github.com/context-dot-dev/context-go-sdk/issues/3252)) ([55fa40f](https://github.com/context-dot-dev/context-go-sdk/commit/55fa40fe6d443810f4c5709cd4087ac090a89ea9))
+* **batch:** add follow, scrape and exclude crawl rules ([#3244](https://github.com/context-dot-dev/context-go-sdk/issues/3244)) ([1db9dda](https://github.com/context-dot-dev/context-go-sdk/commit/1db9dda751a2810bf5aacbfa159cee7f876330c3))
+* **crawl:** say why a crawled page failed ([#3130](https://github.com/context-dot-dev/context-go-sdk/issues/3130)) ([94864a9](https://github.com/context-dot-dev/context-go-sdk/commit/94864a9ff8ed5b9fd7775584802e37e078f286e0))
+* **feedback:** add bad_brand feedback category ([#3136](https://github.com/context-dot-dev/context-go-sdk/issues/3136)) ([6178c16](https://github.com/context-dot-dev/context-go-sdk/commit/6178c1627f5c90d33ba2a8afcb8687b0dc7a6c19))
+* **monitors:** filter monitor credit usage by tag ([#3077](https://github.com/context-dot-dev/context-go-sdk/issues/3077)) ([b255ba1](https://github.com/context-dot-dev/context-go-sdk/commit/b255ba1544b50323b3ba631bddd6cdd651851558))
+* **scholar:** add POST /scholar/search endpoint ([#2997](https://github.com/context-dot-dev/context-go-sdk/issues/2997)) ([15f62d5](https://github.com/context-dot-dev/context-go-sdk/commit/15f62d5ed4f9e3948cda8f8449a85576f98209aa))
+* **scrape:** accept includeFrames auto and make it the default ([#3280](https://github.com/context-dot-dev/context-go-sdk/issues/3280)) ([47ed1f5](https://github.com/context-dot-dev/context-go-sdk/commit/47ed1f5cd1543e230646871b31b3b884b761c64a))
+* **scrape:** add a car-rental-locations parser for avis and budget branches ([#3021](https://github.com/context-dot-dev/context-go-sdk/issues/3021)) ([7ca773f](https://github.com/context-dot-dev/context-go-sdk/commit/7ca773f32c71743b49ea4c699e1ff1cdd7da5b72))
+* **scrape:** include price and availability on product variants ([#3113](https://github.com/context-dot-dev/context-go-sdk/issues/3113)) ([94864a9](https://github.com/context-dot-dev/context-go-sdk/commit/94864a9ff8ed5b9fd7775584802e37e078f286e0))
+
+
+### Bug Fixes
+
+* **access-policies:** tell callers to drop `policies` when the feature is off ([#3090](https://github.com/context-dot-dev/context-go-sdk/issues/3090)) ([9974144](https://github.com/context-dot-dev/context-go-sdk/commit/9974144836d961833cf44360d31b69999e65a891))
+* **answers:** flag list items that came back unresearched and send incomplete answers back once ([#3145](https://github.com/context-dot-dev/context-go-sdk/issues/3145)) ([b1b183a](https://github.com/context-dot-dev/context-go-sdk/commit/b1b183a53997b707d15c7a599a4e2cc0dfc47047))
+* **batch:** list every batch and remove shouldIncludeUnified ([#3322](https://github.com/context-dot-dev/context-go-sdk/issues/3322)) ([0e537f2](https://github.com/context-dot-dev/context-go-sdk/commit/0e537f2bd2068ca8cc43ccad8c3ef15d0c8929f8))
+* **brand:** rename country_gl to country and CountryGL to LowercaseCountryCode ([#3326](https://github.com/context-dot-dev/context-go-sdk/issues/3326)) ([0e8fa7c](https://github.com/context-dot-dev/context-go-sdk/commit/0e8fa7c0f36d2afee46df171685278063ea944c7))
+* **google-maps:** search from the URL's country, merge two draws, and read the real primary category ([#3158](https://github.com/context-dot-dev/context-go-sdk/issues/3158)) ([681c012](https://github.com/context-dot-dev/context-go-sdk/commit/681c01289dc6b5667a4f49f5de6f96eee8d93aff))
+* **scrape:** read google play ratings from the storefront that offers the app ([#3084](https://github.com/context-dot-dev/context-go-sdk/issues/3084)) ([b255ba1](https://github.com/context-dot-dev/context-go-sdk/commit/b255ba1544b50323b3ba631bddd6cdd651851558))
+* **web-search:** explain why a result's page content is missing ([#3074](https://github.com/context-dot-dev/context-go-sdk/issues/3074)) ([f610077](https://github.com/context-dot-dev/context-go-sdk/commit/f6100775a7165fd31632c62cd3988a1dd1202eb3))
+
+
+### Documentation
+
+* **answers:** state the 2000-character task limit in its description ([#3137](https://github.com/context-dot-dev/context-go-sdk/issues/3137)) ([6178c16](https://github.com/context-dot-dev/context-go-sdk/commit/6178c1627f5c90d33ba2a8afcb8687b0dc7a6c19))
+* **openapi:** hide superseded inputs and document missing 403 and 402 responses ([#3323](https://github.com/context-dot-dev/context-go-sdk/issues/3323)) ([c7c442d](https://github.com/context-dot-dev/context-go-sdk/commit/c7c442d20c7ebde05c964b796e54a2008d554213))
+* **openapi:** rewrite public reference copy and normalize field order ([#3325](https://github.com/context-dot-dev/context-go-sdk/issues/3325)) ([198710b](https://github.com/context-dot-dev/context-go-sdk/commit/198710ba22dbe28582fdc3d52193f4274174ac92))
+* **scrape:** describe late scrape outputs as per-output REQUEST_TIMEOUT in a 200 ([#3080](https://github.com/context-dot-dev/context-go-sdk/issues/3080)) ([318cb63](https://github.com/context-dot-dev/context-go-sdk/commit/318cb63154c6f34bedd1311657c8a13a69cb45ab))
+
 ## [2.49.0](https://github.com/context-dot-dev/context-go-sdk/compare/v2.48.0...v2.49.0) (2026-11-17)
 
 

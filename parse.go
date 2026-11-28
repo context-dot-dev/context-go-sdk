@@ -45,10 +45,14 @@ func NewParseService(opts ...option.RequestOption) (r ParseService) {
 // CSV, JSON, YAML, source code, subtitles, images, and WARC archives. Send the raw
 // bytes as the request body; set `ocr=true` to read scanned pages and images.
 func (r *ParseService) Handle(ctx context.Context, body io.Reader, params ParseHandleParams, opts ...option.RequestOption) (res *ParseHandleResponse, err error) {
+	query, err := params.URLQuery()
+	if err != nil {
+		return nil, err
+	}
 	opts = slices.Concat(r.options, opts)
 	opts = append([]option.RequestOption{option.WithRequestBody("application/octet-stream", body)}, opts...)
-	path := "parse"
-	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, nil, &res, opts...)
+	path := url.URL{Path: "parse", RawQuery: query.Encode()}
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path.String(), nil, &res, opts...)
 	return res, err
 }
 
